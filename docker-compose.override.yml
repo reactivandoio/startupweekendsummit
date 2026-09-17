@@ -1,0 +1,10 @@
+# Producao atras do nginx (/mnt/hd2tb/proxy): o app entra na rede "proxy" e nao publica portas.
+# O servico "dev" nao e afetado (continua em localhost:3001).
+services:
+  app:
+    container_name: startupweekendsummit-app
+    ports: !reset []
+    networks: [default, proxy]
+networks:
+  proxy:
+    external: true
