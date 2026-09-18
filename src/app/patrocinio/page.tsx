@@ -4,11 +4,14 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { commercialContacts, site, sponsorship, stats } from "@/content/site";
 
+const title = `Patrocínio | ${site.name}`;
+
 export const metadata: Metadata = {
   title: "Patrocínio",
-  description: `Patrocine o ${site.name}, em Goiânia. Cotas Master, Gold, Silver, Bronze e Startup com branding, mídia, ativações no evento e cortesias.`,
+  description: site.seoDescriptionSponsors,
   alternates: { canonical: "/patrocinio" },
-  openGraph: { url: "/patrocinio", title: `Patrocínio | ${site.name}` },
+  openGraph: { url: "/patrocinio", title, description: site.seoDescriptionSponsors },
+  twitter: { card: "summary_large_image", title, description: site.seoDescriptionSponsors },
 };
 
 const commercial = commercialContacts[0];

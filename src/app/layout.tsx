@@ -1,3 +1,4 @@
+import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { site } from "@/content/site";
@@ -37,12 +38,12 @@ export const metadata: Metadata = {
     url: "/",
     siteName: site.shortName,
     locale: "pt_BR",
-    title: `Seja voluntário | ${site.name}`,
+    title,
     description: site.seoDescription,
   },
   twitter: {
     card: "summary_large_image",
-    title: `Seja voluntário | ${site.name}`,
+    title,
     description: site.seoDescription,
   },
   robots: {
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} h-full`}>
       <body className="flex min-h-full flex-col overflow-x-hidden">{children}</body>
+      <GoogleAnalytics gaId={site.gaId} />
     </html>
   );
 }
