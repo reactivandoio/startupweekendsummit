@@ -5,11 +5,14 @@ import { SiteHeader } from "@/components/site-header";
 import { VolunteerForm } from "@/components/volunteer-form";
 import { benefits, site, steps, volunteerAreas } from "@/content/site";
 
+const title = `Seja voluntário | ${site.name}`;
+
 export const metadata: Metadata = {
   title: "Seja voluntário",
-  description: `Inscreva-se como voluntário do ${site.name}, em Goiânia, de 4 a 6 de dezembro. Recepção, logística, comunicação, fotografia e mais.`,
+  description: site.seoDescriptionVolunteers,
   alternates: { canonical: "/voluntarios" },
-  openGraph: { url: "/voluntarios", title: `Seja voluntário | ${site.name}` },
+  openGraph: { url: "/voluntarios", title, description: site.seoDescriptionVolunteers },
+  twitter: { card: "summary_large_image", title, description: site.seoDescriptionVolunteers },
 };
 
 // Fundos sólidos dos tiles, no espírito dos retratos de palestrantes em cor chapada

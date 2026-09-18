@@ -20,10 +20,16 @@ export const site = {
   whatsappUrl: "https://wa.me/5562982214275",
   instagram: "https://www.instagram.com/techstarsstartupweekendsummit/",
   organizer: "Techstars",
+  // Google Analytics 4 (stream do projeto Firebase "startupweekendsummit")
+  gaId: "G-T2LRML1JEF",
   organizerUrl: "https://www.techstars.com",
   // Descrição curta pra buscadores (~155 caracteres)
   seoDescription:
-    "Seja voluntário no Techstars Startup Weekend Summit Brasil 2026, em Goiânia, de 4 a 6 de dezembro. O encontro nacional de líderes de comunidades de startups.",
+    "Techstars Startup Weekend Summit Brasil 2026, em Goiânia, de 4 a 6 de dezembro: o encontro nacional de líderes de comunidades de startups chega a Goiás pela primeira vez.",
+  seoDescriptionVolunteers:
+    "Seja voluntário no Techstars Startup Weekend Summit Brasil 2026, em Goiânia, de 4 a 6 de dezembro. Recepção, logística, comunicação, fotografia e mais. Inscrições abertas.",
+  seoDescriptionSponsors:
+    "Patrocine o Techstars Startup Weekend Summit Brasil 2026, em Goiânia. Cotas Master, Gold, Silver, Bronze e Startup com branding, mídia, ativações no evento e cortesias.",
   keywords: [
     "Startup Weekend Summit",
     "Techstars Startup Weekend Summit Brasil 2026",
