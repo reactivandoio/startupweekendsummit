@@ -16,6 +16,8 @@ export const site = {
   state: "GO",
   venue: "Local a confirmar",
   contactEmail: "contato@8020digital.com.br",
+  whatsapp: "+55 62 98221-4275",
+  whatsappUrl: "https://wa.me/5562982214275",
   instagram: "https://www.instagram.com/techstarsstartupweekendsummit/",
   organizer: "Techstars",
   organizerUrl: "https://www.techstars.com",

@@ -115,17 +115,26 @@ export default function Home() {
       <section className="bg-mint-wash text-ink">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-15 sm:px-6 md:grid-cols-2 md:items-end">
           <div className="flex flex-col gap-4">
-            <h2 className="font-display text-heading">Inscrições abertas.</h2>
-            <p className="max-w-[44ch] text-body-md">
-              Preencha o formulário no fim da página. A organização responde pelo WhatsApp em poucos dias.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 md:items-end md:text-right">
             <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 2 L23 21 H1 Z" fill="var(--color-ink)" />
             </svg>
-            <p className="text-body-md font-semibold">Vagas limitadas por área</p>
-            <p className="text-body">Maiores de 18 anos. Alimentação, camiseta e certificado inclusos.</p>
+            <h2 className="font-display text-heading">Participação por convite.</h2>
+            <p className="max-w-[44ch] text-body-md">
+              As vagas para participantes do Summit são limitadas e as inscrições acontecem por convite da
+              organização. Para dúvidas, fale com a gente no WhatsApp.
+            </p>
+          </div>
+          <div className="flex flex-col gap-4 md:items-end md:text-right">
+            <p className="text-body-md font-semibold">Dúvidas sobre o evento</p>
+            <a
+              href={site.whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-14 items-center justify-center border border-ink px-6 text-body-md text-ink transition-colors hover:bg-ink hover:text-paper"
+            >
+              WhatsApp {site.whatsapp}
+            </a>
+            <p className="text-body">Voluntariado: preencha o formulário no fim da página.</p>
           </div>
         </div>
       </section>
@@ -158,12 +167,12 @@ export default function Home() {
             </div>
             <div className="flex flex-col gap-4 text-body-md md:pt-10">
               <p>
-                O Techstars Startup Weekend Summit é o encontro nacional das lideranças voluntárias que organizam
-                Startup Weekends, Startup Weeks e outros programas de comunidade pelo país — as pessoas que disseminam
-                empreendedorismo e influenciam o ecossistema de startups no Brasil inteiro.
+                O Summit não é um Startup Weekend. É o encontro nacional das lideranças que organizam Startup Weekends e
+                outros programas de comunidade pelo país — três dias para discutir inovação e empreendedorismo seguindo
+                os conceitos do livro <em>Startup Weekend</em>, que deu origem ao movimento.
               </p>
               <p>
-                São três dias de keynotes, workshops, painéis e fun experiences com participantes de todas as regiões e
+                Keynotes, workshops, painéis e fun experiences reúnem participantes de todas as regiões do Brasil e
                 convidados internacionais. Em 2026 o Summit é retomado e chega a Goiânia pela primeira vez.
               </p>
               <p>
@@ -309,6 +318,10 @@ export default function Home() {
             </p>
             <p className="text-body">
               Dúvidas:{" "}
+              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+                WhatsApp {site.whatsapp}
+              </a>{" "}
+              ou{" "}
               <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
                 {site.contactEmail}
               </a>
