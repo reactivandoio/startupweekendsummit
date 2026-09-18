@@ -1,39 +1,51 @@
 @import "tailwindcss";
 
-/* Tokens — "modernist poster on black velvet" */
+/* Tokens — "ink-black keynote stage with confetti-bright murals" */
 @theme {
   --color-*: initial;
   --color-obsidian: #000000;
-  --color-chalk: #e2e2e2;
-  --color-graphite: #3d3d3d;
+  --color-ink: #0f0f0f;
   --color-paper: #ffffff;
-  /* Ilustração do evento — decoração, não tokens de UI */
-  --color-ill-green: #0acf83;
-  --color-ill-cyan: #1abcfe;
-  --color-ill-orange: #ff7237;
-  --color-ill-yellow: #ffc700;
+  --color-ash: #e2e2e2;
+  --color-mint-wash: #c7f8fb;
+  --color-emerald-band: #24cb71;
+  /* Paleta do mural e dos fundos de card — decoração, nunca controles */
+  --color-indigo: #4a4afc;
+  --color-lavender: #b8b3ff;
+  --color-maroon: #7a2e2e;
+  --color-orange: #ff6b2c;
+  --color-yellow: #ffe74a;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --text-caption: 16px;
-  --text-caption--line-height: 1.3;
+  --text-caption: 13px;
+  --text-caption--line-height: 1.2;
   --text-caption--letter-spacing: -0.02em;
-  --text-body: 18px;
-  --text-body--line-height: 1.25;
-  --text-body--letter-spacing: -0.02em;
-  --text-subheading: 20px;
-  --text-subheading--line-height: 1.25;
-  --text-subheading--letter-spacing: -0.02em;
-  --text-heading: 32px;
-  --text-heading--line-height: 1.1;
-  --text-heading--letter-spacing: -0.03em;
-  --text-display: clamp(48px, 8.5vw, 80px);
-  --text-display--line-height: 0.95;
-  --text-display--letter-spacing: -0.03em;
+  --text-body: 16px;
+  --text-body--line-height: 1.2;
+  --text-body-md: 18px;
+  --text-body-md--line-height: 1.22;
+  --text-body-md--letter-spacing: 0.03em;
+  --text-subheading: 24px;
+  --text-subheading--line-height: 1.2;
+  --text-subheading--letter-spacing: -0.01em;
+  --text-heading-sm: 32px;
+  --text-heading-sm--line-height: 1.1;
+  --text-heading-sm--letter-spacing: -0.01em;
+  --text-heading: clamp(40px, 5.5vw, 56px);
+  --text-heading--line-height: 1;
+  --text-heading--letter-spacing: -0.02em;
+  --text-heading-lg: clamp(48px, 7vw, 72px);
+  --text-heading-lg--line-height: 0.9;
+  --text-heading-lg--letter-spacing: -0.02em;
+  --text-display: clamp(56px, 8.5vw, 86px);
+  --text-display--line-height: 0.9;
+  --text-display--letter-spacing: -0.02em;
 
-  --spacing-23: 23px;
-  --spacing-157: 157px;
+  --spacing-15: 60px;
+  --spacing-30: 120px;
 
   --container-page: 1200px;
 
@@ -46,55 +58,43 @@ html {
 }
 
 body {
-  background: var(--color-obsidian);
-  color: var(--color-chalk);
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-family: var(--font-sans);
-  font-weight: 400;
-  font-feature-settings: "kern";
   -webkit-font-smoothing: antialiased;
 }
 
-/* Nada no sistema é arredondado */
+/* Cantos vivos em tudo — o sistema não tem radius */
 *,
 *::before,
 *::after {
   border-radius: 0;
 }
 
-::selection {
-  background: var(--color-paper);
-  color: var(--color-obsidian);
-}
-
-/* Campos de formulário: borda grafite que vira chalk no foco/erro */
+/* Campos: borda Ash que vira Ink no foco/erro. Sem cor de estado. */
 .field {
   width: 100%;
-  background: transparent;
-  border: 1px solid var(--color-graphite);
-  color: var(--color-chalk);
-  padding: 12px;
+  background: var(--color-paper);
+  border: 1px solid var(--color-ash);
+  color: var(--color-ink);
+  padding: 16px;
   font: inherit;
   font-size: 16px;
-  line-height: 1.3;
-  letter-spacing: -0.02em;
+  line-height: 1.2;
   outline: none;
   transition: border-color 120ms linear;
 }
 .field::placeholder {
-  color: color-mix(in srgb, var(--color-chalk) 40%, transparent);
+  color: color-mix(in srgb, var(--color-ink) 40%, transparent);
 }
 .field:focus,
 .field[aria-invalid="true"] {
-  border-color: var(--color-chalk);
+  border-color: var(--color-ink);
 }
 select.field {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23e2e2e2' stroke-width='1'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230f0f0f' stroke-width='1.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-}
-select.field option {
-  background: var(--color-obsidian);
-  color: var(--color-chalk);
+  background-position: right 16px center;
+  padding-right: 40px;
 }

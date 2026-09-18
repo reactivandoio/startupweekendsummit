@@ -6,9 +6,9 @@ import { availabilityOptions, volunteerAreas } from "@/content/site";
 
 const initialState: FormState = { status: "idle" };
 
-// Opções selecionáveis: borda grafite que vira chalk quando marcada — sem cor de estado
+// Opções selecionáveis: borda Ash que vira Ink quando marcada — sem cor de estado
 const choiceClass =
-  "flex cursor-pointer items-center gap-3 border border-graphite p-3 text-caption transition-colors has-checked:border-chalk";
+  "flex cursor-pointer items-center gap-3 border border-ash p-4 text-body transition-colors has-checked:border-ink";
 
 function Field({
   label,
@@ -25,13 +25,13 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-caption">
+      <label htmlFor={htmlFor} className="text-body font-semibold">
         {label}
       </label>
       {children}
-      {hint && !error && <p className="text-caption text-chalk/60">{hint}</p>}
+      {hint && !error && <p className="text-caption text-ink/60">{hint}</p>}
       {error && (
-        <p className="text-caption" role="alert">
+        <p className="text-caption font-semibold" role="alert">
           — {error}
         </p>
       )}
@@ -46,18 +46,18 @@ export function VolunteerForm() {
 
   if (state.status === "success") {
     return (
-      <div className="flex flex-col gap-3 border border-chalk p-6" role="status">
-        <p className="font-mono text-caption tracking-normal">OK</p>
-        <h3 className="text-heading">Inscrição recebida.</h3>
-        <p className="text-body">{state.message}</p>
+      <div className="flex flex-col gap-4 border border-ink p-6" role="status">
+        <p className="font-mono text-body tracking-[0.03em]">OK</p>
+        <h3 className="font-display text-heading-sm">Inscrição recebida.</h3>
+        <p className="text-body-md">{state.message}</p>
       </div>
     );
   }
 
   return (
-    <form action={formAction} noValidate className="relative flex flex-col gap-6">
+    <form action={formAction} noValidate className="relative flex flex-col gap-8">
       {state.status === "error" && state.message && (
-        <p className="border border-chalk p-3 text-caption" role="alert">
+        <p className="border border-ink p-4 text-body font-semibold" role="alert">
           — {state.message}
         </p>
       )}
@@ -149,24 +149,24 @@ export function VolunteerForm() {
       </div>
 
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-caption">Disponibilidade</legend>
+        <legend className="mb-1.5 text-body font-semibold">Disponibilidade</legend>
         <div className="grid gap-3 sm:grid-cols-2">
           {availabilityOptions.map((o) => (
             <label key={o.value} className={choiceClass}>
-              <input type="checkbox" name="availability" value={o.value} className="h-4 w-4 accent-chalk" />
+              <input type="checkbox" name="availability" value={o.value} className="h-4 w-4 accent-ink" />
               {o.label}
             </label>
           ))}
         </div>
         {e.availability && (
-          <p className="text-caption" role="alert">
+          <p className="text-caption font-semibold" role="alert">
             — {e.availability}
           </p>
         )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-caption">Já foi voluntário em algum evento?</legend>
+        <legend className="mb-1.5 text-body font-semibold">Já foi voluntário em algum evento?</legend>
         <div className="flex gap-3">
           {[
             { value: "sim", label: "Sim" },
@@ -178,7 +178,7 @@ export function VolunteerForm() {
                 name="experience"
                 value={o.value}
                 defaultChecked={(v.experience ?? "nao") === o.value}
-                className="h-4 w-4 accent-chalk"
+                className="h-4 w-4 accent-ink"
               />
               {o.label}
             </label>
@@ -198,18 +198,18 @@ export function VolunteerForm() {
         />
       </Field>
 
-      <label className="flex items-start gap-3 text-caption">
-        <input type="checkbox" name="consent" className="mt-1 h-4 w-4 accent-chalk" required />
+      <label className="flex items-start gap-3 text-body">
+        <input type="checkbox" name="consent" className="mt-1 h-4 w-4 accent-ink" required />
         <span>
           Autorizo o uso dos meus dados para contato sobre o voluntariado no Startup Weekend Summit.
-          {e.consent && <span className="mt-1 block">— {e.consent}</span>}
+          {e.consent && <span className="mt-1 block text-caption font-semibold">— {e.consent}</span>}
         </span>
       </label>
 
       <button
         type="submit"
         disabled={pending}
-        className="self-start bg-paper p-3 text-caption uppercase text-obsidian transition-colors hover:bg-chalk disabled:cursor-not-allowed disabled:bg-graphite disabled:text-chalk"
+        className="flex h-16 w-full items-center justify-center border border-ink text-subheading text-ink transition-colors hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:border-ash disabled:text-ink/50 disabled:hover:bg-transparent"
       >
         {pending ? "Enviando…" : "Quero ser voluntário"}
       </button>
