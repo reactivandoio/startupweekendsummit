@@ -101,6 +101,80 @@ export const steps = [
   { title: "Summit", text: "4 a 6 de dezembro. Você faz parte da história do evento em Goiânia." },
 ];
 
+// Contatos comerciais (deck institucional, slide "Contato comercial")
+export const commercialContacts = [
+  { name: "Jackeline Mendes", role: "Comercial", email: "jackeline.m.ferreira@gmail.com", phone: "(62) 99402-5205", wa: "5562994025205" },
+  { name: "Roldão Barros Jr.", role: "Líder da organização", email: "ola@roldaobarros.com", phone: "(62) 98221-4275", wa: "5562982214275" },
+  { name: "Pedro Silva", role: "Marketing", email: "contato@8020digital.com.br", phone: "(62) 99396-2325", wa: "5562993962325" },
+];
+
+// Cotas de patrocínio e contrapartidas (deck institucional). Ordem das colunas = ordem de `tiers`.
+export const sponsorship = {
+  tiers: [
+    { id: "master", name: "Master", price: "R$ 45.000" },
+    { id: "gold", name: "Gold", price: "R$ 30.000" },
+    { id: "silver", name: "Silver", price: "R$ 15.000" },
+    { id: "bronze", name: "Bronze", price: "R$ 7.000" },
+    { id: "startup", name: "Startup", price: "R$ 2.000", note: "ou menor" },
+  ],
+  // cada item: [rótulo, [master, gold, silver, bronze, startup]] — true = incluso, string = valor
+  categories: [
+    {
+      name: "Branding",
+      items: [
+        ["Logo no site oficial do evento", [true, true, true, true, true]],
+        ["Logo na tela digital de patrocinadores durante o evento", [true, true, true, true, true]],
+        ["Mencionado como patrocinador na abertura do evento", [true, true, true, true, true]],
+        ["Direito de uso promocional da marca, imagens e vídeo", [true, true, true, true, false]],
+        ["Logo no encerramento do vídeo do evento", [true, true, true, false, false]],
+        ["Logo nos brindes promocionais (quando aplicável)", [true, true, false, false, false]],
+        ["Logo nas camisetas comemorativas", [true, true, false, false, false]],
+        ["Logo na abertura do vídeo do evento", [true, false, false, false, false]],
+        ["Techstars Brasil Summit: Presented by \"Sua Empresa\"", [true, false, false, false, false]],
+      ],
+    },
+    {
+      name: "Material impresso",
+      items: [
+        ["Logo na programação e agenda", [true, true, true, true, true]],
+        ["Logo nos pôsteres e banners", [true, true, true, true, false]],
+        ["Logo no backdrop", [true, true, true, false, false]],
+        ["Backdrop exclusivo / espaço instagramável", [true, false, false, false, false]],
+      ],
+    },
+    {
+      name: "Mídia",
+      items: [
+        ["Mencionado no e-mail marketing brasileiro (10k+ assinantes)", [true, true, true, true, true]],
+        ["Post coletivo com patrocinadores nas redes sociais", [true, true, true, true, true]],
+        ["Mailing dos participantes e relatório de atividade e impacto do evento", [true, true, true, false, false]],
+        ["Menção no post pós-evento no blog da Techstars (internacional)", [true, true, false, false, false]],
+        ["Logo em toda comunicação via e-mail aos participantes", [true, true, false, false, false]],
+        ["Campanha nas mídias sociais", [true, true, false, false, false]],
+        ["Mensagem do patrocinador de 5 minutos durante a abertura do evento", [true, false, false, false, false]],
+        ["Menção no press release e na cobertura de mídia", [true, false, false, false, false]],
+      ],
+    },
+    {
+      name: "Evento",
+      items: [
+        ["Possibilidade de entregar material promocional (folhetos, brindes)", [true, true, true, true, true]],
+        ["Patrocínio de uma fun experience ou learning experience", [true, true, true, true, false]],
+        ["Painel com influenciadores (opcional)", [true, true, false, false, false]],
+        ["Possibilidade de montar estande / espaço promocional", [true, true, false, false, false]],
+        ["Jantar especial patrocinado por \"Sua Empresa\" (valor à parte)", [true, false, false, false, false]],
+      ],
+    },
+    {
+      name: "Ingressos para o evento",
+      items: [
+        ["Cortesias para o evento", ["8", "4", "2", "1", "1"]],
+        ["Corporate Innovation Day", ["3", "2", "2", "1", false]],
+      ],
+    },
+  ] as { name: string; items: [string, (boolean | string)[]][] }[],
+};
+
 // Programação resumida do deck institucional
 export const schedule = [
   {
