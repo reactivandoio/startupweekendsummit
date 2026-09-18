@@ -18,17 +18,17 @@ export default async function InscricoesPage() {
             {volunteers.length} {volunteers.length === 1 ? "inscrição" : "inscrições"}
           </h1>
         </div>
-        <a href="/admin/inscricoes.csv" className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper">
+        <a href="/admin/inscricoes.csv" className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink">
           Baixar CSV
         </a>
       </div>
 
       {volunteers.length === 0 ? (
-        <p className="border-t border-ink pt-6 text-body-md">Nenhuma inscrição ainda.</p>
+        <p className="border-t border-ink dark:border-paper pt-6 text-body-md">Nenhuma inscrição ainda.</p>
       ) : (
-        <ul className="border-t border-ink">
+        <ul className="border-t border-ink dark:border-paper">
           {volunteers.map((v) => (
-            <li key={v.id} className="grid gap-4 border-b border-ash py-6 md:grid-cols-[1.2fr_1fr_1fr_auto]">
+            <li key={v.id} className="grid gap-4 border-b border-ash dark:border-graphite py-6 md:grid-cols-[1.2fr_1fr_1fr_auto]">
               <div className="flex flex-col gap-1">
                 <p className="text-body-md font-semibold">{v.name}</p>
                 <a href={`mailto:${v.email}`} className="text-body underline underline-offset-4">
@@ -53,7 +53,7 @@ export default async function InscricoesPage() {
               </div>
               <form action={removeVolunteer} className="md:justify-self-end">
                 <input type="hidden" name="id" value={v.id} />
-                <button type="submit" className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink">
+                <button type="submit" className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper">
                   Remover
                 </button>
               </form>

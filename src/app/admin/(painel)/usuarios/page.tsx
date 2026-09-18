@@ -9,7 +9,7 @@ export default async function UsuariosPage() {
   const me = await requireUser();
   const users = await listUsers();
   return (
-    <div className="grid gap-15 md:grid-cols-[1fr_1.4fr]">
+    <div className="grid gap-10 lg:grid-cols-[minmax(280px,420px)_1fr]">
       <div className="flex flex-col gap-6">
         <Eyebrow>Acesso</Eyebrow>
         <h1 className="font-display text-heading">Quem pode entrar no painel</h1>
@@ -18,9 +18,9 @@ export default async function UsuariosPage() {
         </p>
         <UserForm />
       </div>
-      <ul className="border-t border-ink self-start">
+      <ul className="border-t border-ink dark:border-paper self-start">
         {users.map((u) => (
-          <li key={u.id} className="flex items-center justify-between gap-4 border-b border-ash py-4">
+          <li key={u.id} className="flex items-center justify-between gap-4 border-b border-ash dark:border-graphite py-4">
             <div className="flex flex-col gap-1">
               <p className="text-body-md font-semibold">{u.name || u.email}</p>
               {u.name && <p className="text-body">{u.email}</p>}
@@ -31,7 +31,7 @@ export default async function UsuariosPage() {
             ) : (
               <form action={deleteUser}>
                 <input type="hidden" name="id" value={u.id} />
-                <button type="submit" className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink">
+                <button type="submit" className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper">
                   Remover
                 </button>
               </form>
