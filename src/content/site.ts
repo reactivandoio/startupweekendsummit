@@ -16,7 +16,7 @@ export const site = {
   state: "GO",
   venue: "Local a confirmar",
   contactEmail: "contato@8020digital.com.br",
-  instagram: "https://instagram.com/startupweekend",
+  instagram: "https://www.instagram.com/techstarsstartupweekendsummit/",
   organizer: "Techstars",
   organizerUrl: "https://www.techstars.com",
   // Descrição curta pra buscadores (~155 caracteres)

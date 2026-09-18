@@ -44,6 +44,7 @@ const jsonLd = {
         address: { "@type": "PostalAddress", addressLocality: site.cityName, addressRegion: site.state, addressCountry: "BR" },
       },
       organizer: { "@type": "Organization", name: site.organizer, url: site.organizerUrl },
+      sameAs: [site.instagram],
       offers: {
         "@type": "Offer",
         name: "Inscrição de voluntários",
@@ -59,6 +60,7 @@ const jsonLd = {
       url: site.url,
       name: site.shortName,
       inLanguage: "pt-BR",
+      sameAs: [site.instagram],
       about: { "@id": `${site.url}/#event` },
     },
   ],
