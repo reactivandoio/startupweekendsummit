@@ -1,6 +1,5 @@
 import "server-only";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { ensureSchema, sql } from "@/lib/db";
 
 export type Volunteer = {
   id: string;
@@ -15,54 +14,42 @@ export type Volunteer = {
   createdAt: string;
 };
 
-// Pasta das inscrições. No Docker: DATA_DIR=/data (prod) ou /app/data (dev, montado do host).
-const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
-const FILE = path.join(DATA_DIR, "volunteers.json");
+type Row = Omit<Volunteer, "createdAt"> & { created_at: Date };
 
-// Escritas serializadas no processo pra não perder inscrições concorrentes.
-let queue: Promise<unknown> = Promise.resolve();
+const toVolunteer = (r: Row): Volunteer => ({
+  id: r.id,
+  name: r.name,
+  email: r.email,
+  phone: r.phone,
+  city: r.city,
+  area: r.area,
+  availability: r.availability,
+  experience: r.experience,
+  motivation: r.motivation,
+  createdAt: r.created_at.toISOString(),
+});
 
-async function readAll(): Promise<Volunteer[]> {
-  try {
-    const raw = await readFile(FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw err;
-  }
-}
-
-async function writeAll(list: Volunteer[]) {
-  await mkdir(DATA_DIR, { recursive: true });
-  const tmp = `${FILE}.${process.pid}.tmp`;
-  await writeFile(tmp, JSON.stringify(list, null, 2), "utf8");
-  await rename(tmp, FILE);
-}
-
-export function listVolunteers() {
-  return readAll();
+export async function listVolunteers(): Promise<Volunteer[]> {
+  await ensureSchema();
+  const rows = await sql<Row[]>`select * from volunteers order by created_at desc`;
+  return rows.map(toVolunteer);
 }
 
 export async function saveVolunteer(
   data: Omit<Volunteer, "id" | "createdAt">,
 ): Promise<{ ok: true; volunteer: Volunteer } | { ok: false; reason: "duplicate" }> {
-  const run = queue.then(async () => {
-    const list = await readAll();
-    const email = data.email.toLowerCase();
-    if (list.some((v) => v.email.toLowerCase() === email)) {
-      return { ok: false as const, reason: "duplicate" as const };
-    }
-    const volunteer: Volunteer = {
-      ...data,
-      email,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    list.push(volunteer);
-    await writeAll(list);
-    return { ok: true as const, volunteer };
-  });
-  queue = run.catch(() => undefined);
-  return run;
+  await ensureSchema();
+  const email = data.email.toLowerCase();
+  const rows = await sql<Row[]>`
+    insert into volunteers (name, email, phone, city, area, availability, experience, motivation)
+    values (${data.name}, ${email}, ${data.phone}, ${data.city}, ${data.area}, ${data.availability}, ${data.experience}, ${data.motivation})
+    on conflict (email) do nothing
+    returning *`;
+  if (rows.length === 0) return { ok: false, reason: "duplicate" };
+  return { ok: true, volunteer: toVolunteer(rows[0]) };
+}
+
+export async function deleteVolunteer(id: string) {
+  await ensureSchema();
+  await sql`delete from volunteers where id = ${id}`;
 }
