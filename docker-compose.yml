@@ -18,6 +18,9 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      TICKET_PRICE_CENTS: ${TICKET_PRICE_CENTS:-}
     volumes:
       - .:/app
       # node_modules e .next ficam em volumes nomeados pra não misturar com o host
@@ -65,6 +68,9 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      TICKET_PRICE_CENTS: ${TICKET_PRICE_CENTS:-}
     ports:
       - "3000:3000"
     depends_on:

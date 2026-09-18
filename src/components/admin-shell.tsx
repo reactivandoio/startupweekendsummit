@@ -15,10 +15,30 @@ const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeL
 const nav: NavItem[] = [
   {
     href: "/admin",
-    label: "Inscrições",
+    label: "Voluntários",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
         <path d="M3 5h14M3 10h14M3 15h9" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/participantes",
+    label: "Participantes",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+        <path d="M3 6h14v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4V6Z" />
+        <path d="M8 6v10" strokeDasharray="2 2" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/convites",
+    label: "Convites",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+        <path d="M3 5h14v11H3z" />
+        <path d="M3 6l7 5 7-5" />
       </svg>
     ),
   },
