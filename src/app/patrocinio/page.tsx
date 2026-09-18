@@ -9,6 +9,13 @@ const title = `Patrocínio | ${site.name}`;
 export const metadata: Metadata = {
   title: "Patrocínio",
   description: site.seoDescriptionSponsors,
+  keywords: [
+    "patrocínio Startup Weekend Summit",
+    "patrocinar evento de inovação Goiânia",
+    "cotas de patrocínio evento startups",
+    "parceria Techstars Goiânia",
+    ...site.keywords,
+  ],
   alternates: { canonical: "/patrocinio" },
   openGraph: { url: "/patrocinio", title, description: site.seoDescriptionSponsors },
   twitter: { card: "summary_large_image", title, description: site.seoDescriptionSponsors },
