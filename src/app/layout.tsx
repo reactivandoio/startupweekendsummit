@@ -21,15 +21,36 @@ const jetbrainsMono = JetBrains_Mono({
   weight: "400",
 });
 
+const title = `${site.name} | ${site.cityName}, ${site.dateShort}`;
+
 export const metadata: Metadata = {
-  title: `Seja voluntário | ${site.shortName}`,
-  description: site.description,
-  openGraph: {
-    title: `Seja voluntário | ${site.shortName}`,
-    description: site.tagline,
-    locale: "pt_BR",
-    type: "website",
+  metadataBase: new URL(site.url),
+  title: {
+    default: title,
+    template: `%s | ${site.shortName}`,
   },
+  description: site.seoDescription,
+  keywords: site.keywords,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: site.shortName,
+    locale: "pt_BR",
+    title: `Seja voluntário | ${site.name}`,
+    description: site.seoDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `Seja voluntário | ${site.name}`,
+    description: site.seoDescription,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
+  category: "events",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

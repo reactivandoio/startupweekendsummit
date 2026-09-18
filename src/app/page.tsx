@@ -22,9 +22,52 @@ function Eyebrow({ children, light = false }: { children: React.ReactNode; light
   );
 }
 
+// Dados estruturados pra Google (rich result de evento) — https://schema.org/Event
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Event",
+      "@id": `${site.url}/#event`,
+      name: site.name,
+      description: site.seoDescription,
+      url: site.url,
+      image: `${site.url}/opengraph-image.png`,
+      startDate: site.startDate,
+      endDate: site.endDate,
+      eventStatus: "https://schema.org/EventScheduled",
+      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+      inLanguage: "pt-BR",
+      location: {
+        "@type": "Place",
+        name: site.venue,
+        address: { "@type": "PostalAddress", addressLocality: site.cityName, addressRegion: site.state, addressCountry: "BR" },
+      },
+      organizer: { "@type": "Organization", name: site.organizer, url: site.organizerUrl },
+      offers: {
+        "@type": "Offer",
+        name: "Inscrição de voluntários",
+        url: `${site.url}/#inscricao`,
+        price: "0",
+        priceCurrency: "BRL",
+        availability: "https://schema.org/InStock",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${site.url}/#website`,
+      url: site.url,
+      name: site.shortName,
+      inLanguage: "pt-BR",
+      about: { "@id": `${site.url}/#event` },
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       {/* Hero: canvas preto, nav transparente por cima, botão outlined em largura total */}
       <section className="bg-obsidian text-paper">
         <header className="mx-auto flex max-w-page items-center justify-between px-4 py-5 sm:px-6">

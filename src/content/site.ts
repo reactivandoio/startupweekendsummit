@@ -1,18 +1,38 @@
 // Conteúdo editável da landing page. Fonte: deck institucional "Techstars Startup Weekend Summit 2026 - Goiânia".
 
 export const site = {
+  url: "https://startupweekendsummit.com.br",
   name: "Techstars Startup Weekend Summit Brasil 2026",
   shortName: "TSW Summit Brasil 2026",
   tagline: "O maior encontro de líderes de comunidades de startups do Brasil",
   description:
     "O Summit da Techstars reúne, por três dias, as lideranças voluntárias que disseminam empreendedorismo e influenciam o ecossistema de startups no Brasil inteiro. Em 2026 o evento nacional é retomado e chega a Goiânia pela primeira vez — e nada disso acontece sem uma equipe de voluntários incrível.",
   date: "4 a 6 de dezembro de 2026",
+  startDate: "2026-12-04",
+  endDate: "2026-12-06",
   dateShort: "4–6 dez 2026",
   city: "Goiânia, GO",
+  cityName: "Goiânia",
+  state: "GO",
   venue: "Local a confirmar",
-  contactEmail: "contato@startupweekendsummit.com.br",
+  contactEmail: "contato@8020digital.com.br",
   instagram: "https://instagram.com/startupweekend",
   organizer: "Techstars",
+  organizerUrl: "https://www.techstars.com",
+  // Descrição curta pra buscadores (~155 caracteres)
+  seoDescription:
+    "Seja voluntário no Techstars Startup Weekend Summit Brasil 2026, em Goiânia, de 4 a 6 de dezembro. O encontro nacional de líderes de comunidades de startups.",
+  keywords: [
+    "Startup Weekend Summit",
+    "Techstars Startup Weekend Summit Brasil 2026",
+    "TSW Summit Brasil",
+    "Startup Weekend Goiânia",
+    "Techstars Goiânia",
+    "voluntário evento Goiânia",
+    "voluntariado startup",
+    "comunidade de startups Goiás",
+    "evento de empreendedorismo Goiânia 2026",
+  ],
   // After movie da edição 2025 (Uberlândia)
   afterMovieId: "07oPYrozJM4",
 };
