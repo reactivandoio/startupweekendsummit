@@ -10,6 +10,13 @@ const title = `Seja voluntário | ${site.name}`;
 export const metadata: Metadata = {
   title: "Seja voluntário",
   description: site.seoDescriptionVolunteers,
+  keywords: [
+    "voluntário Startup Weekend Summit",
+    "voluntariado evento Goiânia 2026",
+    "voluntário Techstars Goiânia",
+    "trabalho voluntário evento de startups",
+    ...site.keywords,
+  ],
   alternates: { canonical: "/voluntarios" },
   openGraph: { url: "/voluntarios", title, description: site.seoDescriptionVolunteers },
   twitter: { card: "summary_large_image", title, description: site.seoDescriptionVolunteers },
