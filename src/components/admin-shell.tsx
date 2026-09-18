@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { signOut } from "@/app/admin/actions";
 import { site } from "@/content/site";
 import type { User } from "@/lib/auth";
@@ -38,21 +38,44 @@ const STORAGE_KEY = "sws-admin-sidebar";
 const THEME_KEY = "sws-admin-theme";
 type Theme = "light" | "dark";
 
+/* Preferências em localStorage lidas como store externo: sem setState em effect e sincronizado entre abas */
+const PREF_EVENT = "sws-admin-pref";
+function subscribe(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener(PREF_EVENT, cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(PREF_EVENT, cb);
+  };
+}
+function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+  window.dispatchEvent(new Event(PREF_EVENT));
+}
+const readCollapsed = () => readPref(STORAGE_KEY) === "1";
+const readTheme = (): Theme => {
+  const saved = readPref(THEME_KEY);
+  if (saved === "dark" || saved === "light") return saved;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
 /* Moldura do painel: sidebar preta recolhível + header com breadcrumb + conteúdo com rolagem própria */
 export function AdminShell({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-  const [theme, setTheme] = useState<Theme>("light");
-
-  // preferências por navegador; lidas só depois de montar pra não divergir do SSR
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(STORAGE_KEY) === "1") setCollapsed(true);
-      const saved = localStorage.getItem(THEME_KEY);
-      const system = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      setTheme(saved === "dark" || saved === "light" ? saved : system);
-    } catch {}
-  }, []);
+  // no servidor (e durante a hidratação) usa os padrões; depois lê a preferência salva
+  const collapsed = useSyncExternalStore(subscribe, readCollapsed, () => false);
+  const theme = useSyncExternalStore(subscribe, readTheme, () => "light" as Theme);
+  const toggle = () => writePref(STORAGE_KEY, collapsed ? "0" : "1");
+  const toggleTheme = () => writePref(THEME_KEY, theme === "dark" ? "light" : "dark");
 
   // aplica no <html> só enquanto o painel está montado; o site público não usa data-theme
   useEffect(() => {
@@ -61,23 +84,6 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
       delete document.documentElement.dataset.theme;
     };
   }, [theme]);
-  const toggleTheme = () => {
-    setTheme((t) => {
-      const next: Theme = t === "dark" ? "light" : "dark";
-      try {
-        localStorage.setItem(THEME_KEY, next);
-      } catch {}
-      return next;
-    });
-  };
-  const toggle = () => {
-    setCollapsed((c) => {
-      try {
-        localStorage.setItem(STORAGE_KEY, c ? "0" : "1");
-      } catch {}
-      return !c;
-    });
-  };
 
   const current = nav.find((n) => n.href === pathname) ?? nav.find((n) => n.href !== "/admin" && pathname.startsWith(n.href));
 
