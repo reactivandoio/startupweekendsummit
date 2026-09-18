@@ -1,6 +1,7 @@
+import Image from "next/image";
 import { Mural } from "@/components/mural";
 import { VolunteerForm } from "@/components/volunteer-form";
-import { benefits, site, steps, volunteerAreas } from "@/content/site";
+import { benefits, pastHosts, photos, schedule, site, stats, steps, volunteerAreas } from "@/content/site";
 
 // Fundos sólidos dos cards, no espírito dos retratos de palestrantes em cor chapada
 const tileColors = ["bg-mint-wash", "bg-emerald-band", "bg-indigo", "bg-lavender", "bg-orange", "bg-yellow", "bg-maroon"];
@@ -27,17 +28,14 @@ export default function Home() {
       {/* Hero: canvas preto, nav transparente por cima, botão outlined em largura total */}
       <section className="bg-obsidian text-paper">
         <header className="mx-auto flex max-w-page items-center justify-between px-4 py-5 sm:px-6">
-          <a href="#" className="flex items-center gap-3" aria-label={site.name}>
-            <span className="flex h-8 w-8 items-center justify-center bg-paper font-display text-caption font-bold text-obsidian">
-              SW
-            </span>
-            <span className="hidden text-body tracking-[0.03em] sm:inline">{site.name}</span>
+          <a href="#" aria-label={site.name}>
+            <Image src="/logo-negativo.png" alt={site.name} width={129} height={60} priority className="h-[60px] w-auto" />
           </a>
-          <nav className="flex items-center gap-6 text-body tracking-[0.03em]">
-            <a href="#sobre" className="hover:underline hover:underline-offset-4">
+          <nav className="flex items-center gap-6 whitespace-nowrap text-body tracking-[0.03em]">
+            <a href="#sobre" className="hidden hover:underline hover:underline-offset-4 sm:inline">
               O evento
             </a>
-            <a href="#areas" className="hover:underline hover:underline-offset-4">
+            <a href="#areas" className="hidden hover:underline hover:underline-offset-4 sm:inline">
               Áreas
             </a>
             <a href="#inscricao" className="hover:underline hover:underline-offset-4">
@@ -49,12 +47,12 @@ export default function Home() {
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 pb-20 pt-16 sm:px-6 md:pb-30 md:pt-30">
           <div className="flex flex-col gap-6">
             <Eyebrow light>Voluntariado</Eyebrow>
-            <h1 className="font-display text-display">Faça parte da equipe que faz o Startup Weekend acontecer.</h1>
+            <h1 className="font-display text-display">Faça parte da equipe que traz o Summit da Techstars para Goiânia.</h1>
           </div>
           <div className="flex flex-col gap-2 text-body-md">
             <p className="font-semibold">{site.date}</p>
             <p>
-              {site.venue} · {site.city} · 54 horas
+              {site.venue} · {site.city} · 3 dias
             </p>
           </div>
           <a
@@ -89,9 +87,19 @@ export default function Home() {
 
       {/* Faixa esmeralda: tagline do evento */}
       <section className="bg-emerald-band text-ink">
-        <div className="mx-auto flex max-w-page flex-col gap-6 px-4 py-15 sm:px-6">
-          <Eyebrow>O evento</Eyebrow>
-          <p className="max-w-[18ch] font-display text-heading-lg">{site.tagline}.</p>
+        <div className="mx-auto flex max-w-page flex-col gap-12 px-4 py-15 sm:px-6">
+          <div className="flex flex-col gap-6">
+            <Eyebrow>O evento</Eyebrow>
+            <p className="max-w-[20ch] font-display text-heading-lg">{site.tagline}.</p>
+          </div>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-ink pt-6 lg:grid-cols-4">
+            {stats.map((st) => (
+              <div key={st.label} className="flex flex-col gap-2">
+                <dd className="font-display text-heading">{st.value}</dd>
+                <dt className="text-body">{st.label}</dt>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
@@ -101,17 +109,24 @@ export default function Home() {
           <div className="grid gap-12 md:grid-cols-[1fr_1fr]">
             <div className="flex flex-col gap-6">
               <Eyebrow>Sobre</Eyebrow>
-              <h2 className="font-display text-heading">O que é o Startup Weekend?</h2>
+              <h2 className="font-display text-heading">O que é o Summit?</h2>
             </div>
             <div className="flex flex-col gap-4 text-body-md md:pt-10">
               <p>
-                Um evento de 54 horas em que participantes apresentam ideias na sexta, formam times, validam com
-                mentores no sábado e fazem o pitch final para uma banca no domingo. Sem enrolação: é mão na massa do
-                começo ao fim.
+                O Techstars Startup Weekend Summit é o encontro nacional das lideranças voluntárias que organizam
+                Startup Weekends, Startup Weeks e outros programas de comunidade pelo país — as pessoas que disseminam
+                empreendedorismo e influenciam o ecossistema de startups no Brasil inteiro.
+              </p>
+              <p>
+                São três dias de keynotes, workshops, painéis e fun experiences com participantes de todas as regiões e
+                convidados internacionais. Em 2026 o Summit é retomado e chega a Goiânia pela primeira vez.
               </p>
               <p>
                 Os voluntários são a engrenagem invisível: recebem participantes, cuidam da logística, registram os
                 momentos e garantem que tudo funcione. Em troca, vivem o evento por dentro.
+              </p>
+              <p className="text-caption tracking-[0.03em] uppercase">
+                Edições anteriores: {pastHosts.join(" · ")}
               </p>
             </div>
           </div>
@@ -133,6 +148,73 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        </section>
+
+        {/* After movie da última edição */}
+        <section className="mx-auto flex w-full max-w-page flex-col gap-15 px-4 sm:px-6">
+          <div className="grid gap-6 md:grid-cols-2 md:items-end">
+            <div className="flex flex-col gap-6">
+              <Eyebrow>After movie</Eyebrow>
+              <h2 className="font-display text-heading">Como foi em Uberlândia, 2025</h2>
+            </div>
+            <p className="max-w-[44ch] text-body-md md:justify-self-end">
+              86 lideranças e executivos do ecossistema de startups, 17 estados, mais de 22 horas de atividades. É
+              disso que você vai fazer parte.
+            </p>
+          </div>
+          <div className="aspect-video w-full bg-obsidian">
+            <iframe
+              className="h-full w-full"
+              src={`https://www.youtube-nocookie.com/embed/${site.afterMovieId}`}
+              title="After movie — Techstars Startup Weekend Summit Brasil 2025"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          </div>
+          <ul className="grid gap-6 sm:grid-cols-3">
+            {photos.map((ph, i) => (
+              <li key={ph.src} className="relative aspect-[3/2] bg-ash">
+                <Image
+                  src={ph.src}
+                  alt={ph.alt}
+                  fill
+                  sizes="(min-width: 1200px) 384px, (min-width: 640px) 33vw, 100vw"
+                  className="object-cover"
+                  loading={i === 0 ? "eager" : "lazy"}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Programação */}
+        <section className="mx-auto flex w-full max-w-page flex-col gap-15 px-4 sm:px-6">
+          <div className="flex flex-col gap-6">
+            <Eyebrow>Programação</Eyebrow>
+            <h2 className="font-display text-heading">Três dias em Goiânia</h2>
+            <p className="max-w-[52ch] text-body-md">
+              Resumo da programação prevista. Detalhes de horários e locais chegam no onboarding dos voluntários.
+            </p>
+          </div>
+          <ol className="grid gap-x-6 gap-y-12 md:grid-cols-3">
+            {schedule.map((d) => (
+              <li key={d.day} className="flex flex-col gap-6 border-t border-ink pt-4">
+                <div className="flex items-baseline justify-between">
+                  <h3 className="font-display text-subheading">{d.day}</h3>
+                  <span className="font-mono text-body tracking-[0.03em]">{d.date}</span>
+                </div>
+                <ul className="flex flex-col">
+                  {d.items.map((it) => (
+                    <li key={it} className="border-b border-ash py-3 text-body">
+                      {it}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
         </section>
 
         {/* Áreas */}
@@ -193,13 +275,12 @@ export default function Home() {
 
       {/* Footer: preto, monograma + links */}
       <footer className="bg-obsidian text-paper">
-        <div className="mx-auto flex max-w-page flex-col justify-between gap-6 px-4 py-15 sm:flex-row sm:items-center sm:px-6">
-          <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center bg-paper font-display text-caption font-bold text-obsidian">
-              SW
-            </span>
+        <div className="mx-auto flex max-w-page flex-col justify-between gap-8 px-4 py-15 sm:flex-row sm:items-end sm:px-6">
+          <div className="flex flex-col gap-6">
+            <Image src="/logo-negativo.png" alt={site.name} width={172} height={80} className="h-[80px] w-auto self-start" />
             <p className="text-body">
-              © {new Date().getFullYear()} {site.name}. {site.city}.
+              © {new Date().getFullYear()} Techstars Startup Weekend Summit Brasil · {site.city}. Organização voluntária
+              da comunidade Startup Weekend em Goiás.
             </p>
           </div>
           <div className="flex gap-6 text-body tracking-[0.03em]">

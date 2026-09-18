@@ -22,10 +22,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `Seja voluntário | ${site.name}`,
+  title: `Seja voluntário | ${site.shortName}`,
   description: site.description,
   openGraph: {
-    title: `Seja voluntário | ${site.name}`,
+    title: `Seja voluntário | ${site.shortName}`,
     description: site.tagline,
     locale: "pt_BR",
     type: "website",

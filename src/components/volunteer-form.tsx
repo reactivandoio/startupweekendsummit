@@ -201,7 +201,7 @@ export function VolunteerForm() {
       <label className="flex items-start gap-3 text-body">
         <input type="checkbox" name="consent" className="mt-1 h-4 w-4 accent-ink" required />
         <span>
-          Autorizo o uso dos meus dados para contato sobre o voluntariado no Startup Weekend Summit.
+          Autorizo o uso dos meus dados para contato sobre o voluntariado no Techstars Startup Weekend Summit Brasil 2026.
           {e.consent && <span className="mt-1 block text-caption font-semibold">— {e.consent}</span>}
         </span>
       </label>
