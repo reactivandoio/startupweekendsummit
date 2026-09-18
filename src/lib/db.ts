@@ -52,6 +52,37 @@ export function ensureSchema() {
           motivation text not null default '',
           created_at timestamptz not null default now()
         )`;
+      // Convites: cada link /inscricao/<code> libera max_uses inscrições pagas
+      await sql`
+        create table if not exists invites (
+          id uuid primary key default gen_random_uuid(),
+          code text not null unique,
+          name text not null default '',
+          email text not null default '',
+          note text not null default '',
+          max_uses int not null default 1,
+          created_by uuid references users(id) on delete set null,
+          created_at timestamptz not null default now(),
+          revoked_at timestamptz
+        )`;
+      // Inscrições de participantes: nascem "pending" e viram "paid" pelo webhook do Stripe
+      await sql`
+        create table if not exists registrations (
+          id uuid primary key default gen_random_uuid(),
+          invite_id uuid not null references invites(id) on delete restrict,
+          name text not null,
+          email text not null,
+          phone text not null,
+          cpf text not null,
+          birth_date date not null,
+          status text not null default 'pending',
+          amount_cents int not null default 0,
+          stripe_session_id text unique,
+          stripe_payment_intent text,
+          created_at timestamptz not null default now(),
+          paid_at timestamptz
+        )`;
+      await sql`create index if not exists registrations_invite_idx on registrations (invite_id, status)`;
       const seed = process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase();
       if (seed) {
         await sql`insert into users (email, name) values (${seed}, ${process.env.ADMIN_SEED_NAME ?? ""}) on conflict (email) do nothing`;
