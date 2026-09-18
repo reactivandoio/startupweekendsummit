@@ -8,7 +8,7 @@ export function Eyebrow({
   className?: string;
 }) {
   return (
-    <p className={`text-caption font-semibold uppercase tracking-[0.03em] ${light ? "text-paper" : "text-ink"} ${className}`}>
+    <p className={`text-caption font-semibold uppercase tracking-[0.03em] ${light ? "text-paper" : "text-ink dark:text-paper"} ${className}`}>
       {children}
     </p>
   );

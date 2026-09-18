@@ -7,6 +7,7 @@
   --color-ink: #0f0f0f;
   --color-paper: #ffffff;
   --color-ash: #e2e2e2;
+  --color-graphite: #3d3d3d;
   --color-mint-wash: #c7f8fb;
   --color-emerald-band: #24cb71;
   /* Paleta do mural e dos fundos de card — decoração, nunca controles */
@@ -53,8 +54,14 @@
   --radius-none: 0px;
 }
 
+/* Dark mode só onde data-theme="dark" for aplicado (painel /admin) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 html {
   scroll-behavior: smooth;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {

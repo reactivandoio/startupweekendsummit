@@ -1,39 +1,212 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { signOut } from "@/app/admin/actions";
 import { site } from "@/content/site";
 import type { User } from "@/lib/auth";
 
-const nav = [
-  { href: "/admin", label: "Inscrições" },
-  { href: "/admin/usuarios", label: "Usuários" },
+type NavItem = { href: string; label: string; icon: React.ReactNode };
+
+const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "square" as const };
+
+const nav: NavItem[] = [
+  {
+    href: "/admin",
+    label: "Inscrições",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+        <path d="M3 5h14M3 10h14M3 15h9" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/usuarios",
+    label: "Usuários",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+        <circle cx="10" cy="7" r="3.5" />
+        <path d="M3.5 17.5c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" />
+      </svg>
+    ),
+  },
 ];
 
-/* Moldura do painel: barra preta com logo + links, conteúdo em branco */
+const STORAGE_KEY = "sws-admin-sidebar";
+const THEME_KEY = "sws-admin-theme";
+type Theme = "light" | "dark";
+
+/* Moldura do painel: sidebar preta recolhível + header com breadcrumb + conteúdo com rolagem própria */
 export function AdminShell({ user, children }: { user: User; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [theme, setTheme] = useState<Theme>("light");
+
+  // preferências por navegador; lidas só depois de montar pra não divergir do SSR
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(STORAGE_KEY) === "1") setCollapsed(true);
+      const saved = localStorage.getItem(THEME_KEY);
+      const system = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      setTheme(saved === "dark" || saved === "light" ? saved : system);
+    } catch {}
+  }, []);
+
+  // aplica no <html> só enquanto o painel está montado; o site público não usa data-theme
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    return () => {
+      delete document.documentElement.dataset.theme;
+    };
+  }, [theme]);
+  const toggleTheme = () => {
+    setTheme((t) => {
+      const next: Theme = t === "dark" ? "light" : "dark";
+      try {
+        localStorage.setItem(THEME_KEY, next);
+      } catch {}
+      return next;
+    });
+  };
+  const toggle = () => {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(STORAGE_KEY, c ? "0" : "1");
+      } catch {}
+      return !c;
+    });
+  };
+
+  const current = nav.find((n) => n.href === pathname) ?? nav.find((n) => n.href !== "/admin" && pathname.startsWith(n.href));
+
   return (
-    <>
-      <header className="bg-obsidian text-paper">
-        <div className="mx-auto flex max-w-page flex-wrap items-center justify-between gap-6 px-4 py-5 sm:px-6">
-          <Link href="/admin" aria-label="Painel">
-            <Image src="/logo-negativo.png" alt={site.name} width={103} height={48} priority className="h-[48px] w-auto" />
+    <div className="flex h-dvh w-full overflow-hidden bg-paper text-ink dark:bg-ink dark:text-paper">
+      {/* Sidebar */}
+      <aside
+        className={`flex shrink-0 flex-col justify-between bg-obsidian text-paper transition-[width] duration-150 dark:border-r dark:border-graphite ${
+          collapsed ? "w-16" : "w-16 md:w-64"
+        }`}
+      >
+        <div className="flex flex-col">
+          <Link href="/admin" aria-label="Painel" className="flex h-16 items-center border-b border-graphite px-4">
+            {collapsed ? (
+              <span className="flex h-8 w-8 items-center justify-center bg-paper font-display text-caption font-bold text-obsidian">
+                ts_
+              </span>
+            ) : (
+              <>
+                <span className="flex h-8 w-8 items-center justify-center bg-paper font-display text-caption font-bold text-obsidian md:hidden">
+                  ts_
+                </span>
+                <Image src="/logo-negativo.png" alt={site.name} width={86} height={40} priority className="hidden h-[40px] w-auto md:block" />
+              </>
+            )}
           </Link>
-          <nav className="flex items-center gap-6 text-body tracking-[0.03em]">
-            {nav.map((n) => (
-              <Link key={n.href} href={n.href} className="hover:underline hover:underline-offset-4">
-                {n.label}
-              </Link>
-            ))}
-            <form action={signOut}>
-              <button type="submit" className="border border-paper px-4 py-2 transition-colors hover:bg-paper hover:text-obsidian">
-                Sair
-              </button>
-            </form>
+          <nav className="flex flex-col py-2" aria-label="Seções do painel">
+            {nav.map((n) => {
+              const active = n === current;
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  title={n.label}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex h-12 items-center gap-3 border-l-2 px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink ${
+                    active ? "border-paper bg-ink" : "border-transparent"
+                  }`}
+                >
+                  <span className="shrink-0">{n.icon}</span>
+                  <span className={collapsed ? "sr-only" : "sr-only md:not-sr-only md:truncate"}>{n.label}</span>
+                </Link>
+              );
+            })}
           </nav>
         </div>
-        <p className="mx-auto max-w-page px-4 pb-4 text-caption sm:px-6">{user.email}</p>
-      </header>
-      <main className="mx-auto w-full max-w-page flex-1 px-4 py-15 sm:px-6">{children}</main>
-    </>
+
+        <div className="flex flex-col border-t border-graphite">
+          <div className={`flex flex-col gap-1 px-4 py-3 ${collapsed ? "hidden" : "hidden md:flex"}`}>
+            <p className="truncate text-caption" title={user.email}>
+              {user.name || user.email}
+            </p>
+            {user.name && (
+              <p className="truncate text-caption text-paper/60" title={user.email}>
+                {user.email}
+              </p>
+            )}
+          </div>
+          <form action={signOut}>
+            <button
+              type="submit"
+              title="Sair"
+              className="flex h-12 w-full items-center gap-3 px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+                <path d="M8 3H3v14h5M12 6l4 4-4 4M7 10h9" />
+              </svg>
+              <span className={collapsed ? "sr-only" : "sr-only md:not-sr-only"}>Sair</span>
+            </button>
+          </form>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+            className="flex h-12 items-center gap-3 border-t border-graphite px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink"
+          >
+            {theme === "dark" ? (
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+                <circle cx="10" cy="10" r="3.5" />
+                <path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.3 4.3l1.8 1.8M13.9 13.9l1.8 1.8M4.3 15.7l1.8-1.8M13.9 6.1l1.8-1.8" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+                <path d="M16 12.5A7 7 0 0 1 7.5 4a7 7 0 1 0 8.5 8.5Z" />
+              </svg>
+            )}
+            <span className={collapsed ? "sr-only" : "sr-only md:not-sr-only"}>{theme === "dark" ? "Claro" : "Escuro"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={!collapsed}
+            title={collapsed ? "Expandir menu" : "Recolher menu"}
+            className="hidden h-12 items-center gap-3 border-t border-graphite px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink md:flex"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke} className={collapsed ? "rotate-180" : ""}>
+              <path d="M12 4l-6 6 6 6M17 4v12" />
+            </svg>
+            <span className={collapsed ? "sr-only" : ""}>Recolher</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Coluna de conteúdo: header fixo, main rola */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-ash px-6 dark:border-graphite">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body tracking-[0.03em]">
+            <Link href="/admin" className="hover:underline hover:underline-offset-4">
+              Painel
+            </Link>
+            {current && (
+              <>
+                <span className="text-ash dark:text-graphite" aria-hidden="true">
+                  /
+                </span>
+                <span className="font-semibold" aria-current="page">
+                  {current.label}
+                </span>
+              </>
+            )}
+          </nav>
+          <Link href="/" className="hidden text-caption tracking-[0.03em] hover:underline hover:underline-offset-4 sm:inline">
+            Ver site ↗
+          </Link>
+        </header>
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="w-full p-6">{children}</div>
+        </main>
+      </div>
+    </div>
   );
 }
