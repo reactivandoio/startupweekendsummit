@@ -6,8 +6,9 @@ import { availabilityOptions, volunteerAreas } from "@/content/site";
 
 const initialState: FormState = { status: "idle" };
 
-const inputClass =
-  "w-full rounded-lg border border-line bg-white px-4 py-3 text-base text-ink placeholder:text-muted/70 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/15 aria-[invalid=true]:border-danger";
+// Opções selecionáveis: borda grafite que vira chalk quando marcada — sem cor de estado
+const choiceClass =
+  "flex cursor-pointer items-center gap-3 border border-graphite p-3 text-caption transition-colors has-checked:border-chalk";
 
 function Field({
   label,
@@ -24,14 +25,14 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-sm font-semibold text-ink">
+      <label htmlFor={htmlFor} className="text-caption">
         {label}
       </label>
       {children}
-      {hint && !error && <p className="text-xs text-muted">{hint}</p>}
+      {hint && !error && <p className="text-caption text-chalk/60">{hint}</p>}
       {error && (
-        <p className="text-xs font-medium text-danger" role="alert">
-          {error}
+        <p className="text-caption" role="alert">
+          — {error}
         </p>
       )}
     </div>
@@ -45,21 +46,19 @@ export function VolunteerForm() {
 
   if (state.status === "success") {
     return (
-      <div className="rounded-2xl border border-brand/30 bg-brand-soft p-8 text-center" role="status">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-2xl text-white">
-          ✓
-        </div>
-        <h3 className="text-2xl font-bold text-ink">Inscrição recebida!</h3>
-        <p className="mt-2 text-muted">{state.message}</p>
+      <div className="flex flex-col gap-3 border border-chalk p-6" role="status">
+        <p className="font-mono text-caption tracking-normal">OK</p>
+        <h3 className="text-heading">Inscrição recebida.</h3>
+        <p className="text-body">{state.message}</p>
       </div>
     );
   }
 
   return (
-    <form action={formAction} noValidate className="flex flex-col gap-5">
+    <form action={formAction} noValidate className="relative flex flex-col gap-6">
       {state.status === "error" && state.message && (
-        <p className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger" role="alert">
-          {state.message}
+        <p className="border border-chalk p-3 text-caption" role="alert">
+          — {state.message}
         </p>
       )}
 
@@ -80,12 +79,12 @@ export function VolunteerForm() {
           required
           defaultValue={v.name}
           aria-invalid={!!e.name}
-          className={inputClass}
+          className="field"
           placeholder="Como devemos te chamar?"
         />
       </Field>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="E-mail" htmlFor="email" error={e.email}>
           <input
             id="email"
@@ -95,7 +94,7 @@ export function VolunteerForm() {
             required
             defaultValue={v.email}
             aria-invalid={!!e.email}
-            className={inputClass}
+            className="field"
             placeholder="voce@exemplo.com"
           />
         </Field>
@@ -108,13 +107,13 @@ export function VolunteerForm() {
             required
             defaultValue={v.phone}
             aria-invalid={!!e.phone}
-            className={inputClass}
+            className="field"
             placeholder="(62) 99999-9999"
           />
         </Field>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Cidade" htmlFor="city" error={e.city}>
           <input
             id="city"
@@ -124,7 +123,7 @@ export function VolunteerForm() {
             required
             defaultValue={v.city}
             aria-invalid={!!e.city}
-            className={inputClass}
+            className="field"
             placeholder="Goiânia"
           />
         </Field>
@@ -135,7 +134,7 @@ export function VolunteerForm() {
             required
             defaultValue={v.area ?? ""}
             aria-invalid={!!e.area}
-            className={inputClass}
+            className="field"
           >
             <option value="" disabled>
               Selecione…
@@ -149,43 +148,37 @@ export function VolunteerForm() {
         </Field>
       </div>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 text-sm font-semibold text-ink">Disponibilidade</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 text-caption">Disponibilidade</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
           {availabilityOptions.map((o) => (
-            <label
-              key={o.value}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-white px-4 py-3 text-sm transition has-checked:border-brand has-checked:bg-brand-soft"
-            >
-              <input type="checkbox" name="availability" value={o.value} className="h-4 w-4 accent-brand" />
+            <label key={o.value} className={choiceClass}>
+              <input type="checkbox" name="availability" value={o.value} className="h-4 w-4 accent-chalk" />
               {o.label}
             </label>
           ))}
         </div>
         {e.availability && (
-          <p className="text-xs font-medium text-danger" role="alert">
-            {e.availability}
+          <p className="text-caption" role="alert">
+            — {e.availability}
           </p>
         )}
       </fieldset>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 text-sm font-semibold text-ink">Já foi voluntário em algum evento?</legend>
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 text-caption">Já foi voluntário em algum evento?</legend>
         <div className="flex gap-3">
           {[
             { value: "sim", label: "Sim" },
             { value: "nao", label: "Ainda não" },
           ].map((o) => (
-            <label
-              key={o.value}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-white px-4 py-3 text-sm transition has-checked:border-brand has-checked:bg-brand-soft"
-            >
+            <label key={o.value} className={choiceClass}>
               <input
                 type="radio"
                 name="experience"
                 value={o.value}
                 defaultChecked={(v.experience ?? "nao") === o.value}
-                className="h-4 w-4 accent-brand"
+                className="h-4 w-4 accent-chalk"
               />
               {o.label}
             </label>
@@ -200,23 +193,23 @@ export function VolunteerForm() {
           rows={4}
           maxLength={1000}
           defaultValue={v.motivation}
-          className={inputClass}
+          className="field"
           placeholder="Conta pra gente o que te anima nessa ideia."
         />
       </Field>
 
-      <label className="flex items-start gap-3 text-sm text-muted">
-        <input type="checkbox" name="consent" className="mt-1 h-4 w-4 accent-brand" required />
+      <label className="flex items-start gap-3 text-caption">
+        <input type="checkbox" name="consent" className="mt-1 h-4 w-4 accent-chalk" required />
         <span>
           Autorizo o uso dos meus dados para contato sobre o voluntariado no Startup Weekend Summit.
-          {e.consent && <span className="mt-1 block text-xs font-medium text-danger">{e.consent}</span>}
+          {e.consent && <span className="mt-1 block">— {e.consent}</span>}
         </span>
       </label>
 
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 inline-flex items-center justify-center rounded-lg bg-brand px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+        className="self-start bg-paper p-3 text-caption uppercase text-obsidian transition-colors hover:bg-chalk disabled:cursor-not-allowed disabled:bg-graphite disabled:text-chalk"
       >
         {pending ? "Enviando…" : "Quero ser voluntário"}
       </button>

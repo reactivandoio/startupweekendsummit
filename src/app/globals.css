@@ -1,16 +1,44 @@
 @import "tailwindcss";
 
+/* Tokens — "modernist poster on black velvet" */
 @theme {
-  --color-brand: #16a34a;
-  --color-brand-dark: #15803d;
-  --color-brand-soft: #f0fdf4;
-  --color-ink: #0f172a;
-  --color-muted: #64748b;
-  --color-line: #e2e8f0;
-  --color-surface: #f8fafc;
-  --color-danger: #dc2626;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --color-*: initial;
+  --color-obsidian: #000000;
+  --color-chalk: #e2e2e2;
+  --color-graphite: #3d3d3d;
+  --color-paper: #ffffff;
+  /* Ilustração do evento — decoração, não tokens de UI */
+  --color-ill-green: #0acf83;
+  --color-ill-cyan: #1abcfe;
+  --color-ill-orange: #ff7237;
+  --color-ill-yellow: #ffc700;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-caption: 16px;
+  --text-caption--line-height: 1.3;
+  --text-caption--letter-spacing: -0.02em;
+  --text-body: 18px;
+  --text-body--line-height: 1.25;
+  --text-body--letter-spacing: -0.02em;
+  --text-subheading: 20px;
+  --text-subheading--line-height: 1.25;
+  --text-subheading--letter-spacing: -0.02em;
+  --text-heading: 32px;
+  --text-heading--line-height: 1.1;
+  --text-heading--letter-spacing: -0.03em;
+  --text-display: clamp(48px, 8.5vw, 80px);
+  --text-display--line-height: 0.95;
+  --text-display--letter-spacing: -0.03em;
+
+  --spacing-23: 23px;
+  --spacing-157: 157px;
+
+  --container-page: 1200px;
+
+  --radius-*: initial;
+  --radius-none: 0px;
 }
 
 html {
@@ -18,7 +46,55 @@ html {
 }
 
 body {
-  background: var(--color-surface);
-  color: var(--color-ink);
+  background: var(--color-obsidian);
+  color: var(--color-chalk);
   font-family: var(--font-sans);
+  font-weight: 400;
+  font-feature-settings: "kern";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Nada no sistema é arredondado */
+*,
+*::before,
+*::after {
+  border-radius: 0;
+}
+
+::selection {
+  background: var(--color-paper);
+  color: var(--color-obsidian);
+}
+
+/* Campos de formulário: borda grafite que vira chalk no foco/erro */
+.field {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--color-graphite);
+  color: var(--color-chalk);
+  padding: 12px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  outline: none;
+  transition: border-color 120ms linear;
+}
+.field::placeholder {
+  color: color-mix(in srgb, var(--color-chalk) 40%, transparent);
+}
+.field:focus,
+.field[aria-invalid="true"] {
+  border-color: var(--color-chalk);
+}
+select.field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23e2e2e2' stroke-width='1'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+select.field option {
+  background: var(--color-obsidian);
+  color: var(--color-chalk);
 }
