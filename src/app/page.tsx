@@ -1,26 +1,10 @@
 import Image from "next/image";
+import Link from "next/link";
+import { Eyebrow } from "@/components/eyebrow";
 import { Mural } from "@/components/mural";
-import { VolunteerForm } from "@/components/volunteer-form";
-import { benefits, pastHosts, photos, schedule, site, stats, steps, volunteerAreas } from "@/content/site";
-
-// Fundos sólidos dos cards, no espírito dos retratos de palestrantes em cor chapada
-const tileColors = ["bg-mint-wash", "bg-emerald-band", "bg-indigo", "bg-lavender", "bg-orange", "bg-yellow", "bg-maroon"];
-
-// Formas brancas chapadas por cima dos tiles, no mesmo vocabulário do mural
-const tileShapes = [
-  <circle key="c" cx="55" cy="45" r="28" fill="#fff" />,
-  <polygon key="h" points="55,15 82,30 82,60 55,75 28,60 28,30" fill="#fff" />,
-  <polygon key="v" points="25,25 55,75 85,25 70,25 55,50 40,25" fill="#fff" />,
-  <rect key="r" x="30" y="20" width="45" height="45" fill="#fff" />,
-];
-
-function Eyebrow({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
-  return (
-    <p className={`text-caption font-semibold uppercase tracking-[0.03em] ${light ? "text-paper" : "text-ink"}`}>
-      {children}
-    </p>
-  );
-}
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { pastHosts, photos, schedule, site, stats } from "@/content/site";
 
 // Dados estruturados pra Google (rich result de evento) — https://schema.org/Event
 const jsonLd = {
@@ -45,14 +29,6 @@ const jsonLd = {
       },
       organizer: { "@type": "Organization", name: site.organizer, url: site.organizerUrl },
       sameAs: [site.instagram],
-      offers: {
-        "@type": "Offer",
-        name: "Inscrição de voluntários",
-        url: `${site.url}/#inscricao`,
-        price: "0",
-        priceCurrency: "BRL",
-        availability: "https://schema.org/InStock",
-      },
     },
     {
       "@type": "WebSite",
@@ -70,29 +46,14 @@ export default function Home() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      {/* Hero: canvas preto, nav transparente por cima, botão outlined em largura total */}
-      <section className="bg-obsidian text-paper">
-        <header className="mx-auto flex max-w-page items-center justify-between px-4 py-5 sm:px-6">
-          <a href="#" aria-label={site.name}>
-            <Image src="/logo-negativo.png" alt={site.name} width={129} height={60} priority className="h-[60px] w-auto" />
-          </a>
-          <nav className="flex items-center gap-6 whitespace-nowrap text-body tracking-[0.03em]">
-            <a href="#sobre" className="hidden hover:underline hover:underline-offset-4 sm:inline">
-              O evento
-            </a>
-            <a href="#areas" className="hidden hover:underline hover:underline-offset-4 sm:inline">
-              Áreas
-            </a>
-            <a href="#inscricao" className="hover:underline hover:underline-offset-4">
-              Inscrição
-            </a>
-          </nav>
-        </header>
 
+      {/* Hero: canvas preto, nav transparente por cima, botões outlined em largura total */}
+      <section className="bg-obsidian text-paper">
+        <SiteHeader />
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 pb-20 pt-16 sm:px-6 md:pb-30 md:pt-30">
           <div className="flex flex-col gap-6">
-            <Eyebrow light>Voluntariado</Eyebrow>
-            <h1 className="font-display text-display">Faça parte da equipe que traz o Summit da Techstars para Goiânia.</h1>
+            <Eyebrow light>Goiânia · {site.dateShort}</Eyebrow>
+            <h1 className="font-display text-display">O Summit da Techstars chega a Goiânia.</h1>
           </div>
           <div className="flex flex-col gap-2 text-body-md">
             <p className="font-semibold">{site.date}</p>
@@ -100,18 +61,26 @@ export default function Home() {
               {site.venue} · {site.city} · 3 dias
             </p>
           </div>
-          <a
-            href="#inscricao"
-            className="flex h-16 w-full items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
-          >
-            Quero ser voluntário
-          </a>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Link
+              href="/voluntarios"
+              className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
+            >
+              Quero ser voluntário
+            </Link>
+            <Link
+              href="/patrocinio"
+              className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
+            >
+              Quero patrocinar
+            </Link>
+          </div>
         </div>
       </section>
 
       <Mural />
 
-      {/* Faixa mint: aviso de status + CTA secundário */}
+      {/* Faixa mint: participação por convite + WhatsApp */}
       <section className="bg-mint-wash text-ink">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-15 sm:px-6 md:grid-cols-2 md:items-end">
           <div className="flex flex-col gap-4">
@@ -134,12 +103,18 @@ export default function Home() {
             >
               WhatsApp {site.whatsapp}
             </a>
-            <p className="text-body">Voluntariado: preencha o formulário no fim da página.</p>
+            <p className="text-body">
+              Quer ajudar a fazer acontecer?{" "}
+              <Link href="/voluntarios" className="underline underline-offset-4">
+                Seja voluntário
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Faixa esmeralda: tagline do evento */}
+      {/* Faixa esmeralda: tagline + números */}
       <section className="bg-emerald-band text-ink">
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 py-15 sm:px-6">
           <div className="flex flex-col gap-6">
@@ -158,50 +133,29 @@ export default function Home() {
       </section>
 
       <main className="flex flex-col gap-30 bg-paper py-30">
-        {/* Sobre + benefícios em grid de 4 (padrão dos cards de palestrantes) */}
-        <section id="sobre" className="mx-auto flex w-full max-w-page scroll-mt-8 flex-col gap-15 px-4 sm:px-6">
-          <div className="grid gap-12 md:grid-cols-[1fr_1fr]">
-            <div className="flex flex-col gap-6">
-              <Eyebrow>Sobre</Eyebrow>
-              <h2 className="font-display text-heading">O que é o Summit?</h2>
-            </div>
-            <div className="flex flex-col gap-4 text-body-md md:pt-10">
-              <p>
-                O Summit não é um Startup Weekend. É o encontro nacional das lideranças que organizam Startup Weekends e
-                outros programas de comunidade pelo país — três dias para discutir inovação e empreendedorismo seguindo
-                os conceitos do livro <em>Startup Weekend</em>, que deu origem ao movimento.
-              </p>
-              <p>
-                Keynotes, workshops, painéis e fun experiences reúnem participantes de todas as regiões do Brasil e
-                convidados internacionais. Em 2026 o Summit é retomado e chega a Goiânia pela primeira vez.
-              </p>
-              <p>
-                Os voluntários são a engrenagem invisível: recebem participantes, cuidam da logística, registram os
-                momentos e garantem que tudo funcione. Em troca, vivem o evento por dentro.
-              </p>
-              <p className="text-caption tracking-[0.03em] uppercase">
-                Edições anteriores: {pastHosts.join(" · ")}
-              </p>
-            </div>
+        {/* Sobre */}
+        <section id="sobre" className="mx-auto grid w-full max-w-page scroll-mt-8 gap-12 px-4 sm:px-6 md:grid-cols-2">
+          <div className="flex flex-col gap-6">
+            <Eyebrow>Sobre</Eyebrow>
+            <h2 className="font-display text-heading">O que é o Summit?</h2>
           </div>
-          <ul className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-            {benefits.map((b, i) => (
-              <li key={b.title} className="flex flex-col gap-6">
-                <div className={`relative flex aspect-square items-end p-4 ${tileColors[i % tileColors.length]}`}>
-                  <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
-                    {tileShapes[i % tileShapes.length]}
-                  </svg>
-                  <span className="relative font-mono text-body tracking-[0.03em] text-ink">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <h3 className="text-body-md font-semibold">{b.title}</h3>
-                  <p className="text-body">{b.text}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-4 text-body-md md:pt-10">
+            <p>
+              O Summit não é um Startup Weekend. É o encontro nacional das lideranças que organizam Startup Weekends e
+              outros programas de comunidade pelo país — três dias para discutir inovação e empreendedorismo seguindo
+              os conceitos do livro <em>Startup Weekend</em>, que deu origem ao movimento.
+            </p>
+            <p>
+              Keynotes, workshops, painéis e fun experiences reúnem participantes de todas as regiões do Brasil e
+              convidados internacionais. Em 2026 o Summit é retomado e chega a Goiânia pela primeira vez.
+            </p>
+            <p>
+              A escolha de Goiânia passa pelo esforço de lideranças de diversas regiões do estado — Goiás, Anápolis,
+              Rio Verde e Goiânia. Das quase 300 startups mapeadas em Goiás, 196 estão na capital, que se destaca
+              nacionalmente como polo de pesquisa e desenvolvimento em inteligência artificial.
+            </p>
+            <p className="text-caption tracking-[0.03em] uppercase">Edições anteriores: {pastHosts.join(" · ")}</p>
+          </div>
         </section>
 
         {/* After movie da última edição */}
@@ -212,8 +166,8 @@ export default function Home() {
               <h2 className="font-display text-heading">Como foi em Uberlândia, 2025</h2>
             </div>
             <p className="max-w-[44ch] text-body-md md:justify-self-end">
-              86 lideranças e executivos do ecossistema de startups, 17 estados, mais de 22 horas de atividades. É
-              disso que você vai fazer parte.
+              86 lideranças e executivos do ecossistema de startups, 17 estados, 30 patrocinadores, mais de 22 horas
+              de atividades.
             </p>
           </div>
           <div className="aspect-video w-full bg-obsidian">
@@ -244,12 +198,12 @@ export default function Home() {
         </section>
 
         {/* Programação */}
-        <section className="mx-auto flex w-full max-w-page flex-col gap-15 px-4 sm:px-6">
+        <section id="programacao" className="mx-auto flex w-full max-w-page scroll-mt-8 flex-col gap-15 px-4 sm:px-6">
           <div className="flex flex-col gap-6">
             <Eyebrow>Programação</Eyebrow>
             <h2 className="font-display text-heading">Três dias em Goiânia</h2>
             <p className="max-w-[52ch] text-body-md">
-              Resumo da programação prevista. Detalhes de horários e locais chegam no onboarding dos voluntários.
+              Resumo da programação prevista. Horários e locais serão divulgados aos participantes convidados.
             </p>
           </div>
           <ol className="grid gap-x-6 gap-y-12 md:grid-cols-3">
@@ -271,86 +225,22 @@ export default function Home() {
           </ol>
         </section>
 
-        {/* Áreas */}
-        <section id="areas" className="mx-auto flex w-full max-w-page scroll-mt-8 flex-col gap-15 px-4 sm:px-6">
-          <div className="flex flex-col gap-6">
-            <Eyebrow>Áreas</Eyebrow>
-            <h2 className="font-display text-heading">Onde você pode ajudar</h2>
-            <p className="max-w-[52ch] text-body-md">
-              Escolha a área que combina com você. Se não souber, marque &ldquo;onde precisar&rdquo; e a gente
-              encontra o melhor lugar.
-            </p>
-          </div>
-          <ul className="border-t border-ink">
-            {volunteerAreas.map((a, i) => (
-              <li key={a.value} className="flex items-baseline gap-6 border-b border-ash py-6">
-                <span className="font-mono text-body tracking-[0.03em]">{String(i + 1).padStart(2, "0")}</span>
-                <span className="font-display text-heading-sm">{a.label}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Como funciona */}
-        <section className="mx-auto flex w-full max-w-page flex-col gap-15 px-4 sm:px-6">
-          <div className="flex flex-col gap-6">
-            <Eyebrow>Processo</Eyebrow>
-            <h2 className="font-display text-heading">Como funciona</h2>
-          </div>
-          <ol className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-            {steps.map((s, i) => (
-              <li key={s.title} className="flex flex-col gap-4 border-t border-ink pt-4">
-                <span className="font-mono text-body tracking-[0.03em]">{String(i + 1).padStart(2, "0")}</span>
-                <h3 className="text-body-md font-semibold">{s.title}</h3>
-                <p className="text-body">{s.text}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* Inscrição */}
-        <section id="inscricao" className="mx-auto grid w-full max-w-page scroll-mt-8 gap-15 px-4 sm:px-6 md:grid-cols-[1fr_1.4fr]">
-          <div className="flex flex-col gap-6">
-            <Eyebrow>Inscreva-se</Eyebrow>
-            <h2 className="font-display text-heading">Inscreva-se como voluntário</h2>
-            <p className="max-w-[40ch] text-body-md">
-              Leva menos de 2 minutos. A organização entra em contato pelo WhatsApp com os próximos passos.
-            </p>
-            <p className="text-body">
-              Dúvidas:{" "}
-              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                WhatsApp {site.whatsapp}
-              </a>{" "}
-              ou{" "}
-              <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
-                {site.contactEmail}
-              </a>
-            </p>
-          </div>
-          <VolunteerForm />
+        {/* Chamadas: voluntários e patrocínio */}
+        <section className="mx-auto grid w-full max-w-page gap-6 px-4 sm:px-6 md:grid-cols-2">
+          <Link href="/voluntarios" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
+            <Eyebrow className="group-hover:text-paper">Voluntariado</Eyebrow>
+            <h2 className="font-display text-heading-sm group-hover:text-paper">Faça parte da equipe que faz o Summit acontecer.</h2>
+            <p className="text-body-md">Recepção, logística, comunicação, fotografia, experiências. Inscrições abertas →</p>
+          </Link>
+          <Link href="/patrocinio" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
+            <Eyebrow className="group-hover:text-paper">Patrocínio</Eyebrow>
+            <h2 className="font-display text-heading-sm group-hover:text-paper">Seja visto como apoiador do ecossistema empreendedor.</h2>
+            <p className="text-body-md">Cotas Master, Gold, Silver, Bronze e Startup. Veja as contrapartidas →</p>
+          </Link>
         </section>
       </main>
 
-      {/* Footer: preto, monograma + links */}
-      <footer className="bg-obsidian text-paper">
-        <div className="mx-auto flex max-w-page flex-col justify-between gap-8 px-4 py-15 sm:flex-row sm:items-end sm:px-6">
-          <div className="flex flex-col gap-6">
-            <Image src="/logo-negativo.png" alt={site.name} width={172} height={80} className="h-[80px] w-auto self-start" />
-            <p className="text-body">
-              © {new Date().getFullYear()} Techstars Startup Weekend Summit Brasil · {site.city}. Organização voluntária
-              da comunidade Startup Weekend em Goiás.
-            </p>
-          </div>
-          <div className="flex gap-6 text-body tracking-[0.03em]">
-            <a href={site.instagram} target="_blank" rel="noreferrer" className="hover:underline hover:underline-offset-4">
-              Instagram
-            </a>
-            <a href={`mailto:${site.contactEmail}`} className="hover:underline hover:underline-offset-4">
-              Contato
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
