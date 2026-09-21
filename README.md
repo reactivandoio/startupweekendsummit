@@ -44,7 +44,8 @@ qualquer troca de nginx, então a cor no ar continua servindo.
 
 Login sem senha: a pessoa informa o e-mail em `/admin/login` e, se estiver na lista de usuários, recebe um link
 por e-mail (válido por 15 min, uso único) que abre uma sessão de 30 dias. O primeiro usuário vem de
-`ADMIN_SEED_EMAIL` no `.env`; os demais são adicionados em `/admin/usuarios`.
+`ADMIN_SEED_EMAIL` no `.env`; os demais são adicionados em `/admin/usuarios` e recebem na hora um convite por
+e-mail com link de entrada — o botão "Reenviar convite" manda outro, e diz na tela se o envio falhou.
 
 - `/admin` — inscrições de voluntários, com exportação em `/admin/inscricoes.csv`
 - `/admin/participantes` — inscrições pagas/pendentes do evento, com exportação em `/admin/participantes.csv`

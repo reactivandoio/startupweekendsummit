@@ -36,6 +36,24 @@ export function sendLoginLink(to: string, url: string) {
   return sendMail({ to, subject: `Acesso ao painel — ${site.shortName}`, text, html });
 }
 
+// Convite de acesso ao painel: vai para quem acabou de ser cadastrado em /admin/usuarios
+// e ainda não sabe que tem acesso. Leva um link que já entra (uso único, 15 min) e, logo
+// abaixo, o caminho pra pedir outro quando esse expirar.
+export function sendAccessInvite(to: string, name: string, url: string, loginUrl: string) {
+  const hi = name ? `Olá, ${name}.` : "Olá.";
+  const text = `${hi}\n\nVocê recebeu acesso ao painel do ${site.shortName}.\n\nEntre por este link:\n${url}\n\nEle vale por 15 minutos e só pode ser usado uma vez. Se expirar, abra ${loginUrl}, informe este e-mail e um link novo chega na hora. Não há senha.`;
+  const html = `
+    <div style="font-family:Inter,Helvetica,Arial,sans-serif;color:#0f0f0f;max-width:520px">
+      <p style="font-size:13px;letter-spacing:.03em;text-transform:uppercase;font-weight:600;margin:0 0 16px">${site.shortName}</p>
+      <h1 style="font-size:24px;font-weight:400;line-height:1.1;margin:0 0 24px">Você tem acesso ao painel</h1>
+      <p style="font-size:16px;line-height:1.4;margin:0 0 24px">${hi} Você foi incluído(a) no painel do ${site.shortName}, onde ficam as inscrições, os convites e os participantes.</p>
+      <p style="margin:0 0 24px"><a href="${url}" style="display:inline-block;border:1px solid #0f0f0f;padding:16px 24px;color:#0f0f0f;text-decoration:none;font-size:18px">Entrar no painel</a></p>
+      <p style="font-size:14px;line-height:1.4;margin:0 0 8px">Ou copie e cole no navegador:<br><a href="${url}" style="color:#0f0f0f">${url}</a></p>
+      <p style="font-size:13px;line-height:1.4;color:#555;margin:24px 0 0">O link vale por 15 minutos e só pode ser usado uma vez. Se expirar, abra <a href="${loginUrl}" style="color:#0f0f0f">${loginUrl}</a>, informe este e-mail e um link novo chega na hora. Não há senha.</p>
+    </div>`;
+  return sendMail({ to, subject: `Seu acesso ao painel — ${site.shortName}`, text, html });
+}
+
 // Moldura comum dos e-mails transacionais, no mesmo vocabulário do link de acesso
 function layout(title: string, body: string) {
   return `

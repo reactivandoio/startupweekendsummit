@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { addUser, logout, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
+import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
 import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite } from "@/lib/invites";
-import { sendInvite } from "@/lib/mail";
+import { sendAccessInvite, sendInvite } from "@/lib/mail";
 import { deleteUnpaidRegistration } from "@/lib/registrations";
 import { appUrl } from "@/lib/stripe";
 import { deleteVolunteer } from "@/lib/volunteers";
@@ -38,9 +38,32 @@ export async function createUser(_prev: UserFormState, formData: FormData): Prom
   const email = String(formData.get("email") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim().slice(0, 120);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: "error", message: "Informe um e-mail válido." };
-  await addUser(email, name, me.id);
+  const user = await addUser(email, name, me.id);
   revalidatePath("/admin/usuarios");
-  return { status: "ok", message: `${email} agora pode entrar no painel.` };
+
+  // O acesso já está dado; o convite é o que avisa a pessoa. Se o e-mail não sair,
+  // diga isso em vez de deixar quem convidou achando que a mensagem foi entregue.
+  try {
+    await sendAccessInvite(user.email, user.name, await createLoginUrl(user.email), loginPageUrl());
+  } catch (err) {
+    console.error("[createUser] convite de acesso", err);
+    return { status: "error", message: `${email} já pode entrar, mas o convite não saiu. Confira o SMTP e use "Reenviar convite".` };
+  }
+  return { status: "ok", message: `${email} agora pode entrar no painel — convite enviado.` };
+}
+
+export async function resendAccessInvite(_prev: UserFormState, formData: FormData): Promise<UserFormState> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const user = id ? await getUser(id) : null;
+  if (!user) return { status: "error", message: "Usuário não encontrado." };
+  try {
+    await sendAccessInvite(user.email, user.name, await createLoginUrl(user.email), loginPageUrl());
+  } catch (err) {
+    console.error("[resendAccessInvite]", err);
+    return { status: "error", message: "Não saiu. Confira o SMTP." };
+  }
+  return { status: "ok", message: `Convite reenviado para ${user.email}.` };
 }
 
 export async function deleteUser(formData: FormData) {
