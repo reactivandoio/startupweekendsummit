@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "docker:dev": "docker compose --profile dev up --build",
-    "docker:prod": "docker compose --profile prod up -d --build"
+    "docker:prod": "bash deploy/blue-green.sh"
   },
   "dependencies": {
     "@next/third-parties": "16.3.5",

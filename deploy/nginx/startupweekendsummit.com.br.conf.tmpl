@@ -1,0 +1,33 @@
+# startupweekendsummit.com.br vhost, rendered by deploy/blue-green.sh: the upstream below is
+# swapped for the active color's container (startupweekendsummit-app-blue / -green).
+# Modo Cloudflare Tunnel: cloudflared -> nginx:80 -> app:3000 (TLS na borda da Cloudflare)
+# www -> apex (um único host canônico pra buscadores)
+server {
+    listen 80;
+    server_name www.startupweekendsummit.com.br;
+    return 301 https://startupweekendsummit.com.br$request_uri;
+}
+
+server {
+    listen 80;
+    server_name startupweekendsummit.com.br;
+    # visitante chegou por http:// na Cloudflare -> manda pro https (equivale ao "Always Use HTTPS")
+    if ($http_x_forwarded_proto = "http") { return 301 https://$host$request_uri; }
+
+    # resolver do Docker + variável: nginx re-resolve o IP e sobe mesmo se o container estiver parado
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $upstream_app __APP_HOST__;
+
+    location / {
+        proxy_pass http://$upstream_app:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $http_cf_connecting_ip;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_read_timeout 300s;
+        client_max_body_size 10m;
+    }
+}

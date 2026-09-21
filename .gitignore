@@ -42,3 +42,6 @@ next-env.d.ts
 /data
 /.pnpm-store
 !.env.example
+
+# estado do deploy blue/green no servidor (deploy/blue-green.sh)
+.blue-green/

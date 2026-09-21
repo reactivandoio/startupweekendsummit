@@ -19,7 +19,14 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG GIT_SHA=dev
 ARG BUILD_TIME=
+# Chave que criptografa as closures das Server Actions. O Next gera uma por build
+# quando ela não vem definida — e aí blue e green (dois builds distintos rodando ao
+# mesmo tempo) não conseguem decifrar a referência um do outro: quem carregou a
+# página na cor antiga leva "Failed to find Server Action" ao enviar o formulário.
+# Ela é embutida no build, por isso é ARG e não só variável de runtime.
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 ENV NEXT_TELEMETRY_DISABLED=1 NEXT_PUBLIC_APP_VERSION=$GIT_SHA NEXT_PUBLIC_BUILD_TIME=$BUILD_TIME
+ENV NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=$NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
 RUN pnpm build
 
 FROM node:22-alpine AS runner
