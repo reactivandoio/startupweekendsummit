@@ -24,13 +24,21 @@ docker compose --profile dev exec dev pnpm add <pacote>
 ## Produção
 
 ```bash
-docker compose --profile prod up -d --build   # ou: pnpm docker:prod
+bash deploy/blue-green.sh   # ou: pnpm docker:prod
 ```
 
-Sobe `startupweekendsummit-app` (imagem standalone do Next) na rede docker `proxy`, sem publicar portas, e
-`startupweekendsummit-db` (Postgres 16) só na rede interna, com os dados no volume nomeado `pgdata`.
+Blue/green: sobe a cor inativa (`startupweekendsummit-app-blue` ou `-green`, imagem standalone do Next) na rede
+docker `proxy`, sem publicar portas, espera o healthcheck, troca o vhost do nginx e só então para a cor antiga —
+não há janela de 502. `bash deploy/blue-green.sh --rollback` volta pra cor anterior (fica parada, não é removida).
+`startupweekendsummit-db` (Postgres 16) fica só na rede interna, com os dados no volume nomeado `pgdata`.
 O nginx em `/mnt/hd2tb/proxy` faz o roteamento por domínio e o Cloudflare Tunnel cuida do TLS.
 Configuração em `.env` (ver `.env.example`): senha do banco, SMTP, `APP_URL` e o e-mail do primeiro admin.
+
+`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` (gere uma vez com `openssl rand -base64 32`) é obrigatória em produção: o
+Next embute no build uma chave que criptografa as closures das Server Actions e, sem defini-la, gera uma nova a
+cada build — as duas cores ficariam com chaves diferentes e quem carregou a página na cor antiga receberia
+"Failed to find Server Action" ao enviar um formulário. O deploy falha na hora do build se ela faltar, antes de
+qualquer troca de nginx, então a cor no ar continua servindo.
 
 ## Painel (/admin)
 
@@ -63,7 +71,7 @@ são os habilitados na conta.
 ## Deploy
 
 Push na `main` dispara `.github/workflows/deploy.yml` no runner self-hosted `jarvis` (este servidor):
-atualiza o código em `/mnt/hd2tb/projetos/startupweekendsummit`, roda `docker compose --profile prod up -d --build` e faz health check.
+atualiza o código em `/mnt/hd2tb/projetos/startupweekendsummit` e roda `bash deploy/blue-green.sh` (build da cor inativa, healthcheck, troca do nginx, aposenta a antiga).
 
 ## Onde editar
 

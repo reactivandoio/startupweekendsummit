@@ -1,0 +1,27 @@
+# Overlay para o servidor com o proxy reverso (nginx + Cloudflare Tunnel em /mnt/hd2tb/proxy):
+# blue/green entram na rede docker externa "proxy" e nada publica porta no host;
+# deploy/blue-green.sh aponta o vhost nginx pro container ativo (startupweekendsummit-app-blue ou -green).
+# O serviço "dev" não é afetado (continua em localhost:3001).
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml --profile prod up -d --build --no-deps app-<blue|green>
+# A chave das Server Actions é exigida aqui (e não no docker-compose.yml) porque o
+# compose interpola o arquivo inteiro, qualquer que seja o perfil: exigi-la na base
+# quebraria `docker compose --profile dev up` de quem só quer rodar o site local.
+x-actions-key: &actions-key
+  NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: "${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:?defina NEXT_SERVER_ACTIONS_ENCRYPTION_KEY no .env, gerada com openssl rand -base64 32}"
+
+services:
+  app-blue:
+    container_name: startupweekendsummit-app-blue
+    networks: [default, proxy]
+    build:
+      args: *actions-key
+
+  app-green:
+    container_name: startupweekendsummit-app-green
+    networks: [default, proxy]
+    build:
+      args: *actions-key
+
+networks:
+  proxy:
+    external: true

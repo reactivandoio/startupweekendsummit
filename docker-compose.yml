@@ -1,3 +1,43 @@
+# Config compartilhada do par blue/green de produção (services.app-blue / app-green).
+# Produção: bash deploy/blue-green.sh  (lê o .env deste diretório; sem porta de host,
+# o proxy nginx fala com a cor ativa pela rede "proxy" — ver docker-compose.proxy.yml)
+x-app: &app
+  build:
+    context: .
+    args:
+      GIT_SHA: ${GIT_SHA:-dev}
+      BUILD_TIME: ${BUILD_TIME:-}
+      # a MESMA chave em blue e green, senão as Server Actions quebram na troca.
+      # Obrigatória no deploy de produção — ver docker-compose.proxy.yml.
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}
+  restart: unless-stopped
+  environment:
+    TZ: America/Sao_Paulo
+    DATABASE_URL: postgres://sws:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/sws
+    APP_URL: ${APP_URL:-https://startupweekendsummit.com.br}
+    ADMIN_SEED_EMAIL: ${ADMIN_SEED_EMAIL:-}
+    ADMIN_SEED_NAME: ${ADMIN_SEED_NAME:-}
+    SMTP_HOST: ${SMTP_HOST:-}
+    SMTP_PORT: ${SMTP_PORT:-587}
+    SMTP_SECURE: ${SMTP_SECURE:-false}
+    SMTP_USER: ${SMTP_USER:-}
+    SMTP_PASS: ${SMTP_PASS:-}
+    EMAIL_FROM: ${EMAIL_FROM:-}
+    STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+    STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    TICKET_PRICE_CENTS: ${TICKET_PRICE_CENTS:-}
+  image: startupweekendsummit-app
+  depends_on:
+    db:
+      condition: service_healthy
+  profiles: ["prod"]
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:3000/ || exit 1"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 20s
+
 services:
   # Desenvolvimento com hot reload: docker compose --profile dev up
   dev:
@@ -48,35 +88,12 @@ services:
       retries: 10
     profiles: ["dev"]
 
-  # Produção: docker compose --profile prod up -d --build  (lê o .env deste diretório)
-  app:
-    build:
-      context: .
-      args:
-        GIT_SHA: ${GIT_SHA:-dev}
-        BUILD_TIME: ${BUILD_TIME:-}
-    restart: unless-stopped
-    environment:
-      TZ: America/Sao_Paulo
-      DATABASE_URL: postgres://sws:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/sws
-      APP_URL: ${APP_URL:-https://startupweekendsummit.com.br}
-      ADMIN_SEED_EMAIL: ${ADMIN_SEED_EMAIL:-}
-      ADMIN_SEED_NAME: ${ADMIN_SEED_NAME:-}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      EMAIL_FROM: ${EMAIL_FROM:-}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      TICKET_PRICE_CENTS: ${TICKET_PRICE_CENTS:-}
-    ports:
-      - "3000:3000"
-    depends_on:
-      db:
-        condition: service_healthy
-    profiles: ["prod"]
+  # Produção: par blue/green (deploy/blue-green.sh sobe a cor inativa, espera o
+  # healthcheck e só então troca o nginx).
+  app-blue:
+    <<: *app
+  app-green:
+    <<: *app
 
   db:
     image: postgres:16-alpine
