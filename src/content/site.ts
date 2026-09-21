@@ -60,6 +60,11 @@ export const photos = [
   { src: "/fotos/uberlandia-3.jpg", alt: "Foto de grupo ao ar livre no quiosque do Parque do Sabiá" },
 ];
 
+// Chamadas de voluntariado na home (hero, faixa mint e card do rodapé da página).
+// Desligadas por ora: a página /voluntarios continua no ar e acessível pelo menu,
+// só não é mais anunciada na home. Volte para true pra reativar as três de uma vez.
+export const showVolunteerCta = false;
+
 // Cidades que já sediaram o Summit no Brasil
 export const pastHosts = ["Rio de Janeiro", "Belo Horizonte", "São Paulo", "Florianópolis", "Uberlândia"];
 
