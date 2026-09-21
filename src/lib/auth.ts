@@ -19,19 +19,26 @@ const toUser = (r: UserRow): User => ({ id: r.id, email: r.email, name: r.name, 
 
 /* ---------- Magic link ---------- */
 
+// Emite um link de entrada de uso único. Um token válido por vez por e-mail:
+// pedir um novo invalida o anterior.
+export async function createLoginUrl(email: string) {
+  await ensureSchema();
+  await sql`delete from login_tokens where email = ${email}`;
+  const token = randomBytes(32).toString("base64url");
+  const expires = new Date(Date.now() + TOKEN_TTL_MIN * 60_000);
+  await sql`insert into login_tokens (token_hash, email, expires_at) values (${sha256(token)}, ${email}, ${expires})`;
+  return `${appUrl()}/admin/auth?token=${token}`;
+}
+
+export const loginPageUrl = () => `${appUrl()}/admin/login`;
+
 // Só envia se o e-mail tiver acesso. Sempre resolve sem erro pra não revelar quem está cadastrado.
 export async function requestLoginLink(rawEmail: string) {
   await ensureSchema();
   const email = rawEmail.trim().toLowerCase();
   const [user] = await sql<UserRow[]>`select * from users where email = ${email}`;
   if (!user) return;
-
-  // um token válido por vez por e-mail
-  await sql`delete from login_tokens where email = ${email}`;
-  const token = randomBytes(32).toString("base64url");
-  const expires = new Date(Date.now() + TOKEN_TTL_MIN * 60_000);
-  await sql`insert into login_tokens (token_hash, email, expires_at) values (${sha256(token)}, ${email}, ${expires})`;
-  await sendLoginLink(email, `${appUrl()}/admin/auth?token=${token}`);
+  await sendLoginLink(email, await createLoginUrl(email));
 }
 
 // Troca o token por uma sessão. Retorna false se inválido/expirado/usado.
@@ -91,10 +98,19 @@ export async function listUsers(): Promise<User[]> {
   return rows.map(toUser);
 }
 
-export async function addUser(email: string, name: string, invitedBy: string) {
+export async function getUser(id: string): Promise<User | null> {
   await ensureSchema();
-  await sql`insert into users (email, name, invited_by) values (${email.trim().toLowerCase()}, ${name.trim()}, ${invitedBy})
-            on conflict (email) do update set name = coalesce(nullif(excluded.name, ''), users.name)`;
+  const [row] = await sql<UserRow[]>`select * from users where id = ${id}`;
+  return row ? toUser(row) : null;
+}
+
+// Devolve a pessoa cadastrada pra quem chamou poder mandar o convite de acesso.
+export async function addUser(email: string, name: string, invitedBy: string): Promise<User> {
+  await ensureSchema();
+  const [row] = await sql<UserRow[]>`insert into users (email, name, invited_by) values (${email.trim().toLowerCase()}, ${name.trim()}, ${invitedBy})
+            on conflict (email) do update set name = coalesce(nullif(excluded.name, ''), users.name)
+            returning *`;
+  return toUser(row);
 }
 
 export async function removeUser(id: string) {

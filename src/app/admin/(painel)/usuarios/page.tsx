@@ -1,5 +1,6 @@
 import { deleteUser } from "@/app/admin/actions";
 import { Eyebrow } from "@/components/eyebrow";
+import { ResendAccessButton } from "@/components/resend-access-button";
 import { UserForm } from "@/components/user-form";
 import { listUsers, requireUser } from "@/lib/auth";
 
@@ -14,7 +15,8 @@ export default async function UsuariosPage() {
         <Eyebrow>Acesso</Eyebrow>
         <h1 className="font-display text-heading">Quem pode entrar no painel</h1>
         <p className="max-w-[40ch] text-body-md">
-          Quem estiver nesta lista recebe o link de acesso por e-mail ao entrar em /admin/login. Não há senha.
+          Ao ser adicionada, a pessoa recebe por e-mail um convite com link de entrada. O link vale 15 minutos;
+          depois disso ela pede outro em /admin/login com o mesmo e-mail. Não há senha.
         </p>
         <UserForm />
       </div>
@@ -29,12 +31,15 @@ export default async function UsuariosPage() {
             {u.id === me.id ? (
               <span className="text-caption">você</span>
             ) : (
-              <form action={deleteUser}>
-                <input type="hidden" name="id" value={u.id} />
-                <button type="submit" className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper">
-                  Remover
-                </button>
-              </form>
+              <div className="flex items-center gap-2">
+                <ResendAccessButton id={u.id} />
+                <form action={deleteUser}>
+                  <input type="hidden" name="id" value={u.id} />
+                  <button type="submit" className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper">
+                    Remover
+                  </button>
+                </form>
+              </div>
             )}
           </li>
         ))}
