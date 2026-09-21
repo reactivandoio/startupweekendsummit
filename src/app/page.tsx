@@ -4,7 +4,7 @@ import { Eyebrow } from "@/components/eyebrow";
 import { Mural } from "@/components/mural";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { pastHosts, photos, schedule, site, stats } from "@/content/site";
+import { pastHosts, photos, schedule, showVolunteerCta, site, stats } from "@/content/site";
 
 // Dados estruturados pra Google (rich result de evento) — https://schema.org/Event
 const jsonLd = {
@@ -61,13 +61,15 @@ export default function Home() {
               {site.venue} · {site.city} · 3 dias
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Link
-              href="/voluntarios"
-              className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
-            >
-              Quero ser voluntário
-            </Link>
+          <div className={`grid gap-4 ${showVolunteerCta ? "sm:grid-cols-2" : ""}`}>
+            {showVolunteerCta && (
+              <Link
+                href="/voluntarios"
+                className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
+              >
+                Quero ser voluntário
+              </Link>
+            )}
             <Link
               href="/patrocinio"
               className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
@@ -103,13 +105,15 @@ export default function Home() {
             >
               WhatsApp {site.whatsapp}
             </a>
-            <p className="text-body">
-              Quer ajudar a fazer acontecer?{" "}
-              <Link href="/voluntarios" className="underline underline-offset-4">
-                Seja voluntário
-              </Link>
-              .
-            </p>
+            {showVolunteerCta && (
+              <p className="text-body">
+                Quer ajudar a fazer acontecer?{" "}
+                <Link href="/voluntarios" className="underline underline-offset-4">
+                  Seja voluntário
+                </Link>
+                .
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -226,12 +230,14 @@ export default function Home() {
         </section>
 
         {/* Chamadas: voluntários e patrocínio */}
-        <section className="mx-auto grid w-full max-w-page gap-6 px-4 sm:px-6 md:grid-cols-2">
-          <Link href="/voluntarios" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
-            <Eyebrow className="group-hover:text-paper">Voluntariado</Eyebrow>
-            <h2 className="font-display text-heading-sm group-hover:text-paper">Faça parte da equipe que faz o Summit acontecer.</h2>
-            <p className="text-body-md">Recepção, logística, comunicação, fotografia, experiências. Inscrições abertas →</p>
-          </Link>
+        <section className={`mx-auto grid w-full max-w-page gap-6 px-4 sm:px-6 ${showVolunteerCta ? "md:grid-cols-2" : ""}`}>
+          {showVolunteerCta && (
+            <Link href="/voluntarios" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
+              <Eyebrow className="group-hover:text-paper">Voluntariado</Eyebrow>
+              <h2 className="font-display text-heading-sm group-hover:text-paper">Faça parte da equipe que faz o Summit acontecer.</h2>
+              <p className="text-body-md">Recepção, logística, comunicação, fotografia, experiências. Inscrições abertas →</p>
+            </Link>
+          )}
           <Link href="/patrocinio" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
             <Eyebrow className="group-hover:text-paper">Patrocínio</Eyebrow>
             <h2 className="font-display text-heading-sm group-hover:text-paper">Seja visto como apoiador do ecossistema empreendedor.</h2>
