@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Eyebrow } from "@/components/eyebrow";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { SponsorsSection } from "@/components/sponsors-section";
 import { commercialContacts, site, sponsorship, stats } from "@/content/site";
 
 const title = `Patrocínio | ${site.name}`;
@@ -94,6 +95,8 @@ export default function PatrocinioPage() {
       </section>
 
       <main className="flex flex-col gap-30 bg-paper py-30">
+        <SponsorsSection />
+
         {/* Por que patrocinar */}
         <section className="mx-auto flex w-full max-w-page flex-col gap-15 px-4 sm:px-6">
           <div className="flex flex-col gap-6">

@@ -6,7 +6,9 @@ import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, req
 import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite } from "@/lib/invites";
 import { sendAccessInvite, sendInvite } from "@/lib/mail";
 import { deleteUnpaidRegistration } from "@/lib/registrations";
+import { createSponsor, deleteSponsor, getSponsor, isSponsorTier, moveSponsor, updateSponsor } from "@/lib/sponsors";
 import { appUrl } from "@/lib/stripe";
+import { deleteImageUpload, saveImageUpload } from "@/lib/uploads";
 import { deleteVolunteer } from "@/lib/volunteers";
 
 const inviteUrl = (code: string) => `${appUrl()}/inscricao/${code}`;
@@ -139,4 +141,88 @@ export async function removeRegistration(formData: FormData) {
   if (id) await deleteUnpaidRegistration(id);
   revalidatePath("/admin/participantes");
   revalidatePath("/admin/convites");
+}
+
+/* ---------- Patrocinadores ---------- */
+
+type SponsorValues = { name: string; tier: string; logoAlt: string; url: string };
+// values: o que foi digitado, pra repor no formulário quando a validação falha (o React o reseta após a action).
+// at: muda a cada envio, vira a key do formulário pra ele remontar com esses valores.
+export type SponsorFormState = { status: "idle" | "ok" | "error"; message?: string; values?: SponsorValues; at?: number };
+
+const revalidateSponsors = () => {
+  revalidatePath("/admin/patrocinadores");
+  revalidatePath("/");
+  revalidatePath("/patrocinio");
+};
+
+// "empresa.com.br" vira "https://empresa.com.br"; só http(s) passa
+function normalizeUrl(raw: string): string | null {
+  if (!raw) return "";
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Cria (sem id) ou edita (com id). Na edição o logo é opcional: sem arquivo novo, fica o atual.
+export async function saveSponsor(_prev: SponsorFormState, formData: FormData): Promise<SponsorFormState> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 120);
+  const tier = String(formData.get("tier") ?? "");
+  const logoAlt = String(formData.get("logoAlt") ?? "").trim().slice(0, 200);
+  const url = normalizeUrl(String(formData.get("url") ?? "").trim().slice(0, 500));
+  const file = formData.get("logo");
+  const hasFile = file instanceof File && file.size > 0;
+  const fail = (message: string): SponsorFormState => ({
+    status: "error",
+    message,
+    values: { name, tier, logoAlt, url: String(formData.get("url") ?? "").trim() },
+    at: Date.now(),
+  });
+
+  if (!name) return fail("Informe o nome do patrocinador.");
+  if (!isSponsorTier(tier)) return fail("Escolha a categoria.");
+  if (url === null) return fail("URL do site inválida. Use o endereço completo, ex.: https://empresa.com.br");
+
+  const current = id ? await getSponsor(id) : null;
+  if (id && !current) return fail("Patrocinador não encontrado. Ele pode ter sido removido.");
+  if (!current && !hasFile) return fail("Envie o logo.");
+
+  let logo = current?.logo ?? "";
+  if (hasFile) {
+    const upload = await saveImageUpload(file);
+    if (!upload.ok) return fail(upload.message);
+    logo = upload.filename;
+  }
+
+  const data = { name, tier, logo, logoAlt, url };
+  if (current) {
+    await updateSponsor(current.id, data);
+    if (logo !== current.logo) await deleteImageUpload(current.logo);
+  } else {
+    await createSponsor(data);
+  }
+  revalidateSponsors();
+  if (current) redirect("/admin/patrocinadores");
+  return { status: "ok", message: `${name} adicionado.`, at: Date.now() };
+}
+
+export async function removeSponsor(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const removed = id ? await deleteSponsor(id) : null;
+  if (removed) await deleteImageUpload(removed.logo);
+  revalidateSponsors();
+}
+
+export async function reorderSponsor(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const direction = formData.get("direction") === "up" ? "up" : "down";
+  if (id) await moveSponsor(id, direction);
+  revalidateSponsors();
 }
