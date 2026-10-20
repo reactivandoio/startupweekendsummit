@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { getInviteByCode, inviteAvailable } from "@/lib/invites";
-import { ticketConfig } from "@/lib/stripe";
+import { currentOffer } from "@/lib/tickets";
 
 // Página de convite: não indexa e não entra no sitemap
 export const metadata: Metadata = { title: "Inscrição", robots: { index: false, follow: false } };
@@ -17,7 +17,7 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
   const { code } = await params;
   const { cancelado } = await searchParams;
   const invite = await getInviteByCode(code);
-  const ticket = ticketConfig();
+  const ticket = await currentOffer();
   const available = invite ? inviteAvailable(invite) : false;
 
   return (
@@ -44,8 +44,13 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
         <section className="mx-auto grid w-full max-w-page gap-15 px-4 sm:px-6 md:grid-cols-[1fr_1.4fr]">
           <div className="flex flex-col gap-6">
             <Eyebrow>Ingresso</Eyebrow>
-            <h2 className="font-display text-heading">{ticket.enabled ? formatBRL(ticket.priceCents) : "Em breve"}</h2>
-            <p className="max-w-[40ch] text-body-md">Valor único por participante. Pagamento pelo Stripe, com confirmação por e-mail.</p>
+            <h2 className="font-display text-heading">{ticket.enabled ? formatBRL(ticket.priceCents) : ticket.reason === "sold_out" ? "Esgotado" : "Em breve"}</h2>
+            {ticket.enabled && ticket.lotName && <p className="text-body-md font-semibold">{ticket.lotName}</p>}
+            <p className="max-w-[40ch] text-body-md">
+              {ticket.enabled && ticket.provider === "opapingou"
+                ? "Valor por participante. Pagamento via Pix, com confirmação na hora e ingresso por e-mail."
+                : "Valor único por participante. Pagamento pelo Stripe, com confirmação por e-mail."}
+            </p>
             <ul className="border-t border-ink">
               {included.map((item, i) => (
                 <li key={item} className="flex items-baseline gap-6 border-b border-ash py-4">
@@ -81,9 +86,15 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
               </div>
             ) : !ticket.enabled ? (
               <div className="flex flex-col gap-4 border border-ink p-6" role="status">
-                <p className="font-mono text-body tracking-[0.03em]">EM BREVE</p>
-                <h3 className="font-display text-heading-sm">As inscrições ainda não abriram.</h3>
-                <p className="text-body-md">Guarde este link: ele continua válido quando o pagamento for liberado.</p>
+                <p className="font-mono text-body tracking-[0.03em]">{ticket.reason === "sold_out" ? "ESGOTADO" : "EM BREVE"}</p>
+                <h3 className="font-display text-heading-sm">
+                  {ticket.reason === "sold_out" ? "Os ingressos deste lote acabaram." : "As inscrições ainda não abriram."}
+                </h3>
+                <p className="text-body-md">
+                  {ticket.reason === "sold_out"
+                    ? "Guarde este link: ele volta a funcionar se um novo lote for aberto. Dúvidas, fale com a organização."
+                    : "Guarde este link: ele continua válido quando o pagamento for liberado."}
+                </p>
               </div>
             ) : (
               <>
@@ -92,7 +103,7 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
                     — O pagamento não foi concluído. Preencha os dados de novo para tentar outra vez.
                   </p>
                 )}
-                <RegistrationForm code={invite.code} priceLabel={formatBRL(ticket.priceCents)} />
+                <RegistrationForm code={invite.code} priceLabel={formatBRL(ticket.priceCents)} method={ticket.provider === "opapingou" ? "pix" : "checkout"} />
               </>
             )}
           </div>

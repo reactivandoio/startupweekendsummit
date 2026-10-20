@@ -81,14 +81,31 @@ export function sendInvite(to: string, name: string, url: string) {
   return sendMail({ to, subject: `Seu convite — ${site.shortName}`, text, html });
 }
 
-export function sendRegistrationConfirmed(to: string, name: string, amountLabel: string) {
-  const first = name.split(" ")[0];
-  const text = `${first}, sua inscrição no ${site.name} está confirmada.\n\nPagamento de ${amountLabel} recebido. Guarde este e-mail: ele é o seu comprovante.\n\nNos vemos em ${site.city}, ${site.date}.`;
+// Número do ingresso: 8 primeiros caracteres do id da inscrição, o mesmo que o painel mostra
+export const ticketNumber = (registrationId: string) => registrationId.replace(/-/g, "").slice(0, 8).toUpperCase();
+
+const escapeHtml = (v: string) => v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+const brl = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+
+// Confirmação + ingresso: vale como comprovante e traz o número que a organização confere no credenciamento
+export function sendRegistrationConfirmed(reg: { id: string; email: string; name: string; cpf: string; amountCents: number; lotName?: string }) {
+  const first = reg.name.split(" ")[0];
+  const amountLabel = brl(reg.amountCents);
+  const number = ticketNumber(reg.id);
+  const cpf = reg.cpf.replace(/^(\d{3})\d{6}(\d{2})$/, "$1.***.***-$2");
+  const kind = reg.lotName ? `Ingresso — ${reg.lotName}` : "Ingresso";
+  const text = `${first}, sua inscrição no ${site.name} está confirmada.\n\nPagamento de ${amountLabel} recebido.\n\n${kind}\nNº ${number}\nParticipante: ${reg.name}\nCPF: ${cpf}\n\nGuarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto.\n\nNos vemos em ${site.city}, ${site.date}.`;
   const html = layout(
     "Inscrição confirmada.",
-    `<p style="font-size:16px;line-height:1.4;margin:0 0 16px">${first}, recebemos o pagamento de <strong>${amountLabel}</strong> e sua vaga no ${site.name} está garantida.</p>
-     <p style="font-size:16px;line-height:1.4;margin:0 0 24px">Guarde este e-mail: ele é o seu comprovante. Em breve mandamos a programação e as orientações pelo WhatsApp cadastrado.</p>
+    `<p style="font-size:16px;line-height:1.4;margin:0 0 16px">${escapeHtml(first)}, recebemos o pagamento de <strong>${amountLabel}</strong> e sua vaga no ${site.name} está garantida.</p>
+     <div style="border:1px solid #0f0f0f;padding:16px 24px;margin:0 0 24px">
+       <p style="font-size:13px;letter-spacing:.03em;text-transform:uppercase;font-weight:600;margin:0 0 8px">${escapeHtml(kind)}</p>
+       <p style="font-family:'JetBrains Mono',Menlo,monospace;font-size:28px;letter-spacing:.06em;margin:0 0 12px">${number}</p>
+       <p style="font-size:14px;line-height:1.4;margin:0">${escapeHtml(reg.name)}<br>CPF ${cpf}<br>${site.date} · ${site.venue} · ${site.city}</p>
+     </div>
+     <p style="font-size:16px;line-height:1.4;margin:0 0 24px">Guarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto. Em breve mandamos a programação e as orientações pelo WhatsApp cadastrado.</p>
      <p style="font-size:16px;line-height:1.4;margin:0">Nos vemos em ${site.city}, ${site.date}.</p>`,
   );
-  return sendMail({ to, subject: `Inscrição confirmada — ${site.shortName}`, text, html });
+  return sendMail({ to: reg.email, subject: `Seu ingresso — ${site.shortName}`, text, html });
 }

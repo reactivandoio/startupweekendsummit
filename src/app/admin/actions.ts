@@ -5,8 +5,13 @@ import { revalidatePath } from "next/cache";
 import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
 import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite } from "@/lib/invites";
 import { sendAccessInvite, sendInvite } from "@/lib/mail";
-import { deleteUnpaidRegistration } from "@/lib/registrations";
+import { checkApiKey, createWebhookEndpoint, reactivateWebhookEndpoint, rotateWebhookSecret, testWebhookEndpoint } from "@/lib/opapingou";
+import { isOpaApiKey, isOpaTestKey, OpaApiError } from "@/lib/opapingou-core";
+import { deleteUnpaidRegistration, listPendingOpaRegistrations } from "@/lib/registrations";
+import { deleteSetting, getSetting, setSetting } from "@/lib/settings";
 import { appUrl } from "@/lib/stripe";
+import { syncCharge } from "@/lib/ticket-payments";
+import { createLot, deleteLot, moveLot, updateLot } from "@/lib/tickets";
 import { deleteVolunteer } from "@/lib/volunteers";
 
 const inviteUrl = (code: string) => `${appUrl()}/inscricao/${code}`;
@@ -137,6 +142,147 @@ export async function removeRegistration(formData: FormData) {
   await requireUser();
   const id = String(formData.get("id") ?? "");
   if (id) await deleteUnpaidRegistration(id);
+  revalidatePath("/admin/participantes");
+  revalidatePath("/admin/convites");
+}
+
+/* ---------- Ingressos: Opa Pingou e lotes ---------- */
+
+export type OpaFormState = { status: "idle" | "ok" | "error"; message?: string };
+
+const opaErrorMessage = (err: unknown) =>
+  err instanceof OpaApiError
+    ? `O Opa Pingou respondeu ${err.code}${err.requestId ? ` (requestId ${err.requestId})` : ""}.`
+    : "Não conseguimos falar com o Opa Pingou. Tente de novo em instantes.";
+
+// Salva a chave depois de validá-la na API. Trocar a chave invalida o webhook salvo (é de outra conta/modo).
+export async function saveOpaKey(_prev: OpaFormState, formData: FormData): Promise<OpaFormState> {
+  const me = await requireUser();
+  const key = String(formData.get("apiKey") ?? "").trim();
+  if (!isOpaApiKey(key)) return { status: "error", message: "A chave tem o formato opk_live_… ou opk_test_… (43 caracteres depois do prefixo)." };
+  let check: Awaited<ReturnType<typeof checkApiKey>>;
+  try {
+    check = await checkApiKey(key);
+  } catch (err) {
+    console.error("[saveOpaKey]", err);
+    return { status: "error", message: opaErrorMessage(err) };
+  }
+  if (!check.ok) return { status: "error", message: check.code === "API_KEY_EXPIRED" ? "Essa chave expirou. Gere outra no Opa Pingou." : "O Opa Pingou recusou a chave (inválida ou revogada)." };
+
+  const previous = await getSetting("opapingou_api_key");
+  await setSetting("opapingou_api_key", key, me.id);
+  if (previous && previous !== key) {
+    await deleteSetting("opapingou_webhook_id");
+    await deleteSetting("opapingou_webhook_secret");
+  }
+  revalidatePath("/admin/ingressos");
+  const mode = isOpaTestKey(key) ? "de teste" : "de produção";
+  return { status: "ok", message: `Chave ${mode} salva${check.who ? ` (${check.who})` : ""}. Agora cadastre o webhook.` };
+}
+
+export async function removeOpaKey() {
+  await requireUser();
+  await deleteSetting("opapingou_api_key");
+  await deleteSetting("opapingou_webhook_id");
+  await deleteSetting("opapingou_webhook_secret");
+  revalidatePath("/admin/ingressos");
+}
+
+// Cadastra o endpoint /api/opapingou/webhook. Se já existe, troca o segredo (o antigo se perdeu ou vazou).
+export async function setupOpaWebhook(): Promise<OpaFormState> {
+  const me = await requireUser();
+  if (!(await getSetting("opapingou_api_key"))) return { status: "error", message: "Salve a chave do Opa Pingou primeiro." };
+  const existing = await getSetting("opapingou_webhook_id");
+  try {
+    const endpoint = existing ? await rotateWebhookSecret(existing) : await createWebhookEndpoint(`${appUrl()}/api/opapingou/webhook`);
+    await setSetting("opapingou_webhook_id", endpoint.id, me.id);
+    await setSetting("opapingou_webhook_secret", endpoint.secret, me.id);
+    if (endpoint.status === "DISABLED") await reactivateWebhookEndpoint(endpoint.id);
+  } catch (err) {
+    console.error("[setupOpaWebhook]", err);
+    if (existing && err instanceof OpaApiError && err.code === "NOT_FOUND") {
+      // removido do lado do Opa Pingou: esquece e deixa cadastrar de novo
+      await deleteSetting("opapingou_webhook_id");
+      await deleteSetting("opapingou_webhook_secret");
+      revalidatePath("/admin/ingressos");
+      return { status: "error", message: "O webhook salvo não existe mais no Opa Pingou. Clique de novo para cadastrar outro." };
+    }
+    if (err instanceof OpaApiError && err.code === "WEBHOOK_URL_INVALID") {
+      return { status: "error", message: `O Opa Pingou só aceita URL https pública; a deste site é ${appUrl()} (confira APP_URL).` };
+    }
+    return { status: "error", message: opaErrorMessage(err) };
+  }
+  revalidatePath("/admin/ingressos");
+  return { status: "ok", message: existing ? "Segredo do webhook trocado." : "Webhook cadastrado. Use \"Enviar teste\" para conferir a entrega." };
+}
+
+export async function testOpaWebhook(): Promise<OpaFormState> {
+  await requireUser();
+  const id = await getSetting("opapingou_webhook_id");
+  if (!id) return { status: "error", message: "Cadastre o webhook primeiro." };
+  try {
+    const delivery = await testWebhookEndpoint(id);
+    return { status: "ok", message: delivery.status === "SUCCEEDED" ? "Teste entregue: o site recebeu o ping." : `Teste enviado (entrega ${delivery.status}). Atualize em instantes.` };
+  } catch (err) {
+    console.error("[testOpaWebhook]", err);
+    return { status: "error", message: opaErrorMessage(err) };
+  }
+}
+
+// "R$ 1.234,56" / "350" / "350,00" → centavos
+function parseCents(raw: string): number | null {
+  const s = raw.replace(/[R$\s]/g, "").replace(/\./g, "").replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+  const cents = Math.round(Number(s) * 100);
+  return cents >= 1 && cents <= 2_500_000 ? cents : null; // limite do Opa Pingou: R$ 25.000,00
+}
+
+function lotFields(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim().slice(0, 80);
+  const priceCents = parseCents(String(formData.get("price") ?? ""));
+  const q = String(formData.get("quantity") ?? "").trim();
+  const quantity = q === "" ? null : Math.max(0, Math.floor(Number(q)) || 0);
+  return { name, priceCents, quantity };
+}
+
+export async function createLotAction(_prev: OpaFormState, formData: FormData): Promise<OpaFormState> {
+  await requireUser();
+  const { name, priceCents, quantity } = lotFields(formData);
+  if (!name) return { status: "error", message: "Dê um nome ao lote (ex.: 1º lote)." };
+  if (priceCents === null) return { status: "error", message: "Informe o valor em reais, entre R$ 0,01 e R$ 25.000,00." };
+  await createLot({ name, priceCents, quantity });
+  revalidatePath("/admin/ingressos");
+  return { status: "ok", message: `Lote "${name}" criado.` };
+}
+
+export async function updateLotAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const { name, priceCents, quantity } = lotFields(formData);
+  if (!id || !name || priceCents === null) return;
+  await updateLot(id, { name, priceCents, quantity, active: formData.get("active") === "on" });
+  revalidatePath("/admin/ingressos");
+}
+
+export async function moveLotAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const direction = formData.get("direction") === "up" ? "up" : "down";
+  if (id) await moveLot(id, direction);
+  revalidatePath("/admin/ingressos");
+}
+
+export async function removeLotAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await deleteLot(id);
+  revalidatePath("/admin/ingressos");
+}
+
+// Confere na API as cobranças pendentes (caso algum webhook não tenha chegado)
+export async function reconcileOpaCharges() {
+  await requireUser();
+  for (const reg of await listPendingOpaRegistrations()) await syncCharge(reg);
   revalidatePath("/admin/participantes");
   revalidatePath("/admin/convites");
 }

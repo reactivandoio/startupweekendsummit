@@ -1,0 +1,73 @@
+import "server-only";
+import { OpaApiError, type OpaCharge } from "@/lib/opapingou-core";
+import { getSetting } from "@/lib/settings";
+
+// Cliente REST do Opa Pingou. Só as rotas da v1 listadas em docs/opapingou-api.md.
+// A chave de API vem do painel (/admin/ingressos), não do .env; a URL base pode apontar pra staging.
+export const opaApiUrl = () => (process.env.OPAPINGOU_API_URL ?? "https://api.opapingou.com.br").replace(/\/$/, "");
+
+export const WEBHOOK_EVENTS = ["charge.paid", "charge.expired", "charge.canceled"] as const;
+
+const TIMEOUT_MS = 15_000;
+
+async function request<T>(method: string, path: string, opts: { key?: string; body?: unknown; idempotencyKey?: string } = {}): Promise<T> {
+  const key = opts.key ?? (await getSetting("opapingou_api_key"));
+  if (!key) throw new Error("Chave do Opa Pingou não configurada");
+  const headers: Record<string, string> = { Authorization: `Bearer ${key}`, Accept: "application/json" };
+  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+  if (opts.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
+
+  const res = await fetch(`${opaApiUrl()}/v1${path}`, {
+    method,
+    headers,
+    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+    cache: "no-store",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (res.status === 204) return undefined as T;
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const p = (data ?? {}) as { code?: string; title?: string; requestId?: string };
+    const retry = Number(res.headers.get("retry-after"));
+    throw new OpaApiError(res.status, p.code ?? "UNKNOWN", p.title ?? res.statusText, p.requestId ?? res.headers.get("x-request-id"), Number.isFinite(retry) ? retry : null);
+  }
+  return data as T;
+}
+
+// Valida a chave sem efeito colateral. profile:read pode faltar na chave: 403 também prova que ela é válida.
+export async function checkApiKey(key: string): Promise<{ ok: true; who: string | null } | { ok: false; code: string }> {
+  try {
+    const me = await request<{ email?: string; company?: { legalName?: string } | null }>("GET", "/me", { key });
+    return { ok: true, who: me.company?.legalName ?? me.email ?? null };
+  } catch (err) {
+    if (err instanceof OpaApiError) return err.code === "INSUFFICIENT_SCOPE" ? { ok: true, who: null } : { ok: false, code: err.code };
+    throw err;
+  }
+}
+
+// Pix QR com validade de 1h (mesma janela que segura a vaga). Idempotency-Key = id da inscrição.
+export function createCharge(registrationId: string, amountCents: number, description: string) {
+  return request<OpaCharge>("POST", "/charges", {
+    idempotencyKey: `sws-${registrationId}`,
+    body: { amountCents, description: description.slice(0, 140), validity: "ONE_HOUR", kind: "PIX_QR" },
+  });
+}
+
+export const getCharge = (id: string) => request<OpaCharge>("GET", `/charges/${encodeURIComponent(id)}`);
+
+export type OpaWebhookEndpoint = { id: string; url: string; events: string[]; testMode: boolean; status: "ACTIVE" | "DISABLED"; lastDeliveredAt: string | null };
+
+export const createWebhookEndpoint = (url: string) =>
+  request<OpaWebhookEndpoint & { secret: string }>("POST", "/webhook-endpoints", {
+    body: { url, description: "Startup Weekend Summit — ingressos", events: [...WEBHOOK_EVENTS] },
+  });
+
+export const getWebhookEndpoint = (id: string) => request<OpaWebhookEndpoint>("GET", `/webhook-endpoints/${encodeURIComponent(id)}`);
+
+export const reactivateWebhookEndpoint = (id: string) =>
+  request<OpaWebhookEndpoint>("PATCH", `/webhook-endpoints/${encodeURIComponent(id)}`, { body: { status: "ACTIVE" } });
+
+export const rotateWebhookSecret = (id: string) =>
+  request<OpaWebhookEndpoint & { secret: string }>("POST", `/webhook-endpoints/${encodeURIComponent(id)}/rotate-secret`);
+
+export const testWebhookEndpoint = (id: string) => request<{ id: string; status: string }>("POST", `/webhook-endpoints/${encodeURIComponent(id)}/test`);

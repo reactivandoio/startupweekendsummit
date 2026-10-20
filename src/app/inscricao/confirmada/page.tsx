@@ -1,47 +1,60 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Eyebrow } from "@/components/eyebrow";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
-import { sendRegistrationConfirmed } from "@/lib/mail";
-import { getRegistrationBySession, markPaid } from "@/lib/registrations";
+import { sendRegistrationConfirmed, ticketNumber } from "@/lib/mail";
+import { getRegistration, getRegistrationBySession, markPaid, type Registration } from "@/lib/registrations";
 import { stripe } from "@/lib/stripe";
 
 export const metadata: Metadata = { title: "Inscrição confirmada", robots: { index: false, follow: false } };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type Outcome = "paid" | "processing" | "open" | "unknown";
+type Resolved = { outcome: Outcome; firstName: string; code: string; amount: string; ticket: string };
+
+const empty: Resolved = { outcome: "unknown", firstName: "", code: "", amount: "", ticket: "" };
+
+const base = (r: Registration) => ({ firstName: r.name.split(" ")[0], code: r.inviteCode, amount: formatBRL(r.amountCents), ticket: ticketNumber(r.id) });
 
 // Volta do Checkout. Confirma pelo Stripe (não confia só no webhook) e marca como paga se já estiver.
-async function resolve(sessionId: string): Promise<{ outcome: Outcome; firstName: string; code: string; amount: string }> {
-  const empty = { outcome: "unknown" as Outcome, firstName: "", code: "", amount: "" };
-  if (!sessionId) return empty;
+async function resolveStripe(sessionId: string): Promise<Resolved> {
   try {
     const registration = await getRegistrationBySession(sessionId);
     if (!registration) return empty;
-    const base = { firstName: registration.name.split(" ")[0], code: registration.inviteCode, amount: formatBRL(registration.amountCents) };
-    if (registration.status === "paid") return { outcome: "paid", ...base };
+    if (registration.status === "paid") return { outcome: "paid", ...base(registration) };
 
     const session = await stripe().checkout.sessions.retrieve(sessionId);
     if (session.payment_status === "paid") {
       const pi = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
       const paid = await markPaid(registration.id, pi, session.amount_total);
-      if (paid) sendRegistrationConfirmed(paid.email, paid.name, formatBRL(paid.amountCents)).catch((err) => console.error("[mail]", err));
-      return { outcome: "paid", ...base };
+      if (paid) sendRegistrationConfirmed(paid).catch((err) => console.error("[mail]", err));
+      return { outcome: "paid", ...base(registration) };
     }
-    return { outcome: session.status === "complete" ? "processing" : "open", ...base };
+    return { outcome: session.status === "complete" ? "processing" : "open", ...base(registration) };
   } catch (err) {
     console.error("[inscricao/confirmada]", err);
     return empty;
   }
 }
 
+// Pix do Opa Pingou: a página do QR manda pra cá quando a cobrança é paga; se ainda não foi, volta pro QR
+async function resolveOpa(id: string): Promise<Resolved> {
+  const registration = await getRegistration(id).catch(() => null);
+  if (!registration || registration.provider !== "opapingou") return empty;
+  if (registration.status !== "paid") redirect(`/inscricao/pix/${registration.id}`);
+  return { outcome: "paid", ...base(registration) };
+}
+
 const copy: Record<Outcome, { tag: string; title: string; text: string }> = {
   paid: {
     tag: "OK",
     title: "Inscrição confirmada.",
-    text: "Enviamos o comprovante para o seu e-mail. Em breve mandamos a programação e as orientações pelo WhatsApp cadastrado.",
+    text: "Enviamos o comprovante e o ingresso para o seu e-mail. Em breve mandamos a programação e as orientações pelo WhatsApp cadastrado.",
   },
   processing: {
     tag: "AGUARDANDO",
@@ -61,8 +74,9 @@ const copy: Record<Outcome, { tag: string; title: string; text: string }> = {
 };
 
 export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscricao/confirmada">) {
-  const { s } = await searchParams;
-  const { outcome, firstName, code, amount } = await resolve(typeof s === "string" ? s : "");
+  const { s, r } = await searchParams;
+  const { outcome, firstName, code, amount, ticket } =
+    typeof r === "string" && UUID.test(r) ? await resolveOpa(r) : typeof s === "string" && s ? await resolveStripe(s) : empty;
   const c = copy[outcome];
 
   return (
@@ -90,7 +104,7 @@ export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscr
             <h2 className="font-display text-heading">{outcome === "paid" ? amount : c.tag}</h2>
           </div>
           <div className="flex flex-col gap-4 border border-ink p-6" role="status">
-            <p className="font-mono text-body tracking-[0.03em]">{c.tag}</p>
+            <p className="font-mono text-body tracking-[0.03em]">{outcome === "paid" && ticket ? `INGRESSO Nº ${ticket}` : c.tag}</p>
             <h3 className="font-display text-heading-sm">{c.title}</h3>
             <p className="text-body-md">{c.text}</p>
             {outcome === "open" && code && (

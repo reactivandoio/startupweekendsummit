@@ -8,13 +8,15 @@
     "start": "next start",
     "lint": "eslint",
     "docker:dev": "docker compose --profile dev up --build",
-    "docker:prod": "bash deploy/blue-green.sh"
+    "docker:prod": "bash deploy/blue-green.sh",
+    "test": "node --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@next/third-parties": "16.3.5",
     "next": "16.3.5",
     "nodemailer": "^7.0.13",
     "postgres": "^3.4.9",
+    "qrcode": "1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
@@ -24,6 +26,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",
+    "@types/qrcode": "1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

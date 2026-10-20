@@ -3,8 +3,10 @@
 import { redirect } from "next/navigation";
 import { isValidCpf, onlyDigits } from "@/lib/cpf";
 import { getInviteByCode, inviteAvailable } from "@/lib/invites";
-import { attachStripeSession, createRegistration, findPaidRegistration } from "@/lib/registrations";
-import { appUrl, stripe, ticketConfig } from "@/lib/stripe";
+import { createCharge } from "@/lib/opapingou";
+import { attachOpaCharge, attachStripeSession, createRegistration, deleteUnpaidRegistration, findPaidRegistration } from "@/lib/registrations";
+import { appUrl, stripe } from "@/lib/stripe";
+import { currentOffer } from "@/lib/tickets";
 
 export type RegistrationFieldErrors = Partial<Record<"name" | "email" | "phone" | "cpf" | "birthDate" | "consent", string>>;
 
@@ -15,7 +17,7 @@ export type RegistrationFormState = {
   values?: Record<string, string>;
 };
 
-const SESSION_TTL_MIN = 60; // mínimo do Stripe é 30; igual à janela que segura a vaga do convite
+const SESSION_TTL_MIN = 60; // mínimo do Stripe é 30; igual à janela que segura a vaga do convite (e à cobrança Pix ONE_HOUR)
 
 function text(formData: FormData, key: string, max = 200) {
   const v = formData.get(key);
@@ -30,7 +32,8 @@ function validBirthDate(s: string) {
   return d.getUTCFullYear() >= 1900 && d.getTime() < Date.now();
 }
 
-// Valida, cria a inscrição pendente e manda pro Checkout do Stripe. Em sucesso, redireciona (não retorna).
+// Valida, cria a inscrição pendente e manda pro pagamento: Pix do Opa Pingou (página com QR) ou Checkout do Stripe.
+// Em sucesso, redireciona (não retorna).
 export async function registerParticipant(_prev: RegistrationFormState, formData: FormData): Promise<RegistrationFormState> {
   // Honeypot: bots preenchem; humanos não veem o campo.
   if (text(formData, "website")) return { status: "idle" };
@@ -57,9 +60,10 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   if (!invite || !inviteAvailable(invite)) {
     return { status: "error", message: "Este convite não está mais disponível. Fale com a organização.", values };
   }
-  const ticket = ticketConfig();
+  const ticket = await currentOffer();
   if (!ticket.enabled) {
-    return { status: "error", message: "As inscrições ainda não estão abertas. Tente novamente em breve.", values };
+    const message = ticket.reason === "sold_out" ? "Os ingressos deste lote esgotaram. Fale com a organização." : "As inscrições ainda não estão abertas. Tente novamente em breve.";
+    return { status: "error", message, values };
   }
   if (await findPaidRegistration(email, cpf)) {
     return {
@@ -69,33 +73,57 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     };
   }
 
-  let checkoutUrl: string;
+  const registration = await createRegistration({
+    inviteId: invite.id,
+    name,
+    email,
+    phone,
+    cpf,
+    birthDate,
+    amountCents: ticket.priceCents,
+    provider: ticket.provider,
+    lotId: ticket.lotId,
+  });
+
+  let next: string;
   try {
-    const registration = await createRegistration({ inviteId: invite.id, name, email, phone, cpf, birthDate, amountCents: ticket.priceCents });
-    const session = await stripe().checkout.sessions.create({
-      mode: "payment",
-      locale: "pt-BR",
-      currency: "brl",
-      customer_email: email,
-      client_reference_id: registration.id,
-      metadata: { registration_id: registration.id, invite_code: invite.code },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: { currency: "brl", unit_amount: ticket.priceCents, product_data: { name: ticket.name } },
-        },
-      ],
-      payment_intent_data: { description: `${ticket.name} — ${name}`, metadata: { registration_id: registration.id } },
-      expires_at: Math.floor(Date.now() / 1000) + SESSION_TTL_MIN * 60,
-      success_url: `${appUrl()}/inscricao/confirmada?s={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl()}/inscricao/${invite.code}?cancelado=1`,
-    });
-    if (!session.url) throw new Error("Checkout sem URL");
-    await attachStripeSession(registration.id, session.id);
-    checkoutUrl = session.url;
+    if (ticket.provider === "opapingou") {
+      const charge = await createCharge(registration.id, ticket.priceCents, `${ticket.name} — ${name}`);
+      if (!charge.brCode) throw new Error(`Cobrança ${charge.id} sem copia e cola`);
+      await attachOpaCharge(registration.id, charge);
+      next = `/inscricao/pix/${registration.id}`;
+    } else {
+      next = await stripeCheckout(registration.id, invite.code, email, name, ticket.priceCents, ticket.name);
+    }
   } catch (err) {
     console.error("[registerParticipant]", err);
+    // sem cobrança, a inscrição pendente só seguraria a vaga à toa
+    await deleteUnpaidRegistration(registration.id).catch(() => {});
     return { status: "error", message: "Não conseguimos iniciar o pagamento agora. Tente novamente em instantes.", values };
   }
-  redirect(checkoutUrl);
+  redirect(next);
+}
+
+async function stripeCheckout(registrationId: string, inviteCode: string, email: string, name: string, priceCents: number, productName: string) {
+  const session = await stripe().checkout.sessions.create({
+    mode: "payment",
+    locale: "pt-BR",
+    currency: "brl",
+    customer_email: email,
+    client_reference_id: registrationId,
+    metadata: { registration_id: registrationId, invite_code: inviteCode },
+    line_items: [
+      {
+        quantity: 1,
+        price_data: { currency: "brl", unit_amount: priceCents, product_data: { name: productName } },
+      },
+    ],
+    payment_intent_data: { description: `${productName} — ${name}`, metadata: { registration_id: registrationId } },
+    expires_at: Math.floor(Date.now() / 1000) + SESSION_TTL_MIN * 60,
+    success_url: `${appUrl()}/inscricao/confirmada?s={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${appUrl()}/inscricao/${inviteCode}?cancelado=1`,
+  });
+  if (!session.url) throw new Error("Checkout sem URL");
+  await attachStripeSession(registrationId, session.id);
+  return session.url;
 }

@@ -34,8 +34,8 @@ function Field({
   );
 }
 
-// Formulário do convite: dados do participante → Checkout do Stripe (redireciona ao enviar)
-export function RegistrationForm({ code, priceLabel }: { code: string; priceLabel: string }) {
+// Formulário do convite: dados do participante → Pix do Opa Pingou ou Checkout do Stripe (redireciona ao enviar)
+export function RegistrationForm({ code, priceLabel, method }: { code: string; priceLabel: string; method: "pix" | "checkout" }) {
   const [state, formAction, pending] = useActionState(registerParticipant, initialState);
   const v = state.values ?? {};
   const e = state.errors ?? {};
@@ -146,9 +146,13 @@ export function RegistrationForm({ code, priceLabel }: { code: string; priceLabe
         disabled={pending}
         className="flex h-16 w-full items-center justify-center border border-ink text-subheading text-ink transition-colors hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:border-ash disabled:text-ink/50 disabled:hover:bg-transparent"
       >
-        {pending ? "Abrindo o pagamento…" : `Ir para o pagamento · ${priceLabel}`}
+        {pending ? (method === "pix" ? "Gerando o Pix…" : "Abrindo o pagamento…") : `${method === "pix" ? "Gerar Pix" : "Ir para o pagamento"} · ${priceLabel}`}
       </button>
-      <p className="text-caption text-ink/60">Pagamento seguro pelo Stripe. Você volta pra cá assim que concluir.</p>
+      <p className="text-caption text-ink/60">
+        {method === "pix"
+          ? "Na próxima tela aparecem o QR Code e o Pix copia e cola, válidos por 1 hora."
+          : "Pagamento seguro pelo Stripe. Você volta pra cá assim que concluir."}
+      </p>
     </form>
   );
 }
