@@ -48,48 +48,62 @@ export default function Home() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
 
-      {/* Hero: canvas preto, nav transparente por cima, botões outlined em largura total */}
-      <section className="bg-obsidian text-paper">
-        <SiteHeader />
-        <div className="mx-auto flex max-w-page flex-col gap-12 px-4 pb-20 pt-16 sm:px-6 md:pb-30 md:pt-30">
-          <div className="flex flex-col gap-6">
-            <Eyebrow light>Goiânia · {site.dateShort}</Eyebrow>
-            <h1 className="font-display text-display">O Summit da Techstars chega a Goiânia.</h1>
-          </div>
-          <div className="flex flex-col gap-2 text-body-md">
-            <p className="font-semibold">{site.date}</p>
-            <p>
-              {site.venue} · {site.city} · 3 dias
-            </p>
-          </div>
-          <div className={`grid gap-4 ${showVolunteerCta ? "sm:grid-cols-2" : ""}`}>
-            {showVolunteerCta && (
+      {/* Hero: papel branco, ilustração de Goiânia e CTA com sombra sólida (conceito visual da edição) */}
+      <section className="bg-paper text-ink">
+        <SiteHeader tone="light" />
+        <div className="mx-auto grid max-w-page items-center gap-12 px-4 pb-15 pt-10 sm:px-6 md:grid-cols-[1.05fr_1fr] md:pb-20 md:pt-16">
+          <div className="flex flex-col gap-10">
+            <div className="flex flex-col gap-6">
+              <Eyebrow>Goiânia · {site.dateShort}</Eyebrow>
+              <h1 className="font-display text-display">
+                Bora pro futuro. <span className="text-grass">Ele passa por Goiânia.</span>
+              </h1>
+              <p className="max-w-[40ch] text-body-md">
+                O maior encontro de líderes de comunidades de startups do Brasil chega pela primeira vez a Goiânia.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 border-l-4 border-marigold pl-4 text-body-md">
+              <p className="font-semibold">{site.date}</p>
+              <p>
+                {site.venue} · {site.city} · 3 dias
+              </p>
+            </div>
+            <div className={`grid gap-4 ${showVolunteerCta ? "sm:grid-cols-2" : "sm:max-w-sm"}`}>
+              {showVolunteerCta && (
+                <Link
+                  href="/voluntarios"
+                  className="flex h-16 items-center justify-center border-2 border-ink bg-paper text-subheading shadow-hard transition-[translate,box-shadow] hover:translate-x-1.5 hover:translate-y-1.5 hover:shadow-none"
+                >
+                  Quero ser voluntário
+                </Link>
+              )}
               <Link
-                href="/voluntarios"
-                className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
+                href="/patrocinio"
+                className="flex h-16 items-center justify-center border-2 border-ink bg-marigold text-subheading font-semibold shadow-hard transition-[translate,box-shadow] hover:translate-x-1.5 hover:translate-y-1.5 hover:shadow-none"
               >
-                Quero ser voluntário
+                Quero patrocinar
               </Link>
-            )}
-            <Link
-              href="/patrocinio"
-              className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
-            >
-              Quero patrocinar
-            </Link>
+            </div>
           </div>
+          <Image
+            src="/ilustracoes/chateaubriand-evento.webp"
+            alt="Ilustração de pessoas reunidas em estandes de inovação ao redor de um monumento em Goiânia"
+            width={1400}
+            height={1079}
+            priority
+            sizes="(min-width: 1200px) 560px, (min-width: 768px) 48vw, 100vw"
+            className="h-auto w-full"
+          />
         </div>
       </section>
 
       <Mural />
 
-      {/* Faixa mint: participação por convite + WhatsApp */}
-      <section className="bg-mint-wash text-ink">
+      {/* Faixa marigold: participação por convite + WhatsApp */}
+      <section className="bg-marigold-wash text-ink">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-15 sm:px-6 md:grid-cols-2 md:items-end">
           <div className="flex flex-col gap-4">
-            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2 L23 21 H1 Z" fill="var(--color-ink)" />
-            </svg>
+            <span aria-hidden="true" className="block h-2 w-10 bg-grass" />
             <h2 className="font-display text-heading">Participação por convite.</h2>
             <p className="max-w-[44ch] text-body-md">
               As vagas para participantes do Summit são limitadas e as inscrições acontecem por convite da
@@ -102,7 +116,7 @@ export default function Home() {
               href={site.whatsappUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex h-14 items-center justify-center border border-ink px-6 text-body-md text-ink transition-colors hover:bg-ink hover:text-paper"
+              className="flex h-14 items-center justify-center border-2 border-ink bg-paper px-6 text-body-md text-ink shadow-hard-sm transition-[translate,box-shadow] hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
             >
               WhatsApp {site.whatsapp}
             </a>
@@ -119,8 +133,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Faixa esmeralda: tagline + números */}
-      <section className="bg-emerald-band text-ink">
+      {/* Faixa grass: tagline + números */}
+      <section className="bg-grass text-ink">
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 py-15 sm:px-6">
           <div className="flex flex-col gap-6">
             <Eyebrow>O evento</Eyebrow>
@@ -213,10 +227,10 @@ export default function Home() {
           </div>
           <ol className="grid gap-x-6 gap-y-12 md:grid-cols-3">
             {schedule.map((d) => (
-              <li key={d.day} className="flex flex-col gap-6 border-t border-ink pt-4">
+              <li key={d.day} className="flex flex-col gap-6 border-t-4 border-grass pt-4">
                 <div className="flex items-baseline justify-between">
                   <h3 className="font-display text-subheading">{d.day}</h3>
-                  <span className="font-mono text-body tracking-[0.03em]">{d.date}</span>
+                  <span className="font-mono text-body tracking-[0.03em] text-grass-deep">{d.date}</span>
                 </div>
                 <ul className="flex flex-col">
                   {d.items.map((it) => (
@@ -235,15 +249,15 @@ export default function Home() {
         {/* Chamadas: voluntários e patrocínio */}
         <section className={`mx-auto grid w-full max-w-page gap-6 px-4 sm:px-6 ${showVolunteerCta ? "md:grid-cols-2" : ""}`}>
           {showVolunteerCta && (
-            <Link href="/voluntarios" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
-              <Eyebrow className="group-hover:text-paper">Voluntariado</Eyebrow>
-              <h2 className="font-display text-heading-sm group-hover:text-paper">Faça parte da equipe que faz o Summit acontecer.</h2>
+            <Link href="/voluntarios" className="group flex flex-col gap-6 border-2 border-ink p-6 shadow-hard transition-[translate,box-shadow,background-color] hover:translate-x-1.5 hover:translate-y-1.5 hover:bg-marigold-wash hover:shadow-none">
+              <Eyebrow>Voluntariado</Eyebrow>
+              <h2 className="font-display text-heading-sm">Faça parte da equipe que faz o Summit acontecer.</h2>
               <p className="text-body-md">Recepção, logística, comunicação, fotografia, experiências. Inscrições abertas →</p>
             </Link>
           )}
-          <Link href="/patrocinio" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
-            <Eyebrow className="group-hover:text-paper">Patrocínio</Eyebrow>
-            <h2 className="font-display text-heading-sm group-hover:text-paper">Seja visto como apoiador do ecossistema empreendedor.</h2>
+          <Link href="/patrocinio" className="group flex flex-col gap-6 border-2 border-ink p-6 shadow-hard transition-[translate,box-shadow,background-color] hover:translate-x-1.5 hover:translate-y-1.5 hover:bg-marigold-wash hover:shadow-none">
+            <Eyebrow>Patrocínio</Eyebrow>
+            <h2 className="font-display text-heading-sm">Seja visto como apoiador do ecossistema empreendedor.</h2>
             <p className="text-body-md">Cotas Master, Gold, Silver, Bronze e Startup. Veja as contrapartidas →</p>
           </Link>
         </section>

@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title, description: site.seoDescriptionVolunteers },
 };
 
-// Fundos sólidos dos tiles, no espírito dos retratos de palestrantes em cor chapada
-const tileColors = ["bg-mint-wash", "bg-emerald-band", "bg-indigo", "bg-lavender"];
+// Fundos sólidos dos tiles na paleta do evento (Grass + Marigold e seus tons claros)
+const tileColors = ["bg-marigold-wash", "bg-grass", "bg-marigold", "bg-grass-wash"];
 
 // Formas brancas chapadas por cima dos tiles, no mesmo vocabulário do mural
 const tileShapes = [
@@ -59,8 +59,8 @@ export default function VoluntariosPage() {
         </div>
       </section>
 
-      {/* Faixa mint: condições */}
-      <section className="bg-mint-wash text-ink">
+      {/* Faixa marigold: condições */}
+      <section className="bg-marigold-wash text-ink">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-15 sm:px-6 md:grid-cols-2 md:items-end">
           <div className="flex flex-col gap-4">
             <h2 className="font-display text-heading">Inscrições abertas.</h2>
@@ -69,9 +69,7 @@ export default function VoluntariosPage() {
             </p>
           </div>
           <div className="flex flex-col gap-4 md:items-end md:text-right">
-            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2 L23 21 H1 Z" fill="var(--color-ink)" />
-            </svg>
+            <span aria-hidden="true" className="block h-2 w-10 bg-grass" />
             <p className="text-body-md font-semibold">Vagas limitadas por área</p>
             <p className="text-body">Maiores de 18 anos. Alimentação, camiseta e certificado inclusos.</p>
           </div>
