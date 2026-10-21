@@ -42,7 +42,7 @@ export default async function PatrocinadoresPage() {
                 {g.items.map((s, i) => (
                   <li key={s.id} className="grid gap-4 border-b border-ash py-4 dark:border-graphite sm:grid-cols-[160px_1fr_auto] sm:items-center">
                     <div className="relative h-20 w-40 border border-ash bg-paper dark:border-graphite">
-                      <Image src={uploadUrl(s.logo)} alt={sponsorAlt(s)} fill unoptimized sizes="160px" className="object-contain p-2" />
+                      <Image src={uploadUrl(s.logo)} alt={sponsorAlt(s)} fill unoptimized sizes="160px" className="logo-mono object-contain p-2" />
                     </div>
                     <div className="flex min-w-0 flex-col gap-1">
                       <p className="text-body-md font-semibold">{s.name}</p>

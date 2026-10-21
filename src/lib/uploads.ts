@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { hasTransparency } from "./image-alpha.ts";
 
 // Caminho absoluto, definido nos dois compose (volume nomeado "uploads", o mesmo para blue e green).
 // Sem a variável, cai em ./uploads (gitignored) — mas aí o arquivo fica na camada do container e some no deploy.
@@ -12,6 +13,7 @@ const pathOf = (filename: string) => join(/*turbopackIgnore: true*/ UPLOADS_DIR,
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 
 const contentTypes = { png: "image/png", jpg: "image/jpeg", webp: "image/webp", svg: "image/svg+xml" } as const;
+// jpg continua servível (uploads antigos), mas não é mais aceito: não tem transparência e viraria um bloco preto no site
 type Ext = keyof typeof contentTypes;
 
 // Nome gerado por nós (uuid + extensão): qualquer outra coisa na URL é recusada, sem path traversal
@@ -28,13 +30,16 @@ function sniff(buf: Buffer): Ext | null {
   return null;
 }
 
+export const OPAQUE_MESSAGE = "Este arquivo tem fundo opaco e ficaria um bloco preto no site. Envie SVG, PNG ou WebP com fundo transparente.";
+
 export type UploadResult = { ok: true; filename: string } | { ok: false; message: string };
 
 export async function saveImageUpload(file: File): Promise<UploadResult> {
   if (file.size > MAX_UPLOAD_BYTES) return { ok: false, message: "O logo passa de 2 MB. Exporte uma versão menor." };
   const buf = Buffer.from(await file.arrayBuffer());
   const ext = sniff(buf);
-  if (!ext) return { ok: false, message: "Formato não aceito. Use SVG, PNG, WebP ou JPG." };
+  if (!ext) return { ok: false, message: "Formato não aceito. Use SVG, PNG ou WebP com fundo transparente." };
+  if (!hasTransparency(buf, ext)) return { ok: false, message: OPAQUE_MESSAGE };
   const filename = `${randomUUID()}.${ext}`;
   // um volume recém-criado monta vazio
   await mkdir(/*turbopackIgnore: true*/ UPLOADS_DIR, { recursive: true });

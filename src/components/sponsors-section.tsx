@@ -21,13 +21,13 @@ function Logo({ sponsor, tier }: { sponsor: Sponsor; tier: SponsorTier }) {
   const img = (
     <span className={`relative block ${tile}`}>
       <span className="relative block h-full w-full">
-        <Image src={uploadUrl(sponsor.logo)} alt={sponsorAlt(sponsor)} fill unoptimized sizes={sizes} className="object-contain" />
+        <Image src={uploadUrl(sponsor.logo)} alt={sponsorAlt(sponsor)} fill unoptimized sizes={sizes} className="logo-mono object-contain" />
       </span>
     </span>
   );
-  if (!sponsor.url) return <div className="border border-ash">{img}</div>;
+  if (!sponsor.url) return <div className="border border-ash bg-paper">{img}</div>;
   return (
-    <a href={sponsor.url} target="_blank" rel="noopener noreferrer" className="block border border-ash transition-[border-color,box-shadow] hover:border-ink hover:shadow-hard-sm">
+    <a href={sponsor.url} target="_blank" rel="noopener noreferrer" className="block border border-ash bg-paper transition-[border-color,box-shadow] hover:border-ink hover:shadow-hard-sm">
       {img}
     </a>
   );

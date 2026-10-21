@@ -40,8 +40,9 @@ export function SponsorForm({ sponsor }: { sponsor?: Editing }) {
           name="logo"
           required
           label="Arraste o logo aqui ou escolha no computador"
+          preview="logo"
           current={sponsor ? { url: sponsor.logoUrl, alt: sponsor.logoAlt || sponsor.name } : undefined}
-          hint={`SVG de preferência; ou PNG/WebP com fundo transparente. Até 2 MB.${sponsor ? " Para manter o atual, não escolha outro." : ""}`}
+          hint={`SVG de preferência; ou PNG/WebP com fundo transparente. Até 2 MB. No site, todo logo aparece em preto sobre branco, como na prévia.${sponsor ? " Para manter o atual, não escolha outro." : ""}`}
         />
       </div>
       <div className="flex flex-col gap-1.5">
