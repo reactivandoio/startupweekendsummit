@@ -186,6 +186,14 @@ export const sponsorship = {
   ] as { name: string; items: [string, (boolean | string)[]][] }[],
 };
 
+// Categorias dos patrocinadores cadastrados no painel (/admin/patrocinadores): as cinco cotas
+// acima + parceiros institucionais. A ordem aqui é a ordem das seções no site.
+export const sponsorCategories = [
+  ...sponsorship.tiers.map((t) => ({ id: t.id, label: t.name })),
+  { id: "apoio", label: "Apoio" },
+  { id: "realizacao", label: "Realização" },
+] as const satisfies readonly { id: string; label: string }[];
+
 // Programação resumida do deck institucional
 export const schedule = [
   {

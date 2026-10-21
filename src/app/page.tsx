@@ -4,6 +4,7 @@ import { Eyebrow } from "@/components/eyebrow";
 import { Mural } from "@/components/mural";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { SponsorsSection } from "@/components/sponsors-section";
 import { pastHosts, photos, schedule, showVolunteerCta, site, stats } from "@/content/site";
 
 // Dados estruturados pra Google (rich result de evento) — https://schema.org/Event
@@ -228,6 +229,8 @@ export default function Home() {
             ))}
           </ol>
         </section>
+
+        <SponsorsSection />
 
         {/* Chamadas: voluntários e patrocínio */}
         <section className={`mx-auto grid w-full max-w-page gap-6 px-4 sm:px-6 ${showVolunteerCta ? "md:grid-cols-2" : ""}`}>

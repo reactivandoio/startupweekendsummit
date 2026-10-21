@@ -115,6 +115,19 @@ export function ensureSchema() {
           type text not null,
           received_at timestamptz not null default now()
         )`;
+      // Patrocinadores do site: logo é o nome do arquivo no volume de uploads; position ordena dentro da categoria
+      await sql`
+        create table if not exists sponsors (
+          id uuid primary key default gen_random_uuid(),
+          name text not null,
+          tier text not null,
+          logo text not null,
+          logo_alt text not null default '',
+          url text not null default '',
+          position int not null default 0,
+          created_at timestamptz not null default now(),
+          updated_at timestamptz not null default now()
+        )`;
       const seed = process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase();
       if (seed) {
         await sql`insert into users (email, name) values (${seed}, ${process.env.ADMIN_SEED_NAME ?? ""}) on conflict (email) do nothing`;
