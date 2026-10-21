@@ -1,8 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { registerVolunteer, type FormState } from "@/app/actions";
+import { Button } from "@/components/button";
+import { Select } from "@/components/select";
 import { availabilityOptions, volunteerAreas } from "@/content/site";
+import { maskPhone } from "@/lib/cpf";
 
 const initialState: FormState = { status: "idle" };
 
@@ -43,11 +46,11 @@ export function VolunteerForm() {
   const [state, formAction, pending] = useActionState(registerVolunteer, initialState);
   const v = state.values ?? {};
   const e = state.errors ?? {};
+  const [phone, setPhone] = useState(() => maskPhone(v.phone ?? ""));
 
   if (state.status === "success") {
     return (
-      <div className="flex flex-col gap-4 border border-ink p-6" role="status">
-        <p className="font-mono text-body tracking-[0.03em]">OK</p>
+      <div className="flex flex-col gap-4 border-2 border-ink bg-grass-wash p-6 shadow-hard" role="status">
         <h3 className="font-display text-heading-sm">Inscrição recebida.</h3>
         <p className="text-body-md">{state.message}</p>
       </div>
@@ -103,9 +106,12 @@ export function VolunteerForm() {
             id="phone"
             name="phone"
             type="tel"
-            autoComplete="tel"
+            inputMode="tel"
+            autoComplete="tel-national"
             required
-            defaultValue={v.phone}
+            maxLength={15}
+            value={phone}
+            onChange={(ev) => setPhone(maskPhone(ev.target.value))}
             aria-invalid={!!e.phone}
             className="field"
             placeholder="(62) 99999-9999"
@@ -128,23 +134,7 @@ export function VolunteerForm() {
           />
         </Field>
         <Field label="Área de interesse" htmlFor="area" error={e.area}>
-          <select
-            id="area"
-            name="area"
-            required
-            defaultValue={v.area ?? ""}
-            aria-invalid={!!e.area}
-            className="field"
-          >
-            <option value="" disabled>
-              Selecione…
-            </option>
-            {volunteerAreas.map((a) => (
-              <option key={a.value} value={a.value}>
-                {a.label}
-              </option>
-            ))}
-          </select>
+          <Select id="area" name="area" required options={volunteerAreas} defaultValue={v.area ?? ""} placeholder="Escolha" invalid={!!e.area} />
         </Field>
       </div>
 
@@ -206,13 +196,9 @@ export function VolunteerForm() {
         </span>
       </label>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="flex h-16 w-full items-center justify-center border border-ink text-subheading text-ink transition-colors hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:border-ash disabled:text-ink/50 disabled:hover:bg-transparent"
-      >
+      <Button type="submit" variant="primary" size="lg" disabled={pending} className="w-full">
         {pending ? "Enviando…" : "Quero ser voluntário"}
-      </button>
+      </Button>
     </form>
   );
 }

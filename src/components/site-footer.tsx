@@ -19,7 +19,7 @@ export function SiteFooter() {
             da comunidade Startup Weekend em Goiás.
           </p>
         </div>
-        <div className="flex flex-wrap gap-6 text-body tracking-[0.03em]">
+        <div className="flex max-w-[28rem] flex-wrap gap-x-6 gap-y-3 text-body tracking-[0.03em] sm:justify-end">
           <Link href="/voluntarios" className={linkClass}>
             Voluntários
           </Link>
@@ -35,6 +35,12 @@ export function SiteFooter() {
           <a href={`mailto:${site.contactEmail}`} className={linkClass}>
             Contato
           </a>
+          <Link href="/termos-de-uso" className={linkClass}>
+            Termos de uso
+          </Link>
+          <Link href="/politica-de-privacidade" className={linkClass}>
+            Privacidade
+          </Link>
         </div>
       </div>
     </footer>

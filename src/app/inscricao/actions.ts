@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { isValidCpf, onlyDigits } from "@/lib/cpf";
+import { isValidCpf, isValidIsoDate, isValidPhone, normalizeEmail, onlyDigits } from "@/lib/cpf";
 import { getInviteByCode, inviteAvailable } from "@/lib/invites";
 import { createCharge } from "@/lib/opapingou";
 import { attachOpaCharge, attachStripeSession, createRegistration, deleteUnpaidRegistration, findPaidRegistration } from "@/lib/registrations";
@@ -24,14 +24,6 @@ function text(formData: FormData, key: string, max = 200) {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
 }
 
-// Data de nascimento: YYYY-MM-DD real, no passado e depois de 1900
-function validBirthDate(s: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d = new Date(`${s}T00:00:00Z`);
-  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s) return false;
-  return d.getUTCFullYear() >= 1900 && d.getTime() < Date.now();
-}
-
 // Valida, cria a inscrição pendente e manda pro pagamento: Pix do Opa Pingou (página com QR) ou Checkout do Stripe.
 // Em sucesso, redireciona (não retorna).
 export async function registerParticipant(_prev: RegistrationFormState, formData: FormData): Promise<RegistrationFormState> {
@@ -40,7 +32,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
 
   const code = text(formData, "code", 64);
   const name = text(formData, "name", 120);
-  const email = text(formData, "email", 200).toLowerCase();
+  const email = normalizeEmail(text(formData, "email", 200));
   const phone = onlyDigits(text(formData, "phone", 40));
   const cpf = onlyDigits(text(formData, "cpf", 20));
   const birthDate = text(formData, "birthDate", 10);
@@ -50,9 +42,9 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   const errors: RegistrationFieldErrors = {};
   if (name.trim().split(/\s+/).length < 2) errors.name = "Informe nome e sobrenome.";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Informe um e-mail válido.";
-  if (phone.length < 10 || phone.length > 11) errors.phone = "Informe o WhatsApp com DDD.";
+  if (!isValidPhone(phone)) errors.phone = "Informe o WhatsApp com DDD.";
   if (!isValidCpf(cpf)) errors.cpf = "CPF inválido.";
-  if (!validBirthDate(birthDate)) errors.birthDate = "Informe uma data válida.";
+  if (!isValidIsoDate(birthDate)) errors.birthDate = "Informe uma data válida.";
   if (!consent) errors.consent = "Precisamos do seu consentimento para concluir a inscrição.";
   if (Object.keys(errors).length > 0) return { status: "error", message: "Revise os campos destacados.", errors, values };
 
