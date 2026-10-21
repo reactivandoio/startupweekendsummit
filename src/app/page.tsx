@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ButtonAnchor, ButtonLink, buttonClass } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
 import { Mural } from "@/components/mural";
+import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { SponsorsSection } from "@/components/sponsors-section";
 import { pastHosts, photos, schedule, showVolunteerCta, site, stats } from "@/content/site";
 
@@ -48,48 +49,38 @@ export default function Home() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
 
-      {/* Hero: canvas preto, nav transparente por cima, botões outlined em largura total */}
-      <section className="bg-obsidian text-paper">
-        <SiteHeader />
-        <div className="mx-auto flex max-w-page flex-col gap-12 px-4 pb-20 pt-16 sm:px-6 md:pb-30 md:pt-30">
-          <div className="flex flex-col gap-6">
-            <Eyebrow light>Goiânia · {site.dateShort}</Eyebrow>
-            <h1 className="font-display text-display">O Summit da Techstars chega a Goiânia.</h1>
-          </div>
-          <div className="flex flex-col gap-2 text-body-md">
-            <p className="font-semibold">{site.date}</p>
-            <p>
-              {site.venue} · {site.city} · 3 dias
-            </p>
-          </div>
-          <div className={`grid gap-4 ${showVolunteerCta ? "sm:grid-cols-2" : ""}`}>
-            {showVolunteerCta && (
-              <Link
-                href="/voluntarios"
-                className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
-              >
-                Quero ser voluntário
-              </Link>
-            )}
-            <Link
-              href="/patrocinio"
-              className="flex h-16 items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
-            >
-              Quero patrocinar
-            </Link>
-          </div>
+      {/* Hero: papel branco, evento no Chateaubriand e o CTA Marigold com sombra sólida (conceito visual da edição) */}
+      <PageHero
+        size="display"
+        eyebrow={`Goiânia · ${site.dateShort}`}
+        title={
+          <>
+            Bora pro futuro. <span className="block text-grass">Ele passa por Goiânia.</span>
+          </>
+        }
+        lead="O maior encontro de líderes de comunidades de startups do Brasil chega pela primeira vez a Goiânia."
+        illustration={illustrations.chateaubriand}
+      >
+        <EventMeta />
+        <div className="flex flex-col gap-5 sm:flex-row">
+          <ButtonLink href="/patrocinio" variant="primary" size="lg">
+            Quero patrocinar
+          </ButtonLink>
+          {showVolunteerCta && (
+            <ButtonLink href="/voluntarios" variant="secondary" size="lg">
+              Quero ser voluntário
+            </ButtonLink>
+          )}
         </div>
-      </section>
+      </PageHero>
 
       <Mural />
 
-      {/* Faixa mint: participação por convite + WhatsApp */}
-      <section className="bg-mint-wash text-ink">
+      {/* Faixa marigold: participação por convite + WhatsApp */}
+      <section className="bg-marigold-wash text-ink">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-15 sm:px-6 md:grid-cols-2 md:items-end">
           <div className="flex flex-col gap-4">
-            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2 L23 21 H1 Z" fill="var(--color-ink)" />
-            </svg>
+            <span aria-hidden="true" className="block h-2 w-10 bg-grass" />
             <h2 className="font-display text-heading">Participação por convite.</h2>
             <p className="max-w-[44ch] text-body-md">
               As vagas para participantes do Summit são limitadas e as inscrições acontecem por convite da
@@ -98,14 +89,9 @@ export default function Home() {
           </div>
           <div className="flex flex-col gap-4 md:items-end md:text-right">
             <p className="text-body-md font-semibold">Dúvidas sobre o evento</p>
-            <a
-              href={site.whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-14 items-center justify-center border border-ink px-6 text-body-md text-ink transition-colors hover:bg-ink hover:text-paper"
-            >
+            <ButtonAnchor href={site.whatsappUrl} target="_blank" rel="noreferrer" variant="secondary" size="md">
               WhatsApp {site.whatsapp}
-            </a>
+            </ButtonAnchor>
             {showVolunteerCta && (
               <p className="text-body">
                 Quer ajudar a fazer acontecer?{" "}
@@ -119,8 +105,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Faixa esmeralda: tagline + números */}
-      <section className="bg-emerald-band text-ink">
+      {/* Faixa grass: tagline + números */}
+      <section className="bg-grass text-ink">
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 py-15 sm:px-6">
           <div className="flex flex-col gap-6">
             <Eyebrow>O evento</Eyebrow>
@@ -159,7 +145,7 @@ export default function Home() {
               Rio Verde e Goiânia. Das quase 300 startups mapeadas em Goiás, 196 estão na capital, que se destaca
               nacionalmente como polo de pesquisa e desenvolvimento em inteligência artificial.
             </p>
-            <p className="text-caption tracking-[0.03em] uppercase">Edições anteriores: {pastHosts.join(" · ")}</p>
+            <p className="text-body text-graphite">Edições anteriores: {pastHosts.join(", ")}.</p>
           </div>
         </section>
 
@@ -213,10 +199,10 @@ export default function Home() {
           </div>
           <ol className="grid gap-x-6 gap-y-12 md:grid-cols-3">
             {schedule.map((d) => (
-              <li key={d.day} className="flex flex-col gap-6 border-t border-ink pt-4">
+              <li key={d.day} className="flex flex-col gap-6 border-t-4 border-grass pt-4">
                 <div className="flex items-baseline justify-between">
                   <h3 className="font-display text-subheading">{d.day}</h3>
-                  <span className="font-mono text-body tracking-[0.03em]">{d.date}</span>
+                  <span className="text-body font-semibold text-grass-deep">{d.date}</span>
                 </div>
                 <ul className="flex flex-col">
                   {d.items.map((it) => (
@@ -232,20 +218,26 @@ export default function Home() {
 
         <SponsorsSection />
 
-        {/* Chamadas: voluntários e patrocínio */}
-        <section className={`mx-auto grid w-full max-w-page gap-6 px-4 sm:px-6 ${showVolunteerCta ? "md:grid-cols-2" : ""}`}>
-          {showVolunteerCta && (
-            <Link href="/voluntarios" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
-              <Eyebrow className="group-hover:text-paper">Voluntariado</Eyebrow>
-              <h2 className="font-display text-heading-sm group-hover:text-paper">Faça parte da equipe que faz o Summit acontecer.</h2>
-              <p className="text-body-md">Recepção, logística, comunicação, fotografia, experiências. Inscrições abertas →</p>
+        {/* Chamadas: patrocínio (e voluntariado, quando aberto). Card com sombra sólida, botão dentro. */}
+        <section className={`mx-auto grid w-full max-w-page gap-8 px-4 sm:px-6 ${showVolunteerCta ? "md:grid-cols-2" : ""}`}>
+          <div className="flex flex-col gap-6 border-2 border-ink bg-marigold-wash p-6 shadow-hard md:p-8">
+            <Eyebrow>Patrocínio</Eyebrow>
+            <h2 className="max-w-[22ch] font-display text-heading-sm">Seja visto como apoiador do ecossistema empreendedor.</h2>
+            <p className="max-w-[44ch] text-body-md">Cotas Master, Gold, Silver, Bronze e Startup, com contrapartidas em marca, mídia e evento.</p>
+            <Link href="/patrocinio" className={buttonClass("primary", "md", "self-stretch sm:self-start")}>
+              Ver cotas de patrocínio
             </Link>
+          </div>
+          {showVolunteerCta && (
+            <div className="flex flex-col gap-6 border-2 border-ink bg-grass-wash p-6 shadow-hard md:p-8">
+              <Eyebrow>Voluntariado</Eyebrow>
+              <h2 className="max-w-[22ch] font-display text-heading-sm">Faça parte da equipe que faz o Summit acontecer.</h2>
+              <p className="max-w-[44ch] text-body-md">Recepção, logística, comunicação, fotografia, experiências. Inscrições abertas.</p>
+              <Link href="/voluntarios" className={buttonClass("secondary", "md", "self-stretch sm:self-start")}>
+                Quero ser voluntário
+              </Link>
+            </div>
           )}
-          <Link href="/patrocinio" className="group flex flex-col gap-6 border border-ink p-6 transition-colors hover:bg-ink hover:text-paper">
-            <Eyebrow className="group-hover:text-paper">Patrocínio</Eyebrow>
-            <h2 className="font-display text-heading-sm group-hover:text-paper">Seja visto como apoiador do ecossistema empreendedor.</h2>
-            <p className="text-body-md">Cotas Master, Gold, Silver, Bronze e Startup. Veja as contrapartidas →</p>
-          </Link>
         </section>
       </main>
 

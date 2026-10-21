@@ -1,4 +1,5 @@
 import { moveLotAction, removeLotAction, removeOpaKey, updateLotAction } from "@/app/admin/actions";
+import { buttonClass } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
 import { LotForm, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
 import { formatBRL } from "@/lib/cpf";
@@ -9,7 +10,7 @@ import { appUrl } from "@/lib/stripe";
 import { currentOffer, listLots } from "@/lib/tickets";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
-const btn = "border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper";
+const btn = buttonClass("secondary", "sm");
 
 const centsToInput = (c: number) => (c / 100).toFixed(2).replace(".", ",");
 

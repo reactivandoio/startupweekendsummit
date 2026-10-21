@@ -145,7 +145,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
                 <span className="flex h-8 w-8 items-center justify-center bg-paper font-display text-caption font-bold text-obsidian md:hidden">
                   ts_
                 </span>
-                <Image src="/logo-negativo.png" alt={site.name} width={86} height={40} priority className="hidden h-[40px] w-auto md:block" />
+                <Image src="/logo-negativo.svg" alt={site.name} width={86} height={40} priority className="hidden h-[40px] w-auto md:block" />
               </>
             )}
           </Link>

@@ -2,11 +2,11 @@
 
 import { useActionState } from "react";
 import { createLotAction, saveOpaKey, setupOpaWebhook, testOpaWebhook, type OpaFormState } from "@/app/admin/actions";
+import { buttonClass } from "@/components/button";
 
 const idle: OpaFormState = { status: "idle" };
-const primary =
-  "self-start border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink disabled:cursor-not-allowed disabled:border-ash disabled:text-ink/50 disabled:hover:bg-transparent";
-const secondary = "border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper disabled:cursor-not-allowed disabled:text-ink/50";
+const primary = buttonClass("primary", "md", "self-start");
+const secondary = buttonClass("secondary", "sm");
 
 const Message = ({ state }: { state: OpaFormState }) =>
   state.message ? (

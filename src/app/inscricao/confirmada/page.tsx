@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ButtonLink } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
+import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { sendRegistrationConfirmed, ticketNumber } from "@/lib/mail";
@@ -81,21 +81,13 @@ export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscr
 
   return (
     <>
-      <section className="bg-obsidian text-paper">
-        <SiteHeader />
-        <div className="mx-auto flex max-w-page flex-col gap-12 px-4 pb-20 pt-16 sm:px-6 md:pb-30 md:pt-30">
-          <div className="flex flex-col gap-6">
-            <Eyebrow light>Inscrição</Eyebrow>
-            <h1 className="font-display text-display">{firstName ? `${firstName}, ${c.title.charAt(0).toLowerCase()}${c.title.slice(1)}` : c.title}</h1>
-          </div>
-          <div className="flex flex-col gap-2 text-body-md">
-            <p className="font-semibold">{site.date}</p>
-            <p>
-              {site.venue} · {site.city} · 3 dias
-            </p>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Inscrição"
+        title={firstName ? `${firstName}, ${c.title.charAt(0).toLowerCase()}${c.title.slice(1)}` : c.title}
+        illustration={illustrations.estacao}
+      >
+        <EventMeta />
+      </PageHero>
 
       <main className="flex flex-col gap-30 bg-paper py-30">
         <section className="mx-auto grid w-full max-w-page gap-15 px-4 sm:px-6 md:grid-cols-[1fr_1.4fr]">
@@ -103,14 +95,14 @@ export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscr
             <Eyebrow>Status</Eyebrow>
             <h2 className="font-display text-heading">{outcome === "paid" ? amount : c.tag}</h2>
           </div>
-          <div className="flex flex-col gap-4 border border-ink p-6" role="status">
-            <p className="font-mono text-body tracking-[0.03em]">{outcome === "paid" && ticket ? `INGRESSO Nº ${ticket}` : c.tag}</p>
+          <div className={`flex flex-col gap-4 border-2 border-ink p-6 shadow-hard ${outcome === "paid" ? "bg-grass-wash" : "bg-marigold-wash"}`} role="status">
+            {outcome === "paid" && ticket && <p className="text-body font-semibold">Ingresso nº {ticket}</p>}
             <h3 className="font-display text-heading-sm">{c.title}</h3>
             <p className="text-body-md">{c.text}</p>
             {outcome === "open" && code && (
-              <Link href={`/inscricao/${code}`} className="mt-2 self-start border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper">
+              <ButtonLink href={`/inscricao/${code}`} variant="primary" size="md" className="mt-2 self-start">
                 Voltar ao convite
-              </Link>
+              </ButtonLink>
             )}
             <p className="text-body">
               <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">

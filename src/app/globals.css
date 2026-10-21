@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-/* Tokens — "ink-black keynote stage with confetti-bright murals" */
+/* Tokens — marca TSW Summit Brasil, edição Goiânia: papel branco, tinta preta
+   e a dupla Grass + Marigold (conceito visual "goianidade", Remix 2026).
+   Mono só em <code> (links de convite no painel). */
 @theme {
   --color-*: initial;
   --color-obsidian: #000000;
@@ -8,14 +10,18 @@
   --color-paper: #ffffff;
   --color-ash: #e2e2e2;
   --color-graphite: #3d3d3d;
-  --color-mint-wash: #c7f8fb;
-  --color-emerald-band: #24cb71;
-  /* Paleta do mural e dos fundos de card — decoração, nunca controles */
-  --color-indigo: #4a4afc;
-  --color-lavender: #b8b3ff;
-  --color-maroon: #7a2e2e;
-  --color-orange: #ff6b2c;
-  --color-yellow: #ffe74a;
+  /* Paleta oficial do evento. Grass puro só em texto grande (≥24px, 3.7:1 no papel);
+     texto pequeno em verde usa grass-deep (6.4:1). Tinta sobre os dois passa AA. */
+  --color-grass: #439642;
+  --color-grass-deep: #2e6b2d;
+  --color-grass-wash: #e4f0e3;
+  --color-marigold: #eab53d;
+  --color-marigold-wash: #fbf0d6;
+
+  /* Sombra projetada sólida — recurso da marca Techstars, sem blur */
+  --shadow-hard: 6px 6px 0 0 var(--color-ink);
+  --shadow-hard-sm: 4px 4px 0 0 var(--color-ink);
+  --shadow-hard-paper: 4px 4px 0 0 var(--color-paper);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -69,6 +75,39 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-marigold);
+  color: var(--color-ink);
+}
+
+/* Foco visível igual em tudo: contorno Ink de 2px afastado do elemento (Marigold no papel preto) */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+.bg-obsidian :focus-visible,
+[data-theme="dark"] :focus-visible {
+  outline-color: var(--color-marigold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Títulos em Inter Tight bold, como o logo e as peças da marca.
+   Fica na camada components pra que utilitários (ex.: font-normal) ainda possam sobrescrever. */
+@layer components {
+  .font-display {
+    font-weight: 700;
+  }
 }
 
 /* Cantos vivos em tudo — o sistema não tem radius */
