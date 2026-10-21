@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { createInviteAction, updateInviteDiscountAction, type InviteFormState } from "@/app/admin/actions";
 import { CopyButton } from "@/components/copy-button";
@@ -51,26 +52,29 @@ function DiscountFields({ idPrefix, initial = NO_DISCOUNT }: { idPrefix: string;
   );
 }
 
-// Edição do desconto de um convite já criado (lista do painel). Vale para as próximas inscrições.
-export function InviteDiscountForm({ id, discount }: { id: string; discount: InviteDiscount }) {
+// Edição do desconto de um convite já criado (/admin/convites/[id]). Vale para as próximas inscrições.
+export function InviteEditForm({ id, discount }: { id: string; discount: InviteDiscount }) {
   const [state, action, pending] = useActionState(updateInviteDiscountAction, { status: "idle" } as InviteFormState);
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="id" value={id} />
-      <DiscountFields idPrefix={`d-${id}`} initial={discount} />
+      <DiscountFields idPrefix="e-discount" initial={discount} />
+      {state.message && (
+        <p className="text-caption font-semibold" role="alert">
+          — {state.message}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={pending}
-          className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper disabled:cursor-not-allowed disabled:text-ink/50"
+          className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink disabled:cursor-not-allowed disabled:border-ash disabled:text-ink/50 disabled:hover:bg-transparent"
         >
-          {pending ? "Salvando…" : "Salvar desconto"}
+          {pending ? "Salvando…" : "Salvar"}
         </button>
-        {state.message && (
-          <p className="text-caption font-semibold" role="status">
-            — {state.message}
-          </p>
-        )}
+        <Link href="/admin/convites" className="text-body underline underline-offset-4">
+          Cancelar
+        </Link>
       </div>
     </form>
   );

@@ -1,13 +1,15 @@
+import Link from "next/link";
 import { removeInvite, resendInvite, toggleInvite } from "@/app/admin/actions";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
-import { InviteDiscountForm, InviteForm } from "@/components/invite-form";
+import { InviteForm } from "@/components/invite-form";
 import { describeDiscount } from "@/lib/discounts";
 import { listInvites, type Invite } from "@/lib/invites";
 import { appUrl } from "@/lib/stripe";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" });
-const btn = "border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper";
+// Mesma altura pra todos (link, botão solto e botão dentro de form) e sem quebrar o rótulo
+const btn = "inline-flex items-center whitespace-nowrap border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper";
 
 const statusOf = (i: Invite) => (i.revokedAt ? "Revogado" : i.uses >= i.maxUses ? "Esgotado" : "Ativo");
 
@@ -52,17 +54,21 @@ export default async function ConvitesPage() {
                     {i.discount.kind === "none" ? "Sem desconto" : describeDiscount(i.discount).toUpperCase()}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 md:justify-self-end">
+                {/* items-start: sem isso o botão solto (Copiar) estica na altura da linha da grade */}
+                <div className="flex flex-wrap items-start gap-2 self-start md:justify-self-end">
                   <CopyButton text={url} />
+                  <Link href={`/admin/convites/${i.id}`} className={btn}>
+                    Editar
+                  </Link>
                   {i.email && !i.revokedAt && (
-                    <form action={resendInvite}>
+                    <form action={resendInvite} className="flex">
                       <input type="hidden" name="id" value={i.id} />
                       <button type="submit" className={btn}>
                         Reenviar e-mail
                       </button>
                     </form>
                   )}
-                  <form action={toggleInvite}>
+                  <form action={toggleInvite} className="flex">
                     <input type="hidden" name="id" value={i.id} />
                     <input type="hidden" name="action" value={i.revokedAt ? "reactivate" : "revoke"} />
                     <button type="submit" className={btn}>
@@ -70,7 +76,7 @@ export default async function ConvitesPage() {
                     </button>
                   </form>
                   {i.uses === 0 && (
-                    <form action={removeInvite}>
+                    <form action={removeInvite} className="flex">
                       <input type="hidden" name="id" value={i.id} />
                       <button type="submit" className={btn}>
                         Excluir
@@ -78,12 +84,6 @@ export default async function ConvitesPage() {
                     </form>
                   )}
                 </div>
-                <details className="md:col-span-3">
-                  <summary className="cursor-pointer text-caption underline underline-offset-4">Editar desconto</summary>
-                  <div className="mt-4 max-w-[420px]">
-                    <InviteDiscountForm id={i.id} discount={i.discount} />
-                  </div>
-                </details>
               </li>
             );
           })}

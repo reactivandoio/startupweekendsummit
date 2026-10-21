@@ -130,7 +130,7 @@ export async function updateInviteDiscountAction(_prev: InviteFormState, formDat
   if (!discount) return { status: "error", message: DISCOUNT_ERROR };
   await updateInviteDiscount(id, discount);
   revalidatePath("/admin/convites");
-  return { status: "ok", message: "Desconto salvo." };
+  redirect("/admin/convites");
 }
 
 export async function resendInvite(formData: FormData) {

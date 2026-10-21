@@ -56,6 +56,13 @@ export async function listInvites(): Promise<Invite[]> {
   return rows.map(toInvite);
 }
 
+export async function getInvite(id: string): Promise<Invite | null> {
+  await ensureSchema();
+  const [row] = await sql<Row[]>`
+    select i.*, ${usesSubquery()} as uses from invites i where i.id = ${id}`;
+  return row ? toInvite(row) : null;
+}
+
 export async function getInviteByCode(code: string): Promise<Invite | null> {
   await ensureSchema();
   const [row] = await sql<Row[]>`

@@ -18,7 +18,7 @@ export function CopyButton({ text, label = "Copiar link", className = "" }: { te
     <button
       type="button"
       onClick={copy}
-      className={`border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper ${className}`}
+      className={`inline-flex items-center whitespace-nowrap border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper ${className}`}
     >
       {copied ? "Copiado" : label}
     </button>
