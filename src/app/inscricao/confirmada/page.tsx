@@ -52,26 +52,31 @@ async function resolveOpa(id: string): Promise<Resolved> {
   return { outcome: "paid", ...base(registration) };
 }
 
-const copy: Record<Outcome, { tag: string; title: string; text: string }> = {
+// title vai no hero (com o primeiro nome); box é o complemento na caixa de status — nunca o mesmo texto
+const copy: Record<Outcome, { tag: string; title: string; box: string; text: string }> = {
   paid: {
     tag: "OK",
     title: "Inscrição confirmada.",
-    text: "Enviamos o comprovante e o ingresso para o seu e-mail. Em breve mandamos a programação e as orientações pelo WhatsApp cadastrado.",
+    box: "Seu ingresso está no e-mail.",
+    text: "Enviamos o comprovante e o ingresso para o endereço cadastrado. Em breve mandamos a programação e as orientações pelo WhatsApp.",
   },
   processing: {
-    tag: "AGUARDANDO",
+    tag: "Aguardando",
     title: "Pagamento em processamento.",
-    text: "Recebemos seus dados. Assim que o pagamento for compensado (Pix ou boleto podem levar alguns minutos), você recebe a confirmação por e-mail.",
+    box: "A confirmação chega por e-mail.",
+    text: "Recebemos seus dados. Assim que o pagamento for compensado (Pix ou boleto podem levar alguns minutos), você recebe o ingresso por e-mail.",
   },
   open: {
-    tag: "PENDENTE",
+    tag: "Pendente",
     title: "O pagamento não foi concluído.",
-    text: "Você pode voltar ao seu convite e tentar de novo. Se preferir outro meio de pagamento, fale com a organização.",
+    box: "Tente de novo pelo seu convite.",
+    text: "Volte ao convite, confira os dados e refaça o pagamento. Se preferir outro meio, fale com a organização.",
   },
   unknown: {
-    tag: "?",
+    tag: "Não encontrada",
     title: "Não encontramos essa inscrição.",
-    text: "Se você acabou de pagar, aguarde alguns instantes e confira seu e-mail. Em caso de dúvida, fale com a organização.",
+    box: "Confira o seu e-mail.",
+    text: "Se você acabou de pagar, aguarde alguns instantes: a confirmação chega por e-mail. Em caso de dúvida, fale com a organização.",
   },
 };
 
@@ -99,7 +104,7 @@ export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscr
           </div>
           <div className={`flex flex-col gap-4 border-2 border-ink p-6 shadow-hard ${outcome === "paid" ? "bg-grass-wash" : "bg-marigold-wash"}`} role="status">
             {outcome === "paid" && ticket && <p className="text-body font-semibold">Ingresso nº {ticket}</p>}
-            <h3 className="font-display text-heading-sm">{c.title}</h3>
+            <h3 className="font-display text-heading-sm">{outcome === "paid" && amount === "Cortesia" ? "Seu ingresso de cortesia está no e-mail." : c.box}</h3>
             <p className="text-body-md">{c.text}</p>
             {outcome === "open" && code && (
               <ButtonLink href={`/inscricao/${code}`} variant="primary" size="md" className="mt-2 self-start">

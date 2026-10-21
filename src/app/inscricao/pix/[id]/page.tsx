@@ -38,11 +38,27 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
 
   const qr = reg?.status === "pending" && reg.opaBrCode ? await QRCode.toString(reg.opaBrCode, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : null;
 
+  // Estado da página: o hero, a coluna do valor e a caixa contam a mesma história
+  const state = !reg ? "missing" : qr ? "pending" : reg.status === "canceled" ? "canceled" : "expired";
+  const first = reg ? firstName(reg.name) : "";
+  const heroTitle = {
+    missing: "Pagamento não encontrado.",
+    pending: `${first}, falta só o Pix.`,
+    expired: `${first}, o prazo do Pix terminou.`,
+    canceled: `${first}, o pagamento foi cancelado.`,
+  }[state];
+  const sideText = {
+    missing: "Confira se o link chegou completo ou volte ao seu convite para gerar o pagamento de novo.",
+    pending: "Pague pelo app do seu banco. Assim que o Pix cair, esta página confirma sozinha e você recebe o ingresso por e-mail.",
+    expired: "Cada Pix vale por 1 hora. Sua vaga continua reservada pelo convite: gere um novo Pix e pague em seguida.",
+    canceled: "A cobrança foi cancelada. Sua vaga continua reservada pelo convite: gere um novo Pix e pague em seguida.",
+  }[state];
+
   return (
     <>
       <PageHero
         eyebrow="Pagamento"
-        title={reg ? `${firstName(reg.name)}, falta só o Pix.` : "Pagamento não encontrado."}
+        title={heroTitle}
         illustration={illustrations.estacao}
       >
         <EventMeta />
@@ -60,21 +76,22 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
             )}
             <h2 className="font-display text-heading">{reg ? formatBRL(reg.amountCents) : "—"}</h2>
             {reg?.lotName && <p className="text-body-md">{reg.lotName}</p>}
-            <p className="max-w-[40ch] text-body-md">
-              Pague pelo app do seu banco. Assim que o Pix cair, esta página confirma sozinha e você recebe o ingresso por e-mail.
-            </p>
+            <p className="max-w-[40ch] text-body-md">{sideText}</p>
           </div>
 
           <div className="flex flex-col gap-6">
             {!reg ? (
-              <Notice tag="404" title="Não encontramos este pagamento." text="Confira se o link está completo ou volte ao seu convite." />
+              <Notice title="Confira o link do pagamento." text="Ele deve ser o endereço completo que apareceu depois do formulário. Se não encontrar, abra o seu convite e gere o Pix de novo." />
             ) : reg.status !== "pending" || !qr ? (
               <Notice
-                tag={reg.status === "canceled" ? "CANCELADO" : "EXPIRADO"}
-                title="Este Pix não vale mais."
-                text="O prazo de pagamento terminou. Volte ao convite e preencha os dados de novo para gerar outro Pix."
+                title="Gere um novo Pix pelo seu convite."
+                text={
+                  reg.status === "canceled"
+                    ? "Volte ao convite, confira seus dados e gere outro Pix. O novo também vale por 1 hora."
+                    : "Este QR Code e o copia e cola não valem mais. Volte ao convite, confira seus dados e gere outro Pix, válido por mais 1 hora."
+                }
                 href={`/inscricao/${reg.inviteCode}`}
-                cta="Voltar ao convite"
+                cta="Gerar novo Pix"
               />
             ) : (
               <div className="flex flex-col gap-6 border-2 border-ink bg-paper p-6 shadow-hard">
