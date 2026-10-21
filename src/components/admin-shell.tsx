@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { signOut } from "@/app/admin/actions";
 import { site } from "@/content/site";
 import type { User } from "@/lib/auth";
@@ -107,14 +107,30 @@ const readTheme = (): Theme => {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 
-/* Moldura do painel: sidebar preta recolhível + header com breadcrumb + conteúdo com rolagem própria */
+const Burger = ({ open }: { open: boolean }) => (
+  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" {...stroke} strokeWidth={2}>
+    {open ? <path d="M5 5l12 12M17 5L5 17" /> : <path d="M3 6h16M3 11h16M3 16h16" />}
+  </svg>
+);
+
+/* Moldura do painel: sidebar preta (recolhível no desktop pelo ☰ ao lado do logo; gaveta no celular, aberta pelo ☰
+   do cabeçalho) + header com breadcrumb + conteúdo com rolagem própria */
 export function AdminShell({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname();
   // no servidor (e durante a hidratação) usa os padrões; depois lê a preferência salva
   const collapsed = useSyncExternalStore(subscribe, readCollapsed, () => false);
   const theme = useSyncExternalStore(subscribe, readTheme, () => "light" as Theme);
+  const [drawer, setDrawer] = useState(false); // gaveta do celular: não persiste
   const toggle = () => writePref(STORAGE_KEY, collapsed ? "0" : "1");
   const toggleTheme = () => writePref(THEME_KEY, theme === "dark" ? "light" : "dark");
+
+  // gaveta fecha ao escolher uma seção (onClick nos links) e no Esc
+  useEffect(() => {
+    if (!drawer) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawer(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawer]);
 
   // aplica no <html> só enquanto o painel está montado; o site público não usa data-theme
   useEffect(() => {
@@ -128,27 +144,45 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-paper text-ink dark:bg-ink dark:text-paper">
-      {/* Sidebar */}
+      {/* Fundo escurecido atrás da gaveta (celular) */}
+      {drawer && <button type="button" aria-label="Fechar menu" onClick={() => setDrawer(false)} className="fixed inset-0 z-30 bg-ink/60 md:hidden" />}
+
+      {/* Sidebar: gaveta no celular (translate), coluna fixa no desktop (largura 64 ou 16) */}
       <aside
-        className={`flex shrink-0 flex-col justify-between bg-obsidian text-paper transition-[width] duration-150 dark:border-r dark:border-graphite ${
-          collapsed ? "w-16" : "w-16 md:w-64"
-        }`}
+        id="admin-sidebar"
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col justify-between bg-obsidian text-paper transition-[transform,width] duration-150 md:static md:translate-x-0 dark:border-r dark:border-graphite ${
+          drawer ? "translate-x-0" : "-translate-x-full"
+        } ${collapsed ? "md:w-16" : "md:w-64"}`}
       >
         <div className="flex flex-col">
-          <Link href="/admin" aria-label="Painel" className="flex h-16 items-center border-b border-graphite px-4">
-            {collapsed ? (
-              <span className="flex h-8 w-8 items-center justify-center bg-paper font-display text-caption font-bold text-obsidian">
-                ts_
-              </span>
-            ) : (
-              <>
-                <span className="flex h-8 w-8 items-center justify-center bg-paper font-display text-caption font-bold text-obsidian md:hidden">
-                  ts_
-                </span>
-                <Image src="/logo-negativo.svg" alt={site.name} width={86} height={40} priority className="hidden h-[40px] w-auto md:block" />
-              </>
+          <div className={`flex h-16 items-center border-b border-graphite ${collapsed ? "justify-center md:px-0" : "justify-between px-4"}`}>
+            {!collapsed && (
+              <Link href="/admin" aria-label="Painel" className="shrink-0">
+                <Image src="/logo-negativo.svg" alt={site.name} width={86} height={40} priority className="h-[40px] w-auto" />
+              </Link>
             )}
-          </Link>
+            {/* Desktop: recolhe/expande a coluna. Celular: fecha a gaveta. */}
+            <button
+              type="button"
+              onClick={toggle}
+              aria-expanded={!collapsed}
+              aria-controls="admin-sidebar"
+              aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+              title={collapsed ? "Expandir menu" : "Recolher menu"}
+              className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-ink md:flex"
+            >
+              <Burger open={!collapsed} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrawer(false)}
+              aria-label="Fechar menu"
+              title="Fechar menu"
+              className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-ink md:hidden"
+            >
+              <Burger open />
+            </button>
+          </div>
           <nav className="flex flex-col py-2" aria-label="Seções do painel">
             {nav.map((n) => {
               const active = n === current;
@@ -158,12 +192,13 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
                   href={n.href}
                   title={n.label}
                   aria-current={active ? "page" : undefined}
+                  onClick={() => setDrawer(false)}
                   className={`flex h-12 items-center gap-3 border-l-2 px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink ${
                     active ? "border-paper bg-ink" : "border-transparent"
                   }`}
                 >
                   <span className="shrink-0">{n.icon}</span>
-                  <span className={collapsed ? "sr-only" : "sr-only md:not-sr-only md:truncate"}>{n.label}</span>
+                  <span className={collapsed ? "md:sr-only" : "truncate"}>{n.label}</span>
                 </Link>
               );
             })}
@@ -171,7 +206,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
         </div>
 
         <div className="flex flex-col border-t border-graphite">
-          <div className={`flex flex-col gap-1 px-4 py-3 ${collapsed ? "hidden" : "hidden md:flex"}`}>
+          <div className={`flex flex-col gap-1 px-4 py-3 ${collapsed ? "md:hidden" : ""}`}>
             <p className="truncate text-caption" title={user.email}>
               {user.name || user.email}
             </p>
@@ -190,7 +225,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
               <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
                 <path d="M8 3H3v14h5M12 6l4 4-4 4M7 10h9" />
               </svg>
-              <span className={collapsed ? "sr-only" : "sr-only md:not-sr-only"}>Sair</span>
+              <span className={collapsed ? "md:sr-only" : ""}>Sair</span>
             </button>
           </form>
           <button
@@ -209,26 +244,26 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
                 <path d="M16 12.5A7 7 0 0 1 7.5 4a7 7 0 1 0 8.5 8.5Z" />
               </svg>
             )}
-            <span className={collapsed ? "sr-only" : "sr-only md:not-sr-only"}>{theme === "dark" ? "Claro" : "Escuro"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={toggle}
-            aria-expanded={!collapsed}
-            title={collapsed ? "Expandir menu" : "Recolher menu"}
-            className="hidden h-12 items-center gap-3 border-t border-graphite px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink md:flex"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke} className={collapsed ? "rotate-180" : ""}>
-              <path d="M12 4l-6 6 6 6M17 4v12" />
-            </svg>
-            <span className={collapsed ? "sr-only" : ""}>Recolher</span>
+            <span className={collapsed ? "md:sr-only" : ""}>{theme === "dark" ? "Claro" : "Escuro"}</span>
           </button>
         </div>
       </aside>
 
       {/* Coluna de conteúdo: header fixo, main rola */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-ash px-6 dark:border-graphite">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-ash px-4 sm:px-6 dark:border-graphite">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setDrawer(true)}
+              aria-expanded={drawer}
+              aria-controls="admin-sidebar"
+              aria-label="Abrir menu"
+              title="Abrir menu"
+              className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink transition-colors hover:bg-ink hover:text-paper md:hidden dark:border-paper dark:hover:bg-paper dark:hover:text-ink"
+            >
+              <Burger open={false} />
+            </button>
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body tracking-[0.03em]">
             <Link href="/admin" className="hover:underline hover:underline-offset-4">
               Painel
@@ -244,6 +279,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
               </>
             )}
           </nav>
+          </div>
           <Link href="/" className="hidden text-caption tracking-[0.03em] hover:underline hover:underline-offset-4 sm:inline">
             Ver site ↗
           </Link>

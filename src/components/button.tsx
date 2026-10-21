@@ -10,11 +10,11 @@ export type ButtonSize = "lg" | "md" | "sm";
 const base =
   "inline-flex max-w-full items-center justify-center gap-2 border-2 border-ink text-center font-semibold text-ink " +
   "transition-[translate,box-shadow,background-color,color] duration-150 " +
-  "disabled:cursor-not-allowed disabled:opacity-50 dark:border-paper dark:text-paper";
+  "disabled:cursor-not-allowed disabled:opacity-50 dark:border-paper";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-marigold dark:text-ink",
-  secondary: "bg-paper dark:bg-ink",
+  primary: "bg-marigold text-ink",
+  secondary: "bg-paper dark:bg-ink dark:text-paper",
 };
 
 const sizes: Record<ButtonSize, string> = {
