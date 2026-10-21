@@ -2,6 +2,7 @@ import { removeVolunteer } from "@/app/admin/actions";
 import { Eyebrow } from "@/components/eyebrow";
 import { availabilityOptions, volunteerAreas } from "@/content/site";
 import { listVolunteers } from "@/lib/volunteers";
+import { buttonClass } from "@/components/button";
 
 const areaLabel = Object.fromEntries(volunteerAreas.map((a) => [a.value, a.label]));
 const availLabel = Object.fromEntries(availabilityOptions.map((a) => [a.value, a.label]));
@@ -18,7 +19,7 @@ export default async function InscricoesPage() {
             {volunteers.length} {volunteers.length === 1 ? "inscrição" : "inscrições"}
           </h1>
         </div>
-        <a href="/admin/inscricoes.csv" className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink">
+        <a href="/admin/inscricoes.csv" className={buttonClass("secondary", "md")}>
           Baixar CSV
         </a>
       </div>
@@ -53,7 +54,7 @@ export default async function InscricoesPage() {
               </div>
               <form action={removeVolunteer} className="md:justify-self-end">
                 <input type="hidden" name="id" value={v.id} />
-                <button type="submit" className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper">
+                <button type="submit" className={buttonClass("secondary", "sm")}>
                   Remover
                 </button>
               </form>

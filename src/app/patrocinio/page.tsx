@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { ButtonAnchor, buttonClass } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
+import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { SponsorsSection } from "@/components/sponsors-section";
 import { commercialContacts, site, sponsorship, stats } from "@/content/site";
 
@@ -24,8 +25,8 @@ export const metadata: Metadata = {
 
 const commercial = commercialContacts[0];
 
-// Fundos chapados dos cards de cota, na paleta do mural
-const tierColors = ["bg-indigo text-paper", "bg-emerald-band", "bg-mint-wash", "bg-lavender", "bg-yellow"];
+// Fundos chapados dos cards de cota, do mais forte ao mais leve: tinta, Marigold, Grass e os dois tons claros
+const tierColors = ["bg-ink text-paper", "bg-marigold", "bg-grass", "bg-grass-wash", "bg-marigold-wash"];
 
 const reasons = [
   {
@@ -49,35 +50,32 @@ const reasons = [
 function Mark({ v }: { v: boolean | string }) {
   if (v === false) return <span className="text-ash">—</span>;
   if (v === true) return <span aria-label="incluso">▲</span>;
-  return <span className="font-mono tracking-[0.03em]">{v}</span>;
+  return <span className="font-semibold">{v}</span>;
 }
 
 export default function PatrocinioPage() {
   return (
     <>
-      {/* Hero preto com CTA outlined pro comercial */}
-      <section className="bg-obsidian text-paper">
-        <SiteHeader />
-        <div className="mx-auto flex max-w-page flex-col gap-12 px-4 pb-20 pt-16 sm:px-6 md:pb-30 md:pt-30">
-          <div className="flex flex-col gap-6">
-            <Eyebrow light>Patrocínio</Eyebrow>
-            <h1 className="font-display text-display">Seja visto como apoiador do ecossistema empreendedor no Brasil.</h1>
-          </div>
-          <p className="max-w-[60ch] text-body-md">
-            Promova o desenvolvimento de comunidades de startups e respalde a geração de líderes que vai comandar o
-            rumo do empreendedorismo no país. Goiânia recebe o Summit em {site.date}.
-          </p>
-          <a
-            href="#cotas"
-            className="flex h-16 w-full items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
-          >
+      {/* Hero em papel: o Monumento às Três Raças (três figuras erguendo o bloco juntas) */}
+      <PageHero
+        eyebrow="Patrocínio"
+        title="Seja visto como apoiador do ecossistema empreendedor."
+        lead="Ninguém constrói sozinho. Promova as comunidades de startups e respalde a geração de líderes que vai comandar o rumo do empreendedorismo no país."
+        illustration={illustrations.tresRacas}
+      >
+        <EventMeta />
+        <div className="flex flex-col gap-5 sm:flex-row">
+          <a href="#cotas" className={buttonClass("primary", "lg")}>
             Ver cotas de patrocínio
           </a>
+          <a href="#contato" className={buttonClass("secondary", "lg")}>
+            Falar com o comercial
+          </a>
         </div>
-      </section>
+      </PageHero>
 
-      {/* Faixa esmeralda: números da última edição */}
-      <section className="bg-emerald-band text-ink">
+      {/* Faixa Grass: números da última edição */}
+      <section className="bg-grass text-ink">
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 py-15 sm:px-6">
           <div className="flex flex-col gap-6">
             <Eyebrow>Alcance</Eyebrow>
@@ -104,9 +102,8 @@ export default function PatrocinioPage() {
             <h2 className="font-display text-heading">O que sua marca ganha</h2>
           </div>
           <ul className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-            {reasons.map((r, i) => (
-              <li key={r.title} className="flex flex-col gap-4 border-t border-ink pt-4">
-                <span className="font-mono text-body tracking-[0.03em]">{String(i + 1).padStart(2, "0")}</span>
+            {reasons.map((r) => (
+              <li key={r.title} className="flex flex-col gap-4 border-t-4 border-grass pt-4">
                 <h3 className="text-body-md font-semibold">{r.title}</h3>
                 <p className="text-body">{r.text}</p>
               </li>
@@ -126,14 +123,13 @@ export default function PatrocinioPage() {
           </div>
 
           {/* Cards de cota */}
-          <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+          <ul className="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-5">
             {sponsorship.tiers.map((t, i) => (
-              <li key={t.id} className={`flex aspect-square flex-col justify-between p-4 ${tierColors[i]}`}>
-                <span className="font-mono text-body tracking-[0.03em]">{String(i + 1).padStart(2, "0")}</span>
+              <li key={t.id} className={`flex aspect-square flex-col justify-between border-2 border-ink p-5 shadow-hard ${tierColors[i]}`}>
+                <h3 className="font-display text-subheading">{t.name}</h3>
                 <div className="flex flex-col gap-1">
-                  <h3 className="font-display text-subheading">{t.name}</h3>
-                  <p className="text-body-md font-semibold">{t.price}</p>
-                  {t.note && <p className="text-caption">{t.note}</p>}
+                  <p className="font-display text-heading-sm">{t.price}</p>
+                  {t.note && <p className="text-body">{t.note}</p>}
                 </div>
               </li>
             ))}
@@ -193,14 +189,9 @@ export default function PatrocinioPage() {
             <p className="max-w-[40ch] text-body-md">
               Fale com o time comercial pelo WhatsApp ou e-mail. Retornamos com a proposta e os próximos passos.
             </p>
-            <a
-              href={`https://wa.me/${commercial.wa}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-16 items-center justify-center border border-ink text-subheading text-ink transition-colors hover:bg-ink hover:text-paper"
-            >
-              WhatsApp {commercial.phone}
-            </a>
+            <ButtonAnchor href={`https://wa.me/${commercial.wa}`} target="_blank" rel="noreferrer" variant="primary" size="lg" className="self-stretch sm:self-start">
+              Chamar no WhatsApp
+            </ButtonAnchor>
           </div>
           <ul className="flex flex-col border-t border-ink">
             {commercialContacts.map((c) => (

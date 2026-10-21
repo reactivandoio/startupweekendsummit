@@ -27,7 +27,7 @@ function Logo({ sponsor, tier }: { sponsor: Sponsor; tier: SponsorTier }) {
   );
   if (!sponsor.url) return <div className="border border-ash">{img}</div>;
   return (
-    <a href={sponsor.url} target="_blank" rel="noopener noreferrer" className="block border border-ash transition-colors hover:border-ink">
+    <a href={sponsor.url} target="_blank" rel="noopener noreferrer" className="block border border-ash transition-[border-color,box-shadow] hover:border-ink hover:shadow-hard-sm">
       {img}
     </a>
   );
@@ -51,14 +51,19 @@ export async function SponsorsSection() {
 
   return (
     <section id="patrocinadores" className="mx-auto flex w-full max-w-page scroll-mt-8 flex-col gap-15 px-4 sm:px-6">
-      <div className="flex flex-col gap-6">
-        <Eyebrow>Patrocinadores</Eyebrow>
-        <h2 className="font-display text-heading">Quem faz o Summit acontecer</h2>
+      <div className="grid gap-6 md:grid-cols-2 md:items-end">
+        <div className="flex flex-col gap-6">
+          <Eyebrow>Patrocinadores</Eyebrow>
+          <h2 className="font-display text-heading">Quem faz o Summit acontecer</h2>
+        </div>
+        <p className="max-w-[44ch] text-body-md md:justify-self-end">
+          Marcas que apoiam o encontro das lideranças de comunidades de startups do Brasil em Goiânia.
+        </p>
       </div>
       <div className="flex flex-col gap-12">
         {groups.map((g) => (
-          <div key={g.id} className="flex flex-col gap-6 border-t border-ink pt-4">
-            <h3 className="text-caption font-semibold uppercase tracking-[0.03em]">{g.label}</h3>
+          <div key={g.id} className="flex flex-col gap-6 border-t-4 border-grass pt-4">
+            <h3 className="text-body-md font-semibold">{g.label}</h3>
             <ul className={`grid gap-6 ${layout[g.id].grid}`}>
               {g.items.map((s) => (
                 <li key={s.id}>

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import { buttonClass } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
+import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { VolunteerForm } from "@/components/volunteer-form";
 import { benefits, site, steps, volunteerAreas } from "@/content/site";
 
@@ -22,44 +24,31 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title, description: site.seoDescriptionVolunteers },
 };
 
-// Fundos sólidos dos tiles na paleta do evento (Grass + Marigold e seus tons claros)
-const tileColors = ["bg-marigold-wash", "bg-grass", "bg-marigold", "bg-grass-wash"];
-
-// Formas brancas chapadas por cima dos tiles, no mesmo vocabulário do mural
-const tileShapes = [
-  <circle key="c" cx="55" cy="45" r="28" fill="#fff" />,
-  <polygon key="h" points="55,15 82,30 82,60 55,75 28,60 28,30" fill="#fff" />,
-  <polygon key="v" points="25,25 55,75 85,25 70,25 55,50 40,25" fill="#fff" />,
-  <rect key="r" x="30" y="20" width="45" height="45" fill="#fff" />,
+// Um monumento de Goiânia por benefício, sobre os tons claros da paleta (as ilustrações têm fundo branco)
+const tiles = [
+  { src: "/ilustracoes/monumento-85.webp" },
+  { src: "/ilustracoes/teatro-goiania.webp" },
+  { src: "/ilustracoes/trampolim-lago-das-rosas.webp" },
+  { src: "/ilustracoes/relogio-goias.webp" },
 ];
 
 export default function VoluntariosPage() {
   return (
     <>
-      {/* Hero preto com o CTA outlined levando ao formulário */}
-      <section className="bg-obsidian text-paper">
-        <SiteHeader />
-        <div className="mx-auto flex max-w-page flex-col gap-12 px-4 pb-20 pt-16 sm:px-6 md:pb-30 md:pt-30">
-          <div className="flex flex-col gap-6">
-            <Eyebrow light>Voluntariado</Eyebrow>
-            <h1 className="font-display text-display">Faça parte da equipe que traz o Summit da Techstars para Goiânia.</h1>
-          </div>
-          <div className="flex flex-col gap-2 text-body-md">
-            <p className="font-semibold">{site.date}</p>
-            <p>
-              {site.venue} · {site.city} · 3 dias
-            </p>
-          </div>
-          <a
-            href="#inscricao"
-            className="flex h-16 w-full items-center justify-center border border-paper text-subheading transition-colors hover:bg-paper hover:text-obsidian"
-          >
-            Quero ser voluntário
-          </a>
-        </div>
-      </section>
+      {/* Hero em papel: evento no coreto do Lago das Rosas */}
+      <PageHero
+        eyebrow="Voluntariado"
+        title="Faça parte da equipe que traz o Summit para Goiânia."
+        lead="Em Goiânia, a gente faz junto. Recepção, logística, comunicação, fotografia e experiências: tem lugar pra você."
+        illustration={illustrations.coreto}
+      >
+        <EventMeta />
+        <a href="#inscricao" className={buttonClass("primary", "lg", "self-stretch sm:self-start")}>
+          Quero ser voluntário
+        </a>
+      </PageHero>
 
-      {/* Faixa marigold: condições */}
+      {/* Faixa Marigold: condições */}
       <section className="bg-marigold-wash text-ink">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-15 sm:px-6 md:grid-cols-2 md:items-end">
           <div className="flex flex-col gap-4">
@@ -95,13 +84,14 @@ export default function VoluntariosPage() {
           <ul className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map((b, i) => (
               <li key={b.title} className="flex flex-col gap-6">
-                <div className={`relative flex aspect-square items-end p-4 ${tileColors[i % tileColors.length]}`}>
-                  <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" aria-hidden="true">
-                    {tileShapes[i % tileShapes.length]}
-                  </svg>
-                  <span className="relative font-mono text-body tracking-[0.03em] text-ink">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
+                <div className={`relative aspect-square ${i % 2 ? "bg-grass-wash" : "bg-marigold-wash"}`}>
+                  <Image
+                    src={tiles[i % tiles.length].src}
+                    alt=""
+                    fill
+                    sizes="(min-width: 1024px) 280px, (min-width: 640px) 50vw, 100vw"
+                    className="object-contain p-6 mix-blend-multiply"
+                  />
                 </div>
                 <div className="flex flex-col gap-1">
                   <h3 className="text-body-md font-semibold">{b.title}</h3>
@@ -122,11 +112,10 @@ export default function VoluntariosPage() {
               encontra o melhor lugar.
             </p>
           </div>
-          <ul className="border-t border-ink">
-            {volunteerAreas.map((a, i) => (
-              <li key={a.value} className="flex items-baseline gap-6 border-b border-ash py-6">
-                <span className="font-mono text-body tracking-[0.03em]">{String(i + 1).padStart(2, "0")}</span>
-                <span className="font-display text-heading-sm">{a.label}</span>
+          <ul className="grid gap-x-6 md:grid-cols-2">
+            {volunteerAreas.map((a) => (
+              <li key={a.value} className="border-b border-ash py-5 font-display text-subheading first:border-t first:border-t-ink md:nth-2:border-t md:nth-2:border-t-ink">
+                {a.label}
               </li>
             ))}
           </ul>
@@ -140,8 +129,8 @@ export default function VoluntariosPage() {
           </div>
           <ol className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((s, i) => (
-              <li key={s.title} className="flex flex-col gap-4 border-t border-ink pt-4">
-                <span className="font-mono text-body tracking-[0.03em]">{String(i + 1).padStart(2, "0")}</span>
+              <li key={s.title} className="flex flex-col gap-4 border-t-4 border-grass pt-4">
+                <span className="font-display text-heading-sm text-grass-deep">{i + 1}</span>
                 <h3 className="text-body-md font-semibold">{s.title}</h3>
                 <p className="text-body">{s.text}</p>
               </li>

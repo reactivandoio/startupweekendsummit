@@ -4,9 +4,10 @@ import { Eyebrow } from "@/components/eyebrow";
 import { InviteForm } from "@/components/invite-form";
 import { listInvites, type Invite } from "@/lib/invites";
 import { appUrl } from "@/lib/stripe";
+import { buttonClass } from "@/components/button";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" });
-const btn = "border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper";
+const btn = buttonClass("secondary", "sm");
 
 const statusOf = (i: Invite) => (i.revokedAt ? "Revogado" : i.uses >= i.maxUses ? "Esgotado" : "Ativo");
 

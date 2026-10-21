@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 /* Tokens — marca TSW Summit Brasil, edição Goiânia: papel branco, tinta preta
-   e a dupla Grass + Marigold (conceito visual "goianidade", Remix 2026) */
+   e a dupla Grass + Marigold (conceito visual "goianidade", Remix 2026).
+   Mono só em <code> (links de convite no painel). */
 @theme {
   --color-*: initial;
   --color-obsidian: #000000;
@@ -16,19 +17,11 @@
   --color-grass-wash: #e4f0e3;
   --color-marigold: #eab53d;
   --color-marigold-wash: #fbf0d6;
-  /* Legado (paleta "confete" anterior) apontando pra marca nova, pra páginas ainda não
-     migradas (ex.: /patrocinio, em edição na STA-3). Remover depois do merge. */
-  --color-mint-wash: var(--color-marigold-wash);
-  --color-emerald-band: var(--color-grass);
-  --color-indigo: var(--color-grass-deep);
-  --color-lavender: var(--color-grass-wash);
-  --color-maroon: var(--color-grass-deep);
-  --color-orange: var(--color-marigold);
-  --color-yellow: var(--color-marigold);
 
   /* Sombra projetada sólida — recurso da marca Techstars, sem blur */
   --shadow-hard: 6px 6px 0 0 var(--color-ink);
   --shadow-hard-sm: 4px 4px 0 0 var(--color-ink);
+  --shadow-hard-paper: 4px 4px 0 0 var(--color-paper);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -87,6 +80,26 @@ body {
 ::selection {
   background: var(--color-marigold);
   color: var(--color-ink);
+}
+
+/* Foco visível igual em tudo: contorno Ink de 2px afastado do elemento (Marigold no papel preto) */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+.bg-obsidian :focus-visible,
+[data-theme="dark"] :focus-visible {
+  outline-color: var(--color-marigold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Títulos em Inter Tight bold, como o logo e as peças da marca.
