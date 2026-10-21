@@ -8,8 +8,28 @@ const ACCEPTED: Record<string, string> = {
   "image/svg+xml": "svg",
   "image/png": "png",
   "image/webp": "webp",
-  "image/jpeg": "jpg",
 };
+
+const OPAQUE_MESSAGE = "Este arquivo tem fundo opaco e ficaria um bloco preto no site. Envie SVG, PNG ou WebP com fundo transparente.";
+
+// Desenha a imagem num canvas e procura algum pixel com alfa < 255 (amostra em passos pra ser rápido)
+async function hasTransparentPixels(file: File): Promise<boolean> {
+  if (file.type === "image/svg+xml") return true;
+  try {
+    const bmp = await createImageBitmap(file);
+    const w = Math.min(bmp.width, 256), h = Math.min(bmp.height, 256);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return true;
+    ctx.drawImage(bmp, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    for (let i = 3; i < data.length; i += 4) if (data[i] < 255) return true;
+    return false;
+  } catch {
+    return true; // sem como conferir aqui: o servidor confere de novo
+  }
+}
 
 /* Na validação do formulário, cada campo inválido tenta focar a si mesmo; só o primeiro (em ordem no DOM) ganha,
    enquanto o foco ainda está no botão de envio (ou em lugar nenhum). */
@@ -36,6 +56,7 @@ export function FileUpload({
   current,
   hint,
   label = "Arraste o arquivo aqui ou escolha no computador",
+  preview = "image",
 }: {
   id: string;
   name: string;
@@ -44,6 +65,8 @@ export function FileUpload({
   current?: { url: string; alt: string };
   hint?: string;
   label?: string;
+  /** "logo": prévia como no site (preto sobre branco) e exige fundo transparente */
+  preview?: "image" | "logo";
 }) {
   const input = useRef<HTMLInputElement>(null);
   const zone = useRef<HTMLButtonElement>(null);
@@ -65,18 +88,23 @@ export function FileUpload({
     setPicked(null);
   };
 
-  const accept = (f: File | undefined) => {
+  const accept = async (f: File | undefined) => {
     if (!f) return;
     const ext = f.name.split(".").pop()?.toLowerCase();
-    const okType = f.type in ACCEPTED || (!f.type && ext && Object.values(ACCEPTED).includes(ext === "jpeg" ? "jpg" : ext));
+    const okType = f.type in ACCEPTED || (!f.type && ext && Object.values(ACCEPTED).includes(ext));
     if (!okType) {
       clear();
-      setError("Formato não aceito. Use SVG, PNG, WebP ou JPG.");
+      setError(preview === "logo" ? "Formato não aceito. Use SVG, PNG ou WebP com fundo transparente." : "Formato não aceito. Use SVG, PNG ou WebP.");
       return;
     }
     if (f.size > maxBytes) {
       clear();
       setError(`O arquivo tem ${formatBytes(f.size)} e o limite é ${formatBytes(maxBytes)}. Exporte uma versão menor.`);
+      return;
+    }
+    if (preview === "logo" && !(await hasTransparentPixels(f))) {
+      clear();
+      setError(OPAQUE_MESSAGE);
       return;
     }
     setError(null);
@@ -129,14 +157,17 @@ export function FileUpload({
           onDrop={onDrop}
         >
           <div className="flex items-center gap-4">
-            <span className="relative block h-20 w-32 shrink-0 bg-[repeating-conic-gradient(var(--color-ash)_0_25%,transparent_0_50%)] bg-[length:16px_16px]">
-              <Image src={shown.src} alt="" fill unoptimized sizes="128px" className="object-contain p-2" />
+            <span
+              className={`relative block h-20 w-32 shrink-0 ${preview === "logo" ? "border border-ash bg-paper" : "bg-[repeating-conic-gradient(var(--color-ash)_0_25%,transparent_0_50%)] bg-[length:16px_16px]"}`}
+              title={preview === "logo" ? "Como vai aparecer no site" : undefined}
+            >
+              <Image src={shown.src} alt="" fill unoptimized sizes="128px" className={`object-contain p-2 ${preview === "logo" ? "logo-mono" : ""}`} />
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <p className="truncate text-body font-semibold" title={shown.title}>
                 {shown.title}
               </p>
-              <p className="text-caption">{shown.meta ?? "Arraste outro arquivo aqui para trocar."}</p>
+              <p className="text-caption">{shown.meta ?? "Arraste outro arquivo aqui para trocar."}{preview === "logo" ? " Prévia como no site: preto sobre branco." : ""}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -170,7 +201,7 @@ export function FileUpload({
             <path d="M16 22V6M9 13l7-7 7 7M5 20v6h22v-6" />
           </svg>
           <span className="text-body font-semibold">{label}</span>
-          <span className="text-caption">SVG, PNG, WebP ou JPG até {formatBytes(maxBytes)}</span>
+          <span className="text-caption">SVG, PNG ou WebP com fundo transparente, até {formatBytes(maxBytes)}</span>
         </button>
       )}
 
