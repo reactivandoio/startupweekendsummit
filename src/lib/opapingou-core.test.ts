@@ -1,0 +1,75 @@
+// pnpm test — roteiro de testes do guia do Opa Pingou (item 4: verificação de assinatura) e utilitários
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { chargeEventStatus, isOpaApiKey, isOpaTestKey, maskOpaKey, parseOpaEvent, signOpaPayload, verifyOpaSignature } from "./opapingou-core.ts";
+
+const secret = "whsec_Zx3kQ8mT1vN7pR5sB2cD9fG4hJ6wY0aL";
+const body = JSON.stringify({
+  id: "e6f7a8b9-0c1d-4e2f-83a4-b5c6d7e8f9a0",
+  type: "charge.paid",
+  occurredAt: "2026-10-03T14:32:00.000Z",
+  testMode: true,
+  data: { type: "charge", object: { id: "9a8b7c6d-5e4f-4321-a0b1-c2d3e4f5a6b7", status: "PAID", amountCents: 35000 } },
+});
+const now = 1_791_037_920_000;
+const t = now / 1000;
+const header = (ts = t, sig = signOpaPayload(body, ts, secret)) => `t=${ts},v1=${sig}`;
+
+describe("verifyOpaSignature", () => {
+  it("aceita assinatura válida", () => {
+    assert.equal(verifyOpaSignature(body, header(), secret, now), true);
+  });
+  it("aceita hex em maiúsculas e espaços entre as partes", () => {
+    assert.equal(verifyOpaSignature(body, `t=${t}, v1=${signOpaPayload(body, t, secret).toUpperCase()}`, secret, now), true);
+  });
+  it("rejeita corpo alterado", () => {
+    assert.equal(verifyOpaSignature(body.replace("35000", "1"), header(), secret, now), false);
+  });
+  it("rejeita segredo errado", () => {
+    assert.equal(verifyOpaSignature(body, header(), "whsec_outro", now), false);
+  });
+  it("rejeita t com mais de 300 s de diferença, para os dois lados", () => {
+    assert.equal(verifyOpaSignature(body, header(t - 301), secret, now), false);
+    assert.equal(verifyOpaSignature(body, header(t + 301), secret, now), false);
+    assert.equal(verifyOpaSignature(body, header(t - 300), secret, now), true);
+  });
+  it("rejeita cabeçalho ausente ou malformado", () => {
+    assert.equal(verifyOpaSignature(body, null, secret, now), false);
+    assert.equal(verifyOpaSignature(body, "v1=abc", secret, now), false);
+    assert.equal(verifyOpaSignature(body, `t=${t}`, secret, now), false);
+    assert.equal(verifyOpaSignature(body, `t=${t},v1=abc`, secret, now), false);
+  });
+});
+
+describe("parseOpaEvent", () => {
+  it("lê o evento de cobrança", () => {
+    const e = parseOpaEvent(body);
+    assert.equal(e?.type, "charge.paid");
+    assert.equal(e?.data.object.id, "9a8b7c6d-5e4f-4321-a0b1-c2d3e4f5a6b7");
+    assert.equal(chargeEventStatus[e!.type], "paid");
+  });
+  it("ignora o que não é evento", () => {
+    assert.equal(parseOpaEvent("não é json"), null);
+    assert.equal(parseOpaEvent(JSON.stringify({ id: "x", type: "ping" })), null);
+  });
+  it("ping e eventos de pagamento não mudam inscrição", () => {
+    assert.equal(chargeEventStatus["ping"], undefined);
+    assert.equal(chargeEventStatus["payment.confirmed"], undefined);
+  });
+});
+
+describe("chave de API", () => {
+  const live = `opk_live_${"a".repeat(43)}`;
+  const test = `opk_test_${"B".repeat(40)}-_9`;
+  it("valida o formato", () => {
+    assert.equal(isOpaApiKey(live), true);
+    assert.equal(isOpaApiKey(test), true);
+    assert.equal(isOpaApiKey(`opk_live_${"a".repeat(42)}`), false);
+    assert.equal(isOpaApiKey(`sk_live_${"a".repeat(43)}`), false);
+  });
+  it("identifica teste e mascara", () => {
+    assert.equal(isOpaTestKey(test), true);
+    assert.equal(isOpaTestKey(live), false);
+    assert.equal(maskOpaKey(live), "opk_live_…aaaa");
+  });
+});

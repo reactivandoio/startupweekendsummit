@@ -48,7 +48,9 @@ por e-mail (válido por 15 min, uso único) que abre uma sessão de 30 dias. O p
 e-mail com link de entrada — o botão "Reenviar convite" manda outro, e diz na tela se o envio falhou.
 
 - `/admin` — inscrições de voluntários, com exportação em `/admin/inscricoes.csv`
-- `/admin/participantes` — inscrições pagas/pendentes do evento, com exportação em `/admin/participantes.csv`
+- `/admin/participantes` — inscrições pagas/pendentes do evento, com exportação em `/admin/participantes.csv` e o botão
+  "Conferir Pix pendentes" (consulta no Opa Pingou as cobranças cujo webhook não chegou)
+- `/admin/ingressos` — chave do Opa Pingou, webhook e lotes de ingresso
 - `/admin/convites` — cria os links de inscrição (e envia por e-mail, se informado)
 - `/admin/patrocinadores` — patrocinadores do site (ver abaixo)
 - `/admin/usuarios` — quem pode entrar
@@ -68,20 +70,39 @@ montado em `/uploads` nas duas cores do blue/green (`UPLOADS_DIR`), e são servi
 cache longo — cada envio gera um nome novo. Trocar ou excluir o logo apaga o arquivo antigo. Backup: o volume
 `startupweekendsummit_uploads` junto com o dump do Postgres (a tabela `sponsors` aponta para esses arquivos).
 
-## Inscrição no evento (por convite + Stripe)
+## Inscrição no evento (por convite + Opa Pingou)
 
-Ingresso de valor único (`TICKET_PRICE_CENTS`, em centavos). O formulário só existe atrás de um convite:
-`/inscricao/<código>`, gerado em `/admin/convites` com o número de vagas que ele libera. O participante informa
-nome completo, e-mail, WhatsApp, CPF e data de nascimento, vai para o Checkout do Stripe e volta em
-`/inscricao/confirmada`. A confirmação definitiva vem pelo webhook (`/api/stripe/webhook`), que marca a inscrição
-como paga e envia o e-mail de comprovante; a página de retorno também consulta o Stripe, então cartão confirma na
-hora e Pix/boleto ficam "aguardando" até o `async_payment_succeeded`. Um checkout aberto segura a vaga do convite
-por 1 hora (mesmo prazo de expiração da sessão no Stripe).
+O formulário só existe atrás de um convite: `/inscricao/<código>`, gerado em `/admin/convites` com o número de vagas
+que ele libera. O participante informa nome completo, e-mail, WhatsApp, CPF e data de nascimento e paga por Pix.
 
-No painel do Stripe: pegue a chave secreta (`STRIPE_SECRET_KEY`), crie o endpoint de webhook apontando para
-`https://startupweekendsummit.com.br/api/stripe/webhook` com os quatro eventos `checkout.session.*` listados no
-`.env.example` e copie o signing secret (`STRIPE_WEBHOOK_SECRET`). Os meios de pagamento (cartão, Pix, boleto)
-são os habilitados na conta.
+**Lotes** (`/admin/ingressos`): cada lote tem nome, valor e quantidade (vazia = sem limite). O primeiro lote ativo
+com vaga, na ordem da lista, é o que está à venda; quando esgota, o próximo entra sozinho. Sem nenhum lote
+cadastrado vale o valor único de `TICKET_PRICE_CENTS` no `.env`, como antes.
+
+**Opa Pingou** (Pix): a chave de API é configurada no painel, em `/admin/ingressos` (não no `.env`); o painel valida a
+chave na API antes de salvar. Depois, "Cadastrar webhook" cria o endpoint `https://<APP_URL>/api/opapingou/webhook`
+(eventos `charge.paid`, `charge.expired`, `charge.canceled`) e guarda o segredo de assinatura; "Enviar teste" dispara
+um `ping`. A chave precisa dos escopos `charges:write`, `charges:read`, `webhooks:read` e `webhooks:write`. Use
+`opk_test_…` para testar sem dinheiro — staging não é sandbox. `OPAPINGOU_API_URL` (opcional) aponta para staging;
+o padrão é produção. Referência completa da API em `docs/opapingou-api.md`.
+
+Fluxo: o formulário cria a inscrição pendente e uma cobrança Pix de 1 hora (`Idempotency-Key` = id da inscrição) e
+leva para `/inscricao/pix/<id>`, com QR Code e copia e cola. A página se atualiza a cada 5 s; o webhook (assinatura
+`Opa-Signature` verificada, eventos deduplicados por id) marca a inscrição como paga e envia o e-mail com o ingresso
+(número de 8 caracteres, o mesmo do painel). "Já paguei" e o fim do prazo consultam a cobrança direto na API. O Pix
+aberto segura a vaga do convite e do lote por 1 hora.
+
+**Stripe** (legado): sem chave do Opa Pingou no painel, o formulário usa o Checkout do Stripe como antes
+(`STRIPE_SECRET_KEY`, webhook `/api/stripe/webhook` com os quatro eventos `checkout.session.*` e
+`STRIPE_WEBHOOK_SECRET`). Inscrições antigas do Stripe continuam sendo confirmadas pelo webhook dele.
+
+## Testes
+
+```bash
+pnpm test    # node:test (type stripping do Node 24): assinatura do webhook e utilitários do Opa Pingou
+pnpm lint
+pnpm build
+```
 
 ## Deploy
 
@@ -95,7 +116,10 @@ atualiza o código em `/mnt/hd2tb/projetos/startupweekendsummit` e roda `bash de
 - `src/components/volunteer-form.tsx` — formulário (client component, `useActionState`).
 - `src/app/actions.ts` — validação server-side da inscrição.
 - `src/lib/volunteers.ts` — inscrições de voluntários no Postgres.
-- `src/app/inscricao/` — página do convite, ação que abre o Checkout e página de retorno; `src/lib/invites.ts`,
-  `src/lib/registrations.ts` e `src/lib/stripe.ts` — convites, inscrições pagas e cliente Stripe.
+- `src/app/inscricao/` — página do convite, ação que gera o Pix (ou abre o Checkout), página do Pix e de retorno;
+  `src/lib/invites.ts`, `src/lib/registrations.ts`, `src/lib/tickets.ts` (lotes e o que está à venda),
+  `src/lib/opapingou.ts` (cliente REST), `src/lib/opapingou-core.ts` (assinatura, testado),
+  `src/lib/ticket-payments.ts` (aplica o estado da cobrança) e `src/lib/stripe.ts` — convites, inscrições, pagamentos.
+- `src/lib/settings.ts` — configurações editadas no painel (chave e webhook do Opa Pingou).
 - `src/lib/auth.ts` — magic link, sessões e usuários do painel; `src/lib/mail.ts` — envio de e-mail (SMTP).
 - `src/lib/sponsors.ts` e `src/lib/uploads.ts` — patrocinadores no Postgres e arquivos de logo no volume de uploads.

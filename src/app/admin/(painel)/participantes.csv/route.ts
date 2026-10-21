@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { formatCpf, formatPhone } from "@/lib/cpf";
+import { ticketNumber } from "@/lib/mail";
 import { listRegistrations } from "@/lib/registrations";
 
 const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
@@ -7,7 +8,7 @@ const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
 export async function GET() {
   if (!(await getCurrentUser())) return new Response("Unauthorized", { status: 401 });
   const rows = await listRegistrations();
-  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "status", "valor", "pago_em", "convite", "stripe_payment_intent", "iniciada_em"];
+  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "status", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "stripe_payment_intent", "cobranca_opapingou", "iniciada_em"];
   const lines = rows.map((r) =>
     [
       r.name,
@@ -19,7 +20,11 @@ export async function GET() {
       (r.amountCents / 100).toFixed(2).replace(".", ","),
       r.paidAt ?? "",
       r.inviteName,
+      r.lotName,
+      r.status === "paid" ? ticketNumber(r.id) : "",
+      r.provider,
       r.stripePaymentIntent ?? "",
+      r.opaChargeId ?? "",
       r.createdAt,
     ]
       .map(esc)

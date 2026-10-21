@@ -33,6 +33,16 @@ const nav: NavItem[] = [
     ),
   },
   {
+    href: "/admin/ingressos",
+    label: "Ingressos",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+        <path d="M3 4h14v12H3z" />
+        <path d="M3 8h14M7 12h2M11 12h2" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/convites",
     label: "Convites",
     icon: (

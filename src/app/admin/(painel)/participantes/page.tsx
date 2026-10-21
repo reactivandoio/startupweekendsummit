@@ -1,6 +1,7 @@
-import { removeRegistration } from "@/app/admin/actions";
+import { reconcileOpaCharges, removeRegistration } from "@/app/admin/actions";
 import { Eyebrow } from "@/components/eyebrow";
 import { formatBRL, formatCpf, formatPhone } from "@/lib/cpf";
+import { ticketNumber } from "@/lib/mail";
 import { listRegistrations, type RegistrationStatus } from "@/lib/registrations";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
@@ -18,6 +19,7 @@ export default async function ParticipantesPage() {
   const paid = all.filter((r) => r.status === "paid");
   const pending = all.filter((r) => r.status === "pending");
   const total = paid.reduce((sum, r) => sum + r.amountCents, 0);
+  const pendingPix = pending.filter((r) => r.opaChargeId).length;
   return (
     <div className="flex flex-col gap-10">
       <div className="flex flex-wrap items-end justify-between gap-6">
@@ -30,9 +32,22 @@ export default async function ParticipantesPage() {
             {formatBRL(total)} recebidos · {pending.length} {pending.length === 1 ? "pendente" : "pendentes"}
           </p>
         </div>
-        <a href="/admin/participantes.csv" className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink">
-          Baixar CSV
-        </a>
+        <div className="flex flex-wrap gap-2">
+          {pendingPix > 0 && (
+            <form action={reconcileOpaCharges}>
+              <button
+                type="submit"
+                title="Consulta no Opa Pingou as cobranças Pix pendentes, caso algum webhook não tenha chegado"
+                className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink"
+              >
+                Conferir {pendingPix} {pendingPix === 1 ? "Pix pendente" : "Pix pendentes"}
+              </button>
+            </form>
+          )}
+          <a href="/admin/participantes.csv" className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink">
+            Baixar CSV
+          </a>
+        </div>
       </div>
 
       {all.length === 0 ? (
@@ -54,9 +69,11 @@ export default async function ParticipantesPage() {
                 <p>CPF {formatCpf(r.cpf)}</p>
                 <p>Nascimento {fmtDate.format(new Date(`${r.birthDate}T00:00:00Z`))}</p>
                 <p className="text-caption">Convite: {r.inviteName || "aberto"}</p>
+                {r.lotName && <p className="text-caption">Lote: {r.lotName}</p>}
               </div>
               <div className="flex flex-col gap-1 text-body">
                 <p className="font-semibold">{statusLabel[r.status]}</p>
+                {r.status === "paid" && <p className="font-mono text-caption">Ingresso nº {ticketNumber(r.id)}</p>}
                 <p className="text-caption">
                   {r.status === "paid" && r.paidAt ? `${formatBRL(r.amountCents)} em ${fmt.format(new Date(r.paidAt))}` : `iniciada em ${fmt.format(new Date(r.createdAt))}`}
                 </p>
@@ -69,6 +86,11 @@ export default async function ParticipantesPage() {
                   >
                     Ver no Stripe ↗
                   </a>
+                )}
+                {r.opaChargeId && (
+                  <p className="break-all text-caption" title="Id da cobrança no Opa Pingou">
+                    Pix Opa Pingou · {r.opaChargeId}
+                  </p>
                 )}
               </div>
               {r.status !== "paid" && (

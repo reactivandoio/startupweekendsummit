@@ -83,6 +83,38 @@ export function ensureSchema() {
           paid_at timestamptz
         )`;
       await sql`create index if not exists registrations_invite_idx on registrations (invite_id, status)`;
+      // Configurações editadas no painel (/admin/ingressos), como a chave do Opa Pingou
+      await sql`
+        create table if not exists settings (
+          key text primary key,
+          value text not null,
+          updated_at timestamptz not null default now(),
+          updated_by uuid references users(id) on delete set null
+        )`;
+      // Lotes de ingresso: o primeiro ativo (por posição) que ainda tem vaga é o que está à venda
+      await sql`
+        create table if not exists ticket_lots (
+          id uuid primary key default gen_random_uuid(),
+          name text not null,
+          price_cents int not null,
+          quantity int,
+          active boolean not null default true,
+          position int not null default 0,
+          created_at timestamptz not null default now()
+        )`;
+      // Inscrições pagas pelo Opa Pingou (Pix): cobrança, copia e cola e prazo; Stripe continua para as antigas
+      await sql`alter table registrations add column if not exists provider text not null default 'stripe'`;
+      await sql`alter table registrations add column if not exists lot_id uuid references ticket_lots(id) on delete set null`;
+      await sql`alter table registrations add column if not exists opa_charge_id text unique`;
+      await sql`alter table registrations add column if not exists opa_br_code text`;
+      await sql`alter table registrations add column if not exists opa_expires_at timestamptz`;
+      // Webhooks do Opa Pingou já processados (o mesmo evento pode chegar mais de uma vez)
+      await sql`
+        create table if not exists opa_events (
+          id text primary key,
+          type text not null,
+          received_at timestamptz not null default now()
+        )`;
       // Patrocinadores do site: logo é o nome do arquivo no volume de uploads; position ordena dentro da categoria
       await sql`
         create table if not exists sponsors (

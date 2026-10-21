@@ -1,5 +1,6 @@
 import "server-only";
 import { ensureSchema, sql } from "@/lib/db";
+import type { PaymentProvider } from "@/lib/tickets";
 
 export type RegistrationStatus = "pending" | "paid" | "expired" | "canceled";
 
@@ -17,6 +18,12 @@ export type Registration = {
   amountCents: number;
   stripeSessionId: string | null;
   stripePaymentIntent: string | null;
+  provider: PaymentProvider;
+  lotId: string | null;
+  lotName: string;
+  opaChargeId: string | null;
+  opaBrCode: string | null;
+  opaExpiresAt: string | null;
   createdAt: string;
   paidAt: string | null;
 };
@@ -35,6 +42,12 @@ type Row = {
   amount_cents: number;
   stripe_session_id: string | null;
   stripe_payment_intent: string | null;
+  provider: PaymentProvider;
+  lot_id: string | null;
+  lot_name?: string | null;
+  opa_charge_id: string | null;
+  opa_br_code: string | null;
+  opa_expires_at: Date | null;
   created_at: Date;
   paid_at: Date | null;
 };
@@ -53,11 +66,19 @@ const toRegistration = (r: Row): Registration => ({
   amountCents: r.amount_cents,
   stripeSessionId: r.stripe_session_id,
   stripePaymentIntent: r.stripe_payment_intent,
+  provider: r.provider,
+  lotId: r.lot_id,
+  lotName: r.lot_name ?? "",
+  opaChargeId: r.opa_charge_id,
+  opaBrCode: r.opa_br_code,
+  opaExpiresAt: r.opa_expires_at ? r.opa_expires_at.toISOString() : null,
   createdAt: r.created_at.toISOString(),
   paidAt: r.paid_at ? r.paid_at.toISOString() : null,
 });
 
-const withInvite = () => sql`select r.*, i.name as invite_name, i.code as invite_code from registrations r join invites i on i.id = r.invite_id`;
+const withInvite = () => sql`
+  select r.*, i.name as invite_name, i.code as invite_code, l.name as lot_name
+  from registrations r join invites i on i.id = r.invite_id left join ticket_lots l on l.id = r.lot_id`;
 
 export async function listRegistrations(): Promise<Registration[]> {
   await ensureSchema();
@@ -77,6 +98,19 @@ export async function getRegistrationBySession(sessionId: string): Promise<Regis
   return row ? toRegistration(row) : null;
 }
 
+export async function getRegistrationByCharge(chargeId: string): Promise<Registration | null> {
+  await ensureSchema();
+  const [row] = await sql<Row[]>`${withInvite()} where r.opa_charge_id = ${chargeId}`;
+  return row ? toRegistration(row) : null;
+}
+
+// Pendentes do Opa Pingou com cobrança (o painel confere uma a uma na API)
+export async function listPendingOpaRegistrations(): Promise<Registration[]> {
+  await ensureSchema();
+  const rows = await sql<Row[]>`${withInvite()} where r.status = 'pending' and r.opa_charge_id is not null order by r.created_at`;
+  return rows.map(toRegistration);
+}
+
 // Mesma pessoa (e-mail ou CPF) já com ingresso pago?
 export async function findPaidRegistration(email: string, cpf: string): Promise<Registration | null> {
   await ensureSchema();
@@ -93,11 +127,13 @@ export async function createRegistration(data: {
   cpf: string;
   birthDate: string;
   amountCents: number;
+  provider: PaymentProvider;
+  lotId: string | null;
 }): Promise<Registration> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
-    insert into registrations (invite_id, name, email, phone, cpf, birth_date, amount_cents)
-    values (${data.inviteId}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents})
+    insert into registrations (invite_id, name, email, phone, cpf, birth_date, amount_cents, provider, lot_id)
+    values (${data.inviteId}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents}, ${data.provider}, ${data.lotId})
     returning *`;
   return toRegistration(row);
 }
@@ -105,6 +141,13 @@ export async function createRegistration(data: {
 export async function attachStripeSession(id: string, sessionId: string) {
   await ensureSchema();
   await sql`update registrations set stripe_session_id = ${sessionId} where id = ${id}`;
+}
+
+export async function attachOpaCharge(id: string, charge: { id: string; brCode: string | null; expiresAt: string }) {
+  await ensureSchema();
+  await sql`
+    update registrations set opa_charge_id = ${charge.id}, opa_br_code = ${charge.brCode}, opa_expires_at = ${charge.expiresAt}
+    where id = ${id}`;
 }
 
 // Idempotente: só a primeira chamada retorna a inscrição (quem retorna, envia o e-mail de confirmação)
