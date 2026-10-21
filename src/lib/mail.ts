@@ -1,6 +1,9 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { site } from "@/content/site";
+import { accessInviteMail, inviteMail, loginLinkMail, registrationConfirmedMail, type Mail } from "./mail-templates.ts";
+
+export { ticketNumber } from "./mail-templates.ts";
 
 // SMTP (Mailgun, mesmo do termhub). Sem SMTP_HOST configurado, loga o e-mail no console — útil em dev.
 function transport() {
@@ -13,7 +16,7 @@ function transport() {
   });
 }
 
-export async function sendMail(opts: { to: string; subject: string; text: string; html: string }) {
+export async function sendMail(opts: { to: string } & Mail) {
   const from = process.env.EMAIL_FROM ?? `${site.shortName} <${site.contactEmail}>`;
   const t = transport();
   if (!t) {
@@ -23,90 +26,13 @@ export async function sendMail(opts: { to: string; subject: string; text: string
   await t.sendMail({ from, ...opts });
 }
 
-export function sendLoginLink(to: string, url: string) {
-  const text = `Seu link de acesso ao painel do ${site.shortName}:\n\n${url}\n\nEle vale por 15 minutos e só pode ser usado uma vez. Se você não pediu este acesso, ignore este e-mail.`;
-  const html = `
-    <div style="font-family:Inter,Helvetica,Arial,sans-serif;color:#0f0f0f;max-width:520px">
-      <p style="font-size:13px;letter-spacing:.03em;text-transform:uppercase;font-weight:600;margin:0 0 16px">${site.shortName}</p>
-      <h1 style="font-size:24px;font-weight:400;line-height:1.1;margin:0 0 24px">Seu link de acesso ao painel</h1>
-      <p style="margin:0 0 24px"><a href="${url}" style="display:inline-block;border:1px solid #0f0f0f;padding:16px 24px;color:#0f0f0f;text-decoration:none;font-size:18px">Entrar no painel</a></p>
-      <p style="font-size:14px;line-height:1.4;margin:0 0 8px">Ou copie e cole no navegador:<br><a href="${url}" style="color:#0f0f0f">${url}</a></p>
-      <p style="font-size:13px;line-height:1.4;color:#555;margin:24px 0 0">Vale por 15 minutos e só pode ser usado uma vez. Se você não pediu este acesso, ignore este e-mail.</p>
-    </div>`;
-  return sendMail({ to, subject: `Acesso ao painel — ${site.shortName}`, text, html });
-}
+export const sendLoginLink = (to: string, url: string) => sendMail({ to, ...loginLinkMail(url) });
 
-// Convite de acesso ao painel: vai para quem acabou de ser cadastrado em /admin/usuarios
-// e ainda não sabe que tem acesso. Leva um link que já entra (uso único, 15 min) e, logo
-// abaixo, o caminho pra pedir outro quando esse expirar.
-export function sendAccessInvite(to: string, name: string, url: string, loginUrl: string) {
-  const hi = name ? `Olá, ${name}.` : "Olá.";
-  const text = `${hi}\n\nVocê recebeu acesso ao painel do ${site.shortName}.\n\nEntre por este link:\n${url}\n\nEle vale por 15 minutos e só pode ser usado uma vez. Se expirar, abra ${loginUrl}, informe este e-mail e um link novo chega na hora. Não há senha.`;
-  const html = `
-    <div style="font-family:Inter,Helvetica,Arial,sans-serif;color:#0f0f0f;max-width:520px">
-      <p style="font-size:13px;letter-spacing:.03em;text-transform:uppercase;font-weight:600;margin:0 0 16px">${site.shortName}</p>
-      <h1 style="font-size:24px;font-weight:400;line-height:1.1;margin:0 0 24px">Você tem acesso ao painel</h1>
-      <p style="font-size:16px;line-height:1.4;margin:0 0 24px">${hi} Você foi incluído(a) no painel do ${site.shortName}, onde ficam as inscrições, os convites e os participantes.</p>
-      <p style="margin:0 0 24px"><a href="${url}" style="display:inline-block;border:1px solid #0f0f0f;padding:16px 24px;color:#0f0f0f;text-decoration:none;font-size:18px">Entrar no painel</a></p>
-      <p style="font-size:14px;line-height:1.4;margin:0 0 8px">Ou copie e cole no navegador:<br><a href="${url}" style="color:#0f0f0f">${url}</a></p>
-      <p style="font-size:13px;line-height:1.4;color:#555;margin:24px 0 0">O link vale por 15 minutos e só pode ser usado uma vez. Se expirar, abra <a href="${loginUrl}" style="color:#0f0f0f">${loginUrl}</a>, informe este e-mail e um link novo chega na hora. Não há senha.</p>
-    </div>`;
-  return sendMail({ to, subject: `Seu acesso ao painel — ${site.shortName}`, text, html });
-}
+// Convite de acesso ao painel: vai para quem acabou de ser cadastrado em /admin/usuarios (e no reenvio)
+export const sendAccessInvite = (to: string, name: string, url: string, loginUrl: string) => sendMail({ to, ...accessInviteMail(name, url, loginUrl) });
 
-// Moldura comum dos e-mails transacionais, no mesmo vocabulário do link de acesso
-function layout(title: string, body: string) {
-  return `
-    <div style="font-family:Inter,Helvetica,Arial,sans-serif;color:#0f0f0f;max-width:520px">
-      <p style="font-size:13px;letter-spacing:.03em;text-transform:uppercase;font-weight:600;margin:0 0 16px">${site.shortName}</p>
-      <h1 style="font-size:24px;font-weight:400;line-height:1.1;margin:0 0 24px">${title}</h1>
-      ${body}
-      <p style="font-size:13px;line-height:1.4;color:#555;margin:24px 0 0">${site.date} · ${site.city}. Dúvidas: <a href="${site.whatsappUrl}" style="color:#0f0f0f">WhatsApp ${site.whatsapp}</a> ou <a href="mailto:${site.contactEmail}" style="color:#0f0f0f">${site.contactEmail}</a>.</p>
-    </div>`;
-}
-
-const button = (url: string, label: string) =>
-  `<p style="margin:0 0 24px"><a href="${url}" style="display:inline-block;border:1px solid #0f0f0f;padding:16px 24px;color:#0f0f0f;text-decoration:none;font-size:18px">${label}</a></p>`;
-
-export function sendInvite(to: string, name: string, url: string) {
-  const hi = name ? `Olá, ${name}.` : "Olá.";
-  const text = `${hi}\n\nVocê foi convidado(a) para o ${site.name}, em ${site.city}, ${site.date}.\n\nGaranta sua vaga pelo link:\n${url}\n\nO link é pessoal. Dúvidas: ${site.whatsapp} ou ${site.contactEmail}.`;
-  const html = layout(
-    `Você foi convidado(a) para o ${site.shortName}`,
-    `<p style="font-size:16px;line-height:1.4;margin:0 0 24px">${hi} Sua inscrição é por convite: preencha seus dados e conclua o pagamento pelo link abaixo.</p>
-     ${button(url, "Fazer minha inscrição")}
-     <p style="font-size:14px;line-height:1.4;margin:0 0 8px">Ou copie e cole no navegador:<br><a href="${url}" style="color:#0f0f0f">${url}</a></p>
-     <p style="font-size:14px;line-height:1.4;margin:0">O link é pessoal — não compartilhe.</p>`,
-  );
-  return sendMail({ to, subject: `Seu convite — ${site.shortName}`, text, html });
-}
-
-// Número do ingresso: 8 primeiros caracteres do id da inscrição, o mesmo que o painel mostra
-export const ticketNumber = (registrationId: string) => registrationId.replace(/-/g, "").slice(0, 8).toUpperCase();
-
-const escapeHtml = (v: string) => v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
-const brl = (cents: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+export const sendInvite = (to: string, name: string, url: string) => sendMail({ to, ...inviteMail(name, url) });
 
 // Confirmação + ingresso: vale como comprovante e traz o número que a organização confere no credenciamento
-export function sendRegistrationConfirmed(reg: { id: string; email: string; name: string; cpf: string; amountCents: number; lotName?: string }) {
-  const first = reg.name.split(" ")[0];
-  const amountLabel = brl(reg.amountCents);
-  const number = ticketNumber(reg.id);
-  const cpf = reg.cpf.replace(/^(\d{3})\d{6}(\d{2})$/, "$1.***.***-$2");
-  const kind = reg.lotName ? `Ingresso — ${reg.lotName}` : "Ingresso";
-  const courtesy = reg.amountCents === 0; // convite com 100% de desconto
-  const text = `${first}, sua inscrição no ${site.name} está confirmada.\n\n${courtesy ? "Seu ingresso é cortesia da organização." : `Pagamento de ${amountLabel} recebido.`}\n\n${kind}\nNº ${number}\nParticipante: ${reg.name}\nCPF: ${cpf}\n\nGuarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto.\n\nNos vemos em ${site.city}, ${site.date}.`;
-  const html = layout(
-    "Inscrição confirmada.",
-    `<p style="font-size:16px;line-height:1.4;margin:0 0 16px">${escapeHtml(first)}, ${courtesy ? "seu ingresso é <strong>cortesia</strong> da organização" : `recebemos o pagamento de <strong>${amountLabel}</strong>`} e sua vaga no ${site.name} está garantida.</p>
-     <div style="border:1px solid #0f0f0f;padding:16px 24px;margin:0 0 24px">
-       <p style="font-size:13px;letter-spacing:.03em;text-transform:uppercase;font-weight:600;margin:0 0 8px">${escapeHtml(kind)}</p>
-       <p style="font-family:'JetBrains Mono',Menlo,monospace;font-size:28px;letter-spacing:.06em;margin:0 0 12px">${number}</p>
-       <p style="font-size:14px;line-height:1.4;margin:0">${escapeHtml(reg.name)}<br>CPF ${cpf}<br>${site.date} · ${site.venue} · ${site.city}</p>
-     </div>
-     <p style="font-size:16px;line-height:1.4;margin:0 0 24px">Guarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto. Em breve mandamos a programação e as orientações pelo WhatsApp cadastrado.</p>
-     <p style="font-size:16px;line-height:1.4;margin:0">Nos vemos em ${site.city}, ${site.date}.</p>`,
-  );
-  return sendMail({ to: reg.email, subject: `Seu ingresso — ${site.shortName}`, text, html });
-}
+export const sendRegistrationConfirmed = (reg: { id: string; email: string; name: string; cpf: string; amountCents: number; lotName?: string }) =>
+  sendMail({ to: reg.email, ...registrationConfirmedMail(reg) });
