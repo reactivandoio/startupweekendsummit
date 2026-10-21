@@ -161,7 +161,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
                 <Image src="/logo-negativo.svg" alt={site.name} width={86} height={40} priority className="h-[40px] w-auto" />
               </Link>
             )}
-            {/* Desktop: recolhe/expande a coluna. Celular: fecha a gaveta. */}
+            {/* Desktop: recolhe/expande a coluna, sempre com o ☰ (recolhida, só ele fica visível). Celular: o X fecha a gaveta. */}
             <button
               type="button"
               onClick={toggle}
@@ -171,7 +171,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
               title={collapsed ? "Expandir menu" : "Recolher menu"}
               className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-ink md:flex"
             >
-              <Burger open={!collapsed} />
+              <Burger open={false} />
             </button>
             <button
               type="button"
