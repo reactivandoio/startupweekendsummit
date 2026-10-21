@@ -45,3 +45,6 @@ next-env.d.ts
 
 # estado do deploy blue/green no servidor (deploy/blue-green.sh)
 .blue-green/
+
+# logos enviados pelo painel quando o dev roda fora do Docker
+/uploads

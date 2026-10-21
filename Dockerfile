@@ -33,7 +33,8 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000 DATA_DIR=/data
 # /data: inscrições de voluntários (data/volunteers.json), montado como volume no docker-compose.yml
-RUN addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:app /data
+# /uploads: logos enviados pelo painel (volume "uploads"); criado aqui com dono app pra o volume novo herdar a permissão
+RUN addgroup -S app && adduser -S app -G app && mkdir -p /data /uploads && chown app:app /data /uploads
 COPY --from=build --chown=app:app /app/.next/standalone ./
 COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/public ./public

@@ -50,9 +50,23 @@ e-mail com link de entrada — o botão "Reenviar convite" manda outro, e diz na
 - `/admin` — inscrições de voluntários, com exportação em `/admin/inscricoes.csv`
 - `/admin/participantes` — inscrições pagas/pendentes do evento, com exportação em `/admin/participantes.csv`
 - `/admin/convites` — cria os links de inscrição (e envia por e-mail, se informado)
+- `/admin/patrocinadores` — patrocinadores do site (ver abaixo)
 - `/admin/usuarios` — quem pode entrar
 
 O schema do banco é criado automaticamente na primeira conexão (`src/lib/db.ts`).
+
+## Patrocinadores
+
+Cadastrados em `/admin/patrocinadores`: nome, categoria (as cinco cotas de `/patrocinio` + Apoio e Realização,
+em `sponsorCategories` no `src/content/site.ts`), logo, texto alternativo do logo e URL do site. A ordem é por
+categoria e, dentro dela, pelas setas ↑ ↓ do painel. No site, a seção aparece na home e em `/patrocinio`
+(`src/components/sponsors-section.tsx`), com o logo maior nas cotas mais altas; o logo usa o alt cadastrado (ou o
+nome, se vazio) e, com URL, vira link em nova aba. Sem nenhum patrocinador, a seção não aparece.
+
+Os logos (SVG, PNG, WebP ou JPG, até 2 MB; o tipo é conferido pelos bytes) vão para o volume docker `uploads`,
+montado em `/uploads` nas duas cores do blue/green (`UPLOADS_DIR`), e são servidos por `/uploads/<arquivo>` com
+cache longo — cada envio gera um nome novo. Trocar ou excluir o logo apaga o arquivo antigo. Backup: o volume
+`startupweekendsummit_uploads` junto com o dump do Postgres (a tabela `sponsors` aponta para esses arquivos).
 
 ## Inscrição no evento (por convite + Stripe)
 
@@ -84,3 +98,4 @@ atualiza o código em `/mnt/hd2tb/projetos/startupweekendsummit` e roda `bash de
 - `src/app/inscricao/` — página do convite, ação que abre o Checkout e página de retorno; `src/lib/invites.ts`,
   `src/lib/registrations.ts` e `src/lib/stripe.ts` — convites, inscrições pagas e cliente Stripe.
 - `src/lib/auth.ts` — magic link, sessões e usuários do painel; `src/lib/mail.ts` — envio de e-mail (SMTP).
+- `src/lib/sponsors.ts` e `src/lib/uploads.ts` — patrocinadores no Postgres e arquivos de logo no volume de uploads.
