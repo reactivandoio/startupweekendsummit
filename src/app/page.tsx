@@ -62,7 +62,7 @@ export default function Home() {
         illustration={illustrations.chateaubriand}
       >
         <EventMeta />
-        <div className="flex flex-col gap-5 sm:flex-row">
+        <div className="flex flex-col gap-5 sm:flex-row sm:flex-wrap">
           <ButtonLink href="/patrocinio" variant="primary" size="lg">
             Quero patrocinar
           </ButtonLink>

@@ -26,7 +26,7 @@ export function PageHero({
     <section className="bg-paper text-ink">
       <SiteHeader />
       <div className="mx-auto grid max-w-page items-center gap-10 px-4 pb-15 pt-8 sm:px-6 md:grid-cols-[1.05fr_1fr] md:gap-12 md:pb-20 md:pt-14">
-        <div className="flex flex-col gap-10">
+        <div className="relative z-10 flex min-w-0 flex-col gap-10">
           <div className="flex flex-col gap-6">
             <Eyebrow>{eyebrow}</Eyebrow>
             <h1 className={`font-display text-balance ${size === "display" ? "text-display" : "text-heading-lg"}`}>{title}</h1>
@@ -41,7 +41,7 @@ export function PageHero({
           height={illustration.height}
           priority
           sizes="(min-width: 1200px) 560px, (min-width: 768px) 48vw, 100vw"
-          className="h-auto max-h-[380px] w-full max-w-[560px] justify-self-center object-contain md:max-h-none md:justify-self-end"
+          className="relative z-0 h-auto max-h-[380px] w-full max-w-[560px] justify-self-center object-contain md:max-h-none md:justify-self-end"
         />
       </div>
     </section>

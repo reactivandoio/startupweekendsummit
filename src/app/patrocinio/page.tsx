@@ -64,7 +64,7 @@ export default function PatrocinioPage() {
         illustration={illustrations.tresRacas}
       >
         <EventMeta />
-        <div className="flex flex-col gap-5 sm:flex-row">
+        <div className="flex flex-col gap-5 sm:flex-row sm:flex-wrap">
           <a href="#cotas" className={buttonClass("primary", "lg")}>
             Ver cotas de patrocínio
           </a>

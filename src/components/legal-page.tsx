@@ -7,7 +7,8 @@ export type LegalSection = { id: string; title: string; content: string };
 
 const linkClass = "underline decoration-grass decoration-2 underline-offset-4 hover:text-grass-deep";
 
-/* Marcação mínima no texto: **negrito** e [rótulo](/rota) */
+/* Marcação mínima no texto: **negrito** e [rótulo](/rota | mailto:…). E-mails sempre como link: o Cloudflare
+   ofusca endereços no HTML e, em texto corrido, isso quebra a hidratação (React #418). */
 function inline(text: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
   const re = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)]+)\)/g;
@@ -17,11 +18,17 @@ function inline(text: string): React.ReactNode[] {
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
     if (m[1]) out.push(<strong key={k++}>{m[1]}</strong>);
-    else
+    else if (m[3].startsWith("/"))
       out.push(
         <Link key={k++} href={m[3]} className={linkClass}>
           {m[2]}
         </Link>,
+      );
+    else
+      out.push(
+        <a key={k++} href={m[3]} className={linkClass}>
+          {m[2]}
+        </a>,
       );
     last = m.index + m[0].length;
   }

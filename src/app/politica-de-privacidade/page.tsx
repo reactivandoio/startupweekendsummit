@@ -113,7 +113,7 @@ Você pode gerenciar ou bloquear cookies nas configurações do seu navegador. B
 • **Revogação**: Revogar o consentimento para o tratamento de dados, quando aplicável
 • **Oposição**: Opor-se ao tratamento de dados em determinadas situações
 
-Para exercer qualquer um desses direitos, entre em contato conosco pelo e-mail contato@8020digital.com.br. Responderemos à sua solicitação em até 15 dias úteis, conforme previsto na legislação.`,
+Para exercer qualquer um desses direitos, entre em contato conosco pelo e-mail [contato@8020digital.com.br](mailto:contato@8020digital.com.br). Responderemos à sua solicitação em até 15 dias úteis, conforme previsto na legislação.`,
   },
   {
     id: "seguranca",
@@ -156,7 +156,7 @@ Recomendamos que revise esta Política periodicamente para se manter informado s
     title: "11. Contato",
     content: `Se você tiver dúvidas, solicitações ou preocupações sobre esta Política de Privacidade ou sobre o tratamento dos seus dados pessoais, entre em contato conosco:
 
-• E-mail: contato@8020digital.com.br
+• E-mail: [contato@8020digital.com.br](mailto:contato@8020digital.com.br)
 • Site: ${site.shortName} (startupweekendsummit.com.br)
 
 Para questões relacionadas à LGPD, nosso encarregado de proteção de dados pode ser contactado pelo mesmo e-mail.`,

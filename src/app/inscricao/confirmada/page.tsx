@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { sendRegistrationConfirmed, ticketNumber } from "@/lib/mail";
+import { firstName } from "@/lib/names";
 import { getRegistration, getRegistrationBySession, markPaid, type Registration } from "@/lib/registrations";
 import { stripe } from "@/lib/stripe";
 
@@ -19,7 +20,7 @@ type Resolved = { outcome: Outcome; firstName: string; code: string; amount: str
 
 const empty: Resolved = { outcome: "unknown", firstName: "", code: "", amount: "", ticket: "" };
 
-const base = (r: Registration) => ({ firstName: r.name.split(" ")[0], code: r.inviteCode, amount: r.provider === "courtesy" ? "Cortesia" : formatBRL(r.amountCents), ticket: ticketNumber(r.id) });
+const base = (r: Registration) => ({ firstName: firstName(r.name), code: r.inviteCode, amount: r.provider === "courtesy" ? "Cortesia" : formatBRL(r.amountCents), ticket: ticketNumber(r.id) });
 
 // Volta do Checkout. Confirma pelo Stripe (não confia só no webhook) e marca como paga se já estiver.
 async function resolveStripe(sessionId: string): Promise<Resolved> {
