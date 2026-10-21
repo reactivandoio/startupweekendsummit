@@ -112,7 +112,7 @@ A data da última atualização será sempre indicada no início deste documento
     title: "11. Contato",
     content: `Se você tiver dúvidas sobre estes Termos de Uso, entre em contato conosco:
 
-• E-mail: contato@8020digital.com.br
+• E-mail: [contato@8020digital.com.br](mailto:contato@8020digital.com.br)
 • Site: ${site.shortName} (startupweekendsummit.com.br)`,
   },
 ];

@@ -7,6 +7,7 @@ import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { describeDiscount } from "@/lib/discounts";
 import { getInviteByCode, inviteAvailable } from "@/lib/invites";
+import { firstName } from "@/lib/names";
 import { currentOffer, offerPrice } from "@/lib/tickets";
 
 // Página de convite: não indexa e não entra no sitemap
@@ -28,7 +29,7 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
       {/* Hero em papel: chegada ao evento na Estação Ferroviária */}
       <PageHero
         eyebrow="Inscrição por convite"
-        title={invite?.name ? `Chega mais, ${invite.name.split(" ")[0]}. Sua vaga no Summit está reservada.` : "Chega mais. Sua vaga no Summit está reservada."}
+        title={invite?.name ? `Chega mais, ${firstName(invite.name)}. Sua vaga no Summit está reservada.` : "Chega mais. Sua vaga no Summit está reservada."}
         lead={
           price?.courtesy
             ? "Confirme seus dados: seu ingresso é cortesia. A inscrição é individual e vale para os três dias."

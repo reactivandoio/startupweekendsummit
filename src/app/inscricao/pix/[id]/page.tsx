@@ -9,6 +9,7 @@ import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
+import { firstName } from "@/lib/names";
 import { getRegistration, type Registration } from "@/lib/registrations";
 import { syncCharge } from "@/lib/ticket-payments";
 
@@ -41,7 +42,7 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
     <>
       <PageHero
         eyebrow="Pagamento"
-        title={reg ? `${reg.name.split(" ")[0]}, falta só o Pix.` : "Pagamento não encontrado."}
+        title={reg ? `${firstName(reg.name)}, falta só o Pix.` : "Pagamento não encontrado."}
         illustration={illustrations.estacao}
       >
         <EventMeta />
