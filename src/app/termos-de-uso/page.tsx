@@ -25,7 +25,7 @@ A utilização continuada da Plataforma após a publicação de alterações nes
 
 Nossos serviços incluem, mas não se limitam a:
 • Divulgação de informações sobre o evento, programação e patrocinadores
-• Inscrição de participantes por convite, com pagamento online
+• Inscrição de participantes por convite, com pagamento online por cartão (Stripe) ou Pix (Opa Pingou)
 • Cadastro de voluntários para a organização do evento
 • Divulgação das cotas de patrocínio e contato com o time comercial
 • Painel de acesso restrito para a equipe da organização`,
@@ -90,6 +90,8 @@ Utilizamos o Google Analytics para rastreamento de uso. Para mais informações,
 • A Plataforma estará disponível de forma ininterrupta ou livre de erros
 • Os resultados obtidos pelo uso da Plataforma serão precisos ou confiáveis
 • Quaisquer defeitos na Plataforma serão corrigidos
+
+Os pagamentos são processados por terceiros (Stripe e Opa Pingou), sujeitos aos próprios termos e à própria disponibilidade desses serviços.
 
 Na máxima extensão permitida pela legislação aplicável, a organização não será responsável por danos diretos, indiretos, incidentais, especiais, consequenciais ou punitivos, incluindo perda de dados, lucros cessantes ou interrupção de negócios, decorrentes do uso ou da impossibilidade de uso da Plataforma.`,
   },

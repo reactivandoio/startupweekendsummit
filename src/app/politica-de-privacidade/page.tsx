@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 /* Texto herdado da Política de Privacidade do Hub Community (8020 Digital), com as adaptações listadas na revisão STA-2:
-   nome do serviço, dados que este site coleta, provedores usados (Stripe, Google Analytics, e-mail) e forma de acesso ao painel. */
+   nome do serviço, dados que este site coleta, provedores usados (Stripe, Opa Pingou, Google Analytics, e-mail) e forma de acesso ao painel. */
 const sections: LegalSection[] = [
   {
     id: "introducao",
@@ -35,7 +35,7 @@ Ao utilizar a Plataforma, você concorda com as práticas descritas nesta Polít
 • Área de interesse, disponibilidade e motivação informadas no formulário
 
 **Dados de Pagamento**
-• O pagamento da inscrição é processado pelo Stripe. Não armazenamos dados de cartão; recebemos apenas a confirmação do pagamento e o valor pago.
+• O pagamento da inscrição é processado pelo Stripe (cartão) ou pelo Opa Pingou (Pix). Não armazenamos dados de cartão nem de conta bancária; recebemos apenas a confirmação do pagamento, o valor pago e o identificador da cobrança.
 
 **Dados de Acesso ao Painel**
 • E-mail da equipe da organização e links de acesso de uso único (sem senha)
@@ -76,7 +76,8 @@ Ao utilizar a Plataforma, você concorda com as práticas descritas nesta Polít
 
 • **Google Analytics**: Monitora tráfego, sessões e métricas de engajamento
 • **Cookie de sessão do painel**: Mantém a equipe da organização autenticada no painel; não é usado para rastreamento
-• **Stripe**: Durante o pagamento, o Stripe pode utilizar cookies próprios para segurança e prevenção de fraude
+• **Stripe**: Durante o pagamento com cartão, o Stripe pode utilizar cookies próprios para segurança e prevenção de fraude
+• **Opa Pingou**: O pagamento via Pix é feito no app do seu banco; o Opa Pingou não instala cookies neste site
 
 Você pode gerenciar ou bloquear cookies nas configurações do seu navegador. Bloquear o cookie de sessão impede o uso do painel da organização.`,
   },
@@ -86,7 +87,8 @@ Você pode gerenciar ou bloquear cookies nas configurações do seu navegador. B
     content: `Não vendemos seus dados pessoais a terceiros. Seus dados podem ser compartilhados nas seguintes circunstâncias:
 
 **Provedores de Serviço**
-• **Stripe**: Processa o pagamento das inscrições. Os dados são tratados de acordo com a Política de Privacidade do Stripe.
+• **Stripe**: Processa o pagamento das inscrições com cartão. Os dados são tratados de acordo com a Política de Privacidade do Stripe.
+• **Opa Pingou**: Gera e confirma as cobranças Pix das inscrições (nome do participante, valor e identificador da cobrança). Os dados são tratados de acordo com a Política de Privacidade do Opa Pingou.
 • **Google**: Utilizamos o Google Analytics para análise de dados. Os dados são processados de acordo com a Política de Privacidade do Google.
 • **Provedores de e-mail e infraestrutura**: Serviços de envio de e-mail e de hospedagem que processam dados em nosso nome.
 
@@ -138,7 +140,7 @@ Apesar das medidas de segurança adotadas, nenhum sistema é completamente segur
   {
     id: "menores",
     title: "9. Menores de Idade",
-    content: `A Plataforma não é direcionada a menores de 16 anos. Não coletamos intencionalmente dados pessoais de menores de 16 anos. Se tomarmos conhecimento de que coletamos dados de um menor sem o consentimento adequado, tomaremos medidas para excluir essas informações o mais rápido possível.`,
+    content: `A Plataforma não é direcionada a menores de 18 anos: a inscrição no evento e o voluntariado exigem maioridade. Não coletamos intencionalmente dados pessoais de menores de 18 anos. Se tomarmos conhecimento de que coletamos dados de um menor sem o consentimento adequado, tomaremos medidas para excluir essas informações o mais rápido possível.`,
   },
   {
     id: "alteracoes",
