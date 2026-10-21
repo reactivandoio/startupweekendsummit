@@ -117,6 +117,13 @@ body {
   border-radius: 0;
 }
 
+/* Menu flutuante do celular: reserva espaço no fim da página (conteúdo, rodapé e botões nunca ficam por baixo) */
+@media (width < 48rem) {
+  body:has([data-mobile-nav]) {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}
+
 /* Logos de patrocinadores: sempre em tinta preta, qualquer que seja a arte enviada (SVG/PNG/WebP com
    transparência). brightness(0) zera a cor e preserva o alfa; por isso o upload recusa fundo opaco. */
 .logo-mono {
