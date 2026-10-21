@@ -9,7 +9,8 @@ export const metadata: Metadata = {
 };
 
 /* Texto herdado dos Termos de Uso do Hub Community (8020 Digital), com as adaptações listadas na revisão STA-2:
-   nome do serviço, descrição do que o site faz, forma de acesso ao painel e referências a cookies/analytics. */
+   nome do serviço, descrição do que o site faz, forma de acesso ao painel e referências a cookies/analytics.
+   As seções 6 (uso de imagem) e 7 (patrocinadores) são próprias do evento e não vêm do Hub Community. */
 const sections: LegalSection[] = [
   {
     id: "aceitacao",
@@ -70,22 +71,55 @@ O descumprimento dessas regras pode resultar na suspensão ou exclusão do seu a
 A organização não se responsabiliza pelo conteúdo enviado por usuários, mas reserva-se o direito de remover conteúdo que viole estes Termos ou as leis aplicáveis.`,
   },
   {
+    id: "uso-de-imagem",
+    title: "6. Uso de Imagem e Voz do Participante",
+    content: `O ${site.name} é registrado em fotos, vídeos, áudios e transmissões ao vivo. Ao participar do evento, você autoriza a organização, a título gratuito, a captar e utilizar sua imagem, voz e nome, isoladamente ou em conjunto com outros participantes, para:
+
+• Divulgar o evento, suas próximas edições e as comunidades envolvidas
+• Produzir conteúdo institucional da organização e da comunidade Techstars Startup Weekend
+• Publicar e transmitir esse conteúdo em qualquer mídia ou formato, como site, redes sociais, plataformas de vídeo, imprensa, materiais impressos e apresentações
+
+Esta autorização é concedida sem qualquer remuneração, no Brasil e no exterior, pelo prazo de 5 (cinco) anos contados da data do evento. Conteúdos publicados dentro desse prazo poderão permanecer disponíveis nos canais onde foram veiculados, sem obrigação de remoção.
+
+A organização não utilizará sua imagem de forma vexatória, que atente contra a sua honra ou em associação a produtos ou serviços de terceiros sem a sua autorização específica. Se não quiser ser registrado de perto, procure a equipe da organização no credenciamento; para pedir a retirada de um conteúdo específico, escreva para [contato@8020digital.com.br](mailto:contato@8020digital.com.br) e avaliaremos o pedido.`,
+  },
+  {
+    id: "patrocinadores",
+    title: "7. Compartilhamento de Dados com Patrocinadores",
+    content: `O ${site.name} é viabilizado por patrocinadores, que podem ter interesse em se conectar com os participantes. Por isso, os dados de inscrição poderão ser compartilhados com os patrocinadores do evento, **somente se você der o seu consentimento específico para isso**, marcando a opção própria do formulário de inscrição, separada do aceite destes Termos, nos termos do art. 7º, inciso I, da Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018). O consentimento é opcional: recusá-lo não impede a sua inscrição nem a sua participação no evento.
+
+**Quais dados**
+• Nome completo, e-mail e telefone (WhatsApp)
+• CPF, data de nascimento e dados de pagamento **nunca** são compartilhados com patrocinadores
+
+**Para quê**
+• Contato do patrocinador com você sobre produtos, serviços, vagas, programas e oportunidades ligados ao ecossistema de startups
+• Convites para ações e ativações do patrocinador durante ou após o evento
+
+**Como exercer seus direitos**
+• Você pode revogar o consentimento a qualquer momento, sem custo, pelo e-mail [contato@8020digital.com.br](mailto:contato@8020digital.com.br); a partir da revogação, seus dados deixam de ser enviados a patrocinadores
+• Você pode pedir a lista dos patrocinadores que receberam os seus dados
+• Ao receber os dados, cada patrocinador passa a ser responsável pelo tratamento que fizer deles; para corrigir ou excluir seus dados na base de um patrocinador, ou para deixar de receber as comunicações dele, fale diretamente com ele (toda comunicação deve oferecer uma forma de descadastro)
+
+Os patrocinadores se comprometem a usar os dados apenas para as finalidades acima, sem revendê-los. Mais detalhes na seção de compartilhamento da nossa [Política de Privacidade](/politica-de-privacidade#compartilhamento).`,
+  },
+  {
     id: "propriedade",
-    title: "6. Propriedade Intelectual",
+    title: "8. Propriedade Intelectual",
     content: `Todo o conteúdo original da Plataforma, incluindo mas não se limitando a design, código-fonte, logotipos, textos e gráficos, é de propriedade da organização do ${site.name} e está protegido por leis de propriedade intelectual.
 
 Marcas registradas, logotipos e nomes comerciais exibidos na Plataforma, incluindo os de patrocinadores e da Techstars, são de propriedade de seus respectivos titulares.`,
   },
   {
     id: "privacidade",
-    title: "7. Privacidade e Dados",
+    title: "9. Privacidade e Dados",
     content: `A coleta, uso e proteção de seus dados pessoais são regidos pela nossa [Política de Privacidade](/politica-de-privacidade), que é parte integrante destes Termos. Ao utilizar a Plataforma, você também concorda com os termos da nossa Política de Privacidade.
 
 Utilizamos o Google Analytics para rastreamento de uso. Para mais informações, consulte a seção de cookies da nossa Política de Privacidade.`,
   },
   {
     id: "limitacao",
-    title: "8. Limitação de Responsabilidade",
+    title: "10. Limitação de Responsabilidade",
     content: `A Plataforma é fornecida "como está" e "conforme disponível". A organização não garante que:
 • A Plataforma estará disponível de forma ininterrupta ou livre de erros
 • Os resultados obtidos pelo uso da Plataforma serão precisos ou confiáveis
@@ -97,19 +131,19 @@ Na máxima extensão permitida pela legislação aplicável, a organização nã
   },
   {
     id: "modificacoes",
-    title: "9. Modificações dos Termos",
+    title: "11. Modificações dos Termos",
     content: `A organização reserva-se o direito de modificar estes Termos a qualquer momento. Alterações significativas serão comunicadas através da Plataforma ou por e-mail.
 
 A data da última atualização será sempre indicada no início deste documento. O uso continuado da Plataforma após as alterações constitui aceitação dos novos Termos.`,
   },
   {
     id: "legislacao",
-    title: "10. Legislação Aplicável",
+    title: "12. Legislação Aplicável",
     content: `Estes Termos são regidos pelas leis da República Federativa do Brasil. Quaisquer disputas decorrentes destes Termos serão submetidas ao foro da comarca de Goiânia, Estado de Goiás, com exclusão de qualquer outro, por mais privilegiado que seja.`,
   },
   {
     id: "contato",
-    title: "11. Contato",
+    title: "13. Contato",
     content: `Se você tiver dúvidas sobre estes Termos de Uso, entre em contato conosco:
 
 • E-mail: [contato@8020digital.com.br](mailto:contato@8020digital.com.br)

@@ -29,6 +29,7 @@ export type Registration = {
   opaChargeId: string | null;
   opaBrCode: string | null;
   opaExpiresAt: string | null;
+  sponsorConsentAt: string | null; // quando aceitou compartilhar os dados com patrocinadores; null = não aceitou
   createdAt: string;
   paidAt: string | null;
 };
@@ -55,6 +56,7 @@ type Row = {
   opa_charge_id: string | null;
   opa_br_code: string | null;
   opa_expires_at: Date | null;
+  sponsor_consent_at: Date | null;
   created_at: Date;
   paid_at: Date | null;
 };
@@ -81,6 +83,7 @@ const toRegistration = (r: Row): Registration => ({
   opaChargeId: r.opa_charge_id,
   opaBrCode: r.opa_br_code,
   opaExpiresAt: r.opa_expires_at ? r.opa_expires_at.toISOString() : null,
+  sponsorConsentAt: r.sponsor_consent_at ? r.sponsor_consent_at.toISOString() : null,
   createdAt: r.created_at.toISOString(),
   paidAt: r.paid_at ? r.paid_at.toISOString() : null,
 });
@@ -140,11 +143,12 @@ export async function createRegistration(data: {
   discountCents: number;
   provider: RegistrationProvider;
   lotId: string | null;
+  sponsorConsent: boolean;
 }): Promise<Registration> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
-    insert into registrations (invite_id, name, email, phone, cpf, birth_date, amount_cents, list_price_cents, discount_cents, provider, lot_id)
-    values (${data.inviteId}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents}, ${data.listPriceCents}, ${data.discountCents}, ${data.provider}, ${data.lotId})
+    insert into registrations (invite_id, name, email, phone, cpf, birth_date, amount_cents, list_price_cents, discount_cents, provider, lot_id, sponsor_consent_at)
+    values (${data.inviteId}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents}, ${data.listPriceCents}, ${data.discountCents}, ${data.provider}, ${data.lotId}, ${data.sponsorConsent ? new Date() : null})
     returning *`;
   return toRegistration(row);
 }

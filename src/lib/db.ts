@@ -114,6 +114,8 @@ export function ensureSchema() {
       // Na inscrição: preço do lote no momento e desconto aplicado; amount_cents segue sendo o valor pago
       await sql`alter table registrations add column if not exists list_price_cents int`;
       await sql`alter table registrations add column if not exists discount_cents int not null default 0`;
+      // Consentimento opcional (LGPD art. 7º, I) para compartilhar nome, e-mail e WhatsApp com patrocinadores; null = não consentiu
+      await sql`alter table registrations add column if not exists sponsor_consent_at timestamptz`;
       // Webhooks do Opa Pingou já processados (o mesmo evento pode chegar mais de uma vez)
       await sql`
         create table if not exists opa_events (
