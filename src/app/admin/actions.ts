@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
-import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite } from "@/lib/invites";
+import { parseBRLCents, parseDiscount } from "@/lib/discounts";
+import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite, updateInviteDiscount } from "@/lib/invites";
 import { sendAccessInvite, sendInvite } from "@/lib/mail";
 import { checkApiKey, createWebhookEndpoint, reactivateWebhookEndpoint, rotateWebhookSecret, testWebhookEndpoint } from "@/lib/opapingou";
 import { isOpaApiKey, isOpaTestKey, OpaApiError } from "@/lib/opapingou-core";
@@ -91,6 +92,8 @@ export async function removeVolunteer(formData: FormData) {
 
 export type InviteFormState = { status: "idle" | "ok" | "error"; message?: string; url?: string };
 
+const DISCOUNT_ERROR = "Desconto inválido: use um percentual inteiro de 1 a 100 ou um valor em reais (ex.: 50,00).";
+
 // Cria o convite e, se tiver e-mail, já envia o link
 export async function createInviteAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
   const me = await requireUser();
@@ -100,8 +103,10 @@ export async function createInviteAction(_prev: InviteFormState, formData: FormD
   const maxUses = Math.min(500, Math.max(1, Number(formData.get("maxUses") ?? 1) || 1));
   const send = formData.get("send") === "on";
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: "error", message: "Informe um e-mail válido ou deixe em branco." };
+  const discount = parseDiscount(String(formData.get("discountKind") ?? "none"), String(formData.get("discountValue") ?? ""));
+  if (!discount) return { status: "error", message: DISCOUNT_ERROR };
 
-  const invite = await createInvite({ name, email, note, maxUses, createdBy: me.id });
+  const invite = await createInvite({ name, email, note, maxUses, discount, createdBy: me.id });
   const url = inviteUrl(invite.code);
   let message = "Convite criado.";
   if (email && send) {
@@ -115,6 +120,17 @@ export async function createInviteAction(_prev: InviteFormState, formData: FormD
   }
   revalidatePath("/admin/convites");
   return { status: "ok", message, url };
+}
+
+export async function updateInviteDiscountAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const discount = parseDiscount(String(formData.get("discountKind") ?? "none"), String(formData.get("discountValue") ?? ""));
+  if (!id) return { status: "error", message: "Convite não encontrado." };
+  if (!discount) return { status: "error", message: DISCOUNT_ERROR };
+  await updateInviteDiscount(id, discount);
+  revalidatePath("/admin/convites");
+  return { status: "ok", message: "Desconto salvo." };
 }
 
 export async function resendInvite(formData: FormData) {
@@ -233,10 +249,8 @@ export async function testOpaWebhook(): Promise<OpaFormState> {
 
 // "R$ 1.234,56" / "350" / "350,00" → centavos
 function parseCents(raw: string): number | null {
-  const s = raw.replace(/[R$\s]/g, "").replace(/\./g, "").replace(",", ".");
-  if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
-  const cents = Math.round(Number(s) * 100);
-  return cents >= 1 && cents <= 2_500_000 ? cents : null; // limite do Opa Pingou: R$ 25.000,00
+  const cents = parseBRLCents(raw);
+  return cents !== null && cents >= 1 && cents <= 2_500_000 ? cents : null; // limite do Opa Pingou: R$ 25.000,00
 }
 
 function lotFields(formData: FormData) {

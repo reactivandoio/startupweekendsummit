@@ -1,7 +1,8 @@
 import { removeInvite, resendInvite, toggleInvite } from "@/app/admin/actions";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
-import { InviteForm } from "@/components/invite-form";
+import { InviteDiscountForm, InviteForm } from "@/components/invite-form";
+import { describeDiscount } from "@/lib/discounts";
 import { listInvites, type Invite } from "@/lib/invites";
 import { appUrl } from "@/lib/stripe";
 
@@ -22,7 +23,7 @@ export default async function ConvitesPage() {
         </h1>
         <p className="max-w-[40ch] text-body-md">
           Cada convite gera um link /inscricao/&lt;código&gt;. Um checkout em andamento segura a vaga por 1 hora; só a inscrição paga
-          consome a vaga de vez.
+          consome a vaga de vez. O desconto vale sobre o lote à venda no momento da inscrição; cortesia confirma sem Pix.
         </p>
         <InviteForm />
       </div>
@@ -46,6 +47,9 @@ export default async function ConvitesPage() {
                   <p className="font-semibold">{status}</p>
                   <p className="text-caption">
                     {i.uses} de {i.maxUses} {i.maxUses === 1 ? "vaga" : "vagas"} · criado em {fmt.format(new Date(i.createdAt))}
+                  </p>
+                  <p className={i.discount.kind === "none" ? "text-caption" : "font-mono text-caption tracking-[0.03em]"}>
+                    {i.discount.kind === "none" ? "Sem desconto" : describeDiscount(i.discount).toUpperCase()}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-self-end">
@@ -74,6 +78,12 @@ export default async function ConvitesPage() {
                     </form>
                   )}
                 </div>
+                <details className="md:col-span-3">
+                  <summary className="cursor-pointer text-caption underline underline-offset-4">Editar desconto</summary>
+                  <div className="mt-4 max-w-[420px]">
+                    <InviteDiscountForm id={i.id} discount={i.discount} />
+                  </div>
+                </details>
               </li>
             );
           })}

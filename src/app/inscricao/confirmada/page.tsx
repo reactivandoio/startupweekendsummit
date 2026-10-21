@@ -19,7 +19,7 @@ type Resolved = { outcome: Outcome; firstName: string; code: string; amount: str
 
 const empty: Resolved = { outcome: "unknown", firstName: "", code: "", amount: "", ticket: "" };
 
-const base = (r: Registration) => ({ firstName: r.name.split(" ")[0], code: r.inviteCode, amount: formatBRL(r.amountCents), ticket: ticketNumber(r.id) });
+const base = (r: Registration) => ({ firstName: r.name.split(" ")[0], code: r.inviteCode, amount: r.provider === "courtesy" ? "Cortesia" : formatBRL(r.amountCents), ticket: ticketNumber(r.id) });
 
 // Volta do Checkout. Confirma pelo Stripe (não confia só no webhook) e marca como paga se já estiver.
 async function resolveStripe(sessionId: string): Promise<Resolved> {
@@ -42,10 +42,11 @@ async function resolveStripe(sessionId: string): Promise<Resolved> {
   }
 }
 
-// Pix do Opa Pingou: a página do QR manda pra cá quando a cobrança é paga; se ainda não foi, volta pro QR
+// Pix do Opa Pingou: a página do QR manda pra cá quando a cobrança é paga; se ainda não foi, volta pro QR.
+// Cortesia chega aqui direto do formulário, já confirmada.
 async function resolveOpa(id: string): Promise<Resolved> {
   const registration = await getRegistration(id).catch(() => null);
-  if (!registration || registration.provider !== "opapingou") return empty;
+  if (!registration || (registration.provider !== "opapingou" && registration.provider !== "courtesy")) return empty;
   if (registration.status !== "paid") redirect(`/inscricao/pix/${registration.id}`);
   return { outcome: "paid", ...base(registration) };
 }

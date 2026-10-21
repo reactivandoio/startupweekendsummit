@@ -95,10 +95,11 @@ export function sendRegistrationConfirmed(reg: { id: string; email: string; name
   const number = ticketNumber(reg.id);
   const cpf = reg.cpf.replace(/^(\d{3})\d{6}(\d{2})$/, "$1.***.***-$2");
   const kind = reg.lotName ? `Ingresso — ${reg.lotName}` : "Ingresso";
-  const text = `${first}, sua inscrição no ${site.name} está confirmada.\n\nPagamento de ${amountLabel} recebido.\n\n${kind}\nNº ${number}\nParticipante: ${reg.name}\nCPF: ${cpf}\n\nGuarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto.\n\nNos vemos em ${site.city}, ${site.date}.`;
+  const courtesy = reg.amountCents === 0; // convite com 100% de desconto
+  const text = `${first}, sua inscrição no ${site.name} está confirmada.\n\n${courtesy ? "Seu ingresso é cortesia da organização." : `Pagamento de ${amountLabel} recebido.`}\n\n${kind}\nNº ${number}\nParticipante: ${reg.name}\nCPF: ${cpf}\n\nGuarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto.\n\nNos vemos em ${site.city}, ${site.date}.`;
   const html = layout(
     "Inscrição confirmada.",
-    `<p style="font-size:16px;line-height:1.4;margin:0 0 16px">${escapeHtml(first)}, recebemos o pagamento de <strong>${amountLabel}</strong> e sua vaga no ${site.name} está garantida.</p>
+    `<p style="font-size:16px;line-height:1.4;margin:0 0 16px">${escapeHtml(first)}, ${courtesy ? "seu ingresso é <strong>cortesia</strong> da organização" : `recebemos o pagamento de <strong>${amountLabel}</strong>`} e sua vaga no ${site.name} está garantida.</p>
      <div style="border:1px solid #0f0f0f;padding:16px 24px;margin:0 0 24px">
        <p style="font-size:13px;letter-spacing:.03em;text-transform:uppercase;font-weight:600;margin:0 0 8px">${escapeHtml(kind)}</p>
        <p style="font-family:'JetBrains Mono',Menlo,monospace;font-size:28px;letter-spacing:.06em;margin:0 0 12px">${number}</p>

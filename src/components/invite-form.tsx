@@ -1,8 +1,80 @@
 "use client";
 
-import { useActionState } from "react";
-import { createInviteAction, type InviteFormState } from "@/app/admin/actions";
+import { useActionState, useState } from "react";
+import { createInviteAction, updateInviteDiscountAction, type InviteFormState } from "@/app/admin/actions";
 import { CopyButton } from "@/components/copy-button";
+import { discountInputValue, NO_DISCOUNT, type DiscountKind, type InviteDiscount } from "@/lib/discounts";
+
+const kinds: { value: DiscountKind; label: string }[] = [
+  { value: "none", label: "Sem desconto" },
+  { value: "percent", label: "Percentual (%)" },
+  { value: "fixed", label: "Valor fixo (R$)" },
+  { value: "courtesy", label: "Cortesia (100%)" },
+];
+
+// Tipo + valor do desconto. O valor só vale para % e R$; cortesia confirma a inscrição sem Pix.
+function DiscountFields({ idPrefix, initial = NO_DISCOUNT }: { idPrefix: string; initial?: InviteDiscount }) {
+  const [kind, setKind] = useState<DiscountKind>(initial.kind);
+  const needsValue = kind === "percent" || kind === "fixed";
+  return (
+    <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={`${idPrefix}-kind`} className="text-body font-semibold">
+          Desconto
+        </label>
+        <select id={`${idPrefix}-kind`} name="discountKind" value={kind} onChange={(e) => setKind(e.target.value as DiscountKind)} className="field">
+          {kinds.map((k) => (
+            <option key={k.value} value={k.value}>
+              {k.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={`${idPrefix}-value`} className="text-body font-semibold">
+          {kind === "fixed" ? "Valor (R$)" : "Valor (%)"}
+        </label>
+        <input
+          id={`${idPrefix}-value`}
+          name="discountValue"
+          // muda a key ao trocar o tipo pra não levar "20" de % para R$
+          key={kind}
+          defaultValue={kind === initial.kind ? discountInputValue(initial) : ""}
+          inputMode={kind === "fixed" ? "decimal" : "numeric"}
+          disabled={!needsValue}
+          required={needsValue}
+          placeholder={kind === "fixed" ? "50,00" : kind === "percent" ? "20" : "—"}
+          className="field disabled:opacity-50"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Edição do desconto de um convite já criado (lista do painel). Vale para as próximas inscrições.
+export function InviteDiscountForm({ id, discount }: { id: string; discount: InviteDiscount }) {
+  const [state, action, pending] = useActionState(updateInviteDiscountAction, { status: "idle" } as InviteFormState);
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="id" value={id} />
+      <DiscountFields idPrefix={`d-${id}`} initial={discount} />
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper disabled:cursor-not-allowed disabled:text-ink/50"
+        >
+          {pending ? "Salvando…" : "Salvar desconto"}
+        </button>
+        {state.message && (
+          <p className="text-caption font-semibold" role="status">
+            — {state.message}
+          </p>
+        )}
+      </div>
+    </form>
+  );
+}
 
 export function InviteForm() {
   const [state, action, pending] = useActionState(createInviteAction, { status: "idle" } as InviteFormState);
@@ -34,6 +106,7 @@ export function InviteForm() {
           <input id="i-note" name="note" type="text" className="field" placeholder="Ex.: comunidade SW Anápolis" />
         </div>
       </div>
+      <DiscountFields idPrefix="i-discount" />
       <label className="flex items-center gap-3 text-body">
         <input type="checkbox" name="send" defaultChecked className="h-4 w-4 accent-ink" />
         Enviar o convite por e-mail ao criar
