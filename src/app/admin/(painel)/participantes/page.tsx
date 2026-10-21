@@ -52,11 +52,11 @@ export default async function ParticipantesPage() {
       </div>
 
       {all.length === 0 ? (
-        <p className="border-t border-ink pt-6 text-body-md dark:border-paper">Nenhuma inscrição ainda.</p>
+        <p className="border-t border-ink pt-6 text-body-md">Nenhuma inscrição ainda.</p>
       ) : (
-        <ul className="border-t border-ink dark:border-paper">
+        <ul className="border-t border-ink">
           {all.map((r) => (
-            <li key={r.id} className="grid gap-4 border-b border-ash py-6 dark:border-graphite md:grid-cols-[1.2fr_1fr_1fr_auto]">
+            <li key={r.id} className="grid gap-4 border-b border-ash py-6 md:grid-cols-[1.2fr_1fr_1fr_auto]">
               <div className="flex flex-col gap-1">
                 <p className="text-body-md font-semibold">{r.name}</p>
                 <a href={`mailto:${r.email}`} className="text-body underline underline-offset-4">

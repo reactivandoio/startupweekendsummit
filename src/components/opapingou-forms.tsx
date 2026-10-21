@@ -25,7 +25,7 @@ export function OpaKeyForm({ configured }: { configured: boolean }) {
           {configured ? "Trocar a chave de API" : "Chave de API"}
         </label>
         <input id="opa-key" name="apiKey" type="password" autoComplete="off" spellCheck={false} className="field font-mono" placeholder="opk_live_… ou opk_test_…" required />
-        <p className="text-caption text-ink/60 dark:text-paper/60">Escopos necessários: charges:write, charges:read, webhooks:read e webhooks:write.</p>
+        <p className="text-caption text-ink/60">Escopos necessários: charges:write, charges:read, webhooks:read e webhooks:write.</p>
       </div>
       <Message state={state} />
       <button type="submit" disabled={pending} className={primary}>

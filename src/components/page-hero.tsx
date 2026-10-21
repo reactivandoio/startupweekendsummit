@@ -1,12 +1,11 @@
-import Image from "next/image";
 import { Eyebrow } from "@/components/eyebrow";
+import { Illustration } from "@/components/illustration";
 import { SiteHeader } from "@/components/site-header";
+import type { Illustration as IllustrationData } from "@/content/illustrations";
 import { site } from "@/content/site";
 
-export type HeroIllustration = { src: string; alt: string; width: number; height: number };
-
-/* Abertura de toda página pública: papel branco, título à esquerda e um monumento de Goiânia
-   (ilustração do pacote da marca) à direita. A home usa `size="display"`; as internas, `heading-lg`. */
+/* Abertura de toda página pública: papel, título à esquerda e um monumento de Goiânia
+   (ilustração do pacote da marca, na versão do tema) à direita. A home usa `size="display"`; as internas, `heading-lg`. */
 export function PageHero({
   eyebrow,
   title,
@@ -19,7 +18,7 @@ export function PageHero({
   title: React.ReactNode;
   lead?: React.ReactNode;
   size?: "display" | "heading-lg";
-  illustration: HeroIllustration;
+  illustration: IllustrationData;
   children?: React.ReactNode;
 }) {
   return (
@@ -34,11 +33,8 @@ export function PageHero({
           </div>
           {children}
         </div>
-        <Image
-          src={illustration.src}
-          alt={illustration.alt}
-          width={illustration.width}
-          height={illustration.height}
+        <Illustration
+          of={illustration}
           priority
           sizes="(min-width: 1200px) 560px, (min-width: 768px) 48vw, 100vw"
           className="relative z-0 h-auto max-h-[380px] w-full max-w-[560px] justify-self-center object-contain md:max-h-none md:justify-self-end"
@@ -59,37 +55,3 @@ export function EventMeta() {
     </div>
   );
 }
-
-/* Ilustrações usadas nos heros, uma por página */
-export const illustrations = {
-  chateaubriand: {
-    src: "/ilustracoes/chateaubriand-evento.webp",
-    alt: "Ilustração de pessoas reunidas em estandes de inovação ao redor do monumento de Chateaubriand, em Goiânia",
-    width: 1400,
-    height: 1079,
-  },
-  tresRacas: {
-    src: "/ilustracoes/monumento-tres-racas.webp",
-    alt: "Ilustração do Monumento às Três Raças, em Goiânia: três figuras erguendo juntas um bloco Marigold",
-    width: 627,
-    height: 720,
-  },
-  coreto: {
-    src: "/ilustracoes/coreto-evento.webp",
-    alt: "Ilustração de um evento no coreto do Lago das Rosas, em Goiânia, com pessoas conversando e apresentando",
-    width: 1400,
-    height: 1024,
-  },
-  estacao: {
-    src: "/ilustracoes/estacao-evento.webp",
-    alt: "Ilustração de pessoas chegando a um evento em frente à Estação Ferroviária de Goiânia",
-    width: 1400,
-    height: 1409,
-  },
-  relogio: {
-    src: "/ilustracoes/relogio-goias.webp",
-    alt: "Ilustração do Relógio da Avenida Goiás, em Goiânia",
-    width: 654,
-    height: 720,
-  },
-} satisfies Record<string, HeroIllustration>;

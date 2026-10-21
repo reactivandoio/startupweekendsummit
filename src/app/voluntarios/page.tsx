@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { buttonClass } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
-import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
+import { Illustration } from "@/components/illustration";
+import { illustrations } from "@/content/illustrations";
+import { EventMeta, PageHero } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
 import { VolunteerForm } from "@/components/volunteer-form";
 import { benefits, site, steps, volunteerAreas } from "@/content/site";
@@ -24,13 +25,9 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title, description: site.seoDescriptionVolunteers },
 };
 
-// Um monumento de Goiânia por benefício, sobre os tons claros da paleta (as ilustrações têm fundo branco)
-const tiles = [
-  { src: "/ilustracoes/monumento-85.webp" },
-  { src: "/ilustracoes/teatro-goiania.webp" },
-  { src: "/ilustracoes/trampolim-lago-das-rosas.webp" },
-  { src: "/ilustracoes/relogio-goias.webp" },
-];
+// Um monumento de Goiânia por benefício, sobre os tons "wash" da paleta. No claro a arte tem fundo branco e
+// entra em multiply; no escuro a versão -escuro já é transparente e vai sem blend.
+const tiles = [illustrations.monumento85, illustrations.teatro, illustrations.trampolim, illustrations.relogio];
 
 export default function VoluntariosPage() {
   return (
@@ -85,12 +82,12 @@ export default function VoluntariosPage() {
             {benefits.map((b, i) => (
               <li key={b.title} className="flex flex-col gap-6">
                 <div className={`relative aspect-square ${i % 2 ? "bg-grass-wash" : "bg-marigold-wash"}`}>
-                  <Image
-                    src={tiles[i % tiles.length].src}
+                  <Illustration
+                    of={tiles[i % tiles.length]}
                     alt=""
                     fill
                     sizes="(min-width: 1024px) 280px, (min-width: 640px) 50vw, 100vw"
-                    className="object-contain p-6 mix-blend-multiply"
+                    className="object-contain p-6 mix-blend-multiply dark:mix-blend-normal"
                   />
                 </div>
                 <div className="flex flex-col gap-1">

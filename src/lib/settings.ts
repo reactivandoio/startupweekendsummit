@@ -2,7 +2,8 @@ import "server-only";
 import { ensureSchema, sql } from "@/lib/db";
 
 // Chaves conhecidas. Segredos (chave de API, segredo do webhook) nunca voltam para o navegador.
-export type SettingKey = "opapingou_api_key" | "opapingou_webhook_id" | "opapingou_webhook_secret";
+// site_theme: tema padrão do site ("dark" | "light"), escolhido em /admin/configuracoes.
+export type SettingKey = "opapingou_api_key" | "opapingou_webhook_id" | "opapingou_webhook_secret" | "site_theme";
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
   await ensureSchema();

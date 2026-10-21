@@ -65,7 +65,7 @@ export function FileUpload({
   current?: { url: string; alt: string };
   hint?: string;
   label?: string;
-  /** "logo": prévia como no site (preto sobre branco) e exige fundo transparente */
+  /** "logo": prévia como no site (tinta sobre o papel do tema) e exige fundo transparente */
   preview?: "image" | "logo";
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -167,15 +167,15 @@ export function FileUpload({
               <p className="truncate text-body font-semibold" title={shown.title}>
                 {shown.title}
               </p>
-              <p className="text-caption">{shown.meta ?? "Arraste outro arquivo aqui para trocar."}{preview === "logo" ? " Prévia como no site: preto sobre branco." : ""}</p>
+              <p className="text-caption">{shown.meta ?? "Arraste outro arquivo aqui para trocar."}{preview === "logo" ? " Prévia como no site, no tema atual." : ""}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button ref={zone} size="sm" onClick={() => input.current?.click()} aria-describedby={describedBy} className="dark:border-ink dark:text-ink dark:not-disabled:hover:bg-ink dark:not-disabled:hover:text-paper">
+            <Button ref={zone} size="sm" onClick={() => input.current?.click()} aria-describedby={describedBy}>
               {file ? "Trocar arquivo" : "Trocar logo"}
             </Button>
             {file && (
-              <Button size="sm" onClick={clear} className="dark:border-ink dark:text-ink dark:not-disabled:hover:bg-ink dark:not-disabled:hover:text-paper">
+              <Button size="sm" onClick={clear}>
                 Remover
               </Button>
             )}
@@ -206,7 +206,7 @@ export function FileUpload({
       )}
 
       {error && (
-        <p className="text-caption font-semibold text-ink dark:text-paper" role="alert">
+        <p className="text-caption font-semibold text-ink" role="alert">
           — {error}
         </p>
       )}

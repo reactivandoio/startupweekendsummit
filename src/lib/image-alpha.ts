@@ -1,5 +1,5 @@
 // Detecta transparência pelos bytes do arquivo (sem decodificar a imagem). Sem "server-only" pra ser testável com node --test.
-// O site mostra os logos em preto (filter: brightness(0)); uma imagem com fundo opaco viraria um retângulo preto.
+// O site mostra os logos em tinta (filter: brightness(0), invertido no escuro); uma imagem com fundo opaco viraria um retângulo chapado.
 export type ImageExt = "png" | "jpg" | "webp" | "svg";
 
 export function hasTransparency(buf: Uint8Array, ext: ImageExt): boolean {

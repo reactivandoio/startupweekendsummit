@@ -12,6 +12,7 @@ import { deleteUnpaidRegistration, listPendingOpaRegistrations } from "@/lib/reg
 import { deleteSetting, getSetting, setSetting } from "@/lib/settings";
 import { createSponsor, deleteSponsor, getSponsor, isSponsorTier, moveSponsor, updateSponsor } from "@/lib/sponsors";
 import { appUrl } from "@/lib/stripe";
+import { parseTheme, themeLabel } from "@/lib/theme-core";
 import { syncCharge } from "@/lib/ticket-payments";
 import { createLot, deleteLot, moveLot, updateLot } from "@/lib/tickets";
 import { deleteImageUpload, saveImageUpload } from "@/lib/uploads";
@@ -228,6 +229,18 @@ export async function removeOpaKey() {
   await deleteSetting("opapingou_webhook_id");
   await deleteSetting("opapingou_webhook_secret");
   revalidatePath("/admin/ingressos");
+}
+
+export type ThemeFormState = { status: "idle" | "ok" | "error"; message?: string };
+
+// Tema padrão do site (/admin/configuracoes). Vale pra quem ainda não escolheu um tema no botão do site.
+export async function saveSiteTheme(_prev: ThemeFormState, formData: FormData): Promise<ThemeFormState> {
+  const me = await requireUser();
+  const theme = parseTheme(formData.get("theme"));
+  if (!theme) return { status: "error", message: "Escolha Escuro ou Claro." };
+  await setSetting("site_theme", theme, me.id);
+  revalidatePath("/", "layout");
+  return { status: "ok", message: `Tema padrão salvo: ${themeLabel[theme].toLowerCase()}. Quem já escolheu um tema no site continua com a escolha dele.` };
 }
 
 // Cadastra o endpoint /api/opapingou/webhook. Se já existe, troca o segredo (o antigo se perdeu ou vazou).

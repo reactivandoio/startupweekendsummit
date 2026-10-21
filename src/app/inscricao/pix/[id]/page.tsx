@@ -5,8 +5,9 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { ButtonLink } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
-import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
+import { EventMeta, PageHero } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
+import { illustrations } from "@/content/illustrations";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { firstName } from "@/lib/names";
@@ -80,8 +81,9 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
               <div className="flex flex-col gap-6 border-2 border-ink bg-paper p-6 shadow-hard">
                 <AutoRefresh seconds={5} until={reg.opaExpiresAt ?? undefined} />
                 <p className="text-body font-semibold">Aguardando o pagamento</p>
+                {/* QR sempre preto sobre branco, em qualquer tema: é o que o app do banco lê */}
                 <div
-                  className="w-full max-w-[280px] self-center bg-paper p-4 [&>svg]:h-auto [&>svg]:w-full"
+                  className="w-full max-w-[280px] self-center bg-white p-4 [&>svg]:h-auto [&>svg]:w-full"
                   role="img"
                   aria-label="QR Code do Pix"
                   dangerouslySetInnerHTML={{ __html: qr }}

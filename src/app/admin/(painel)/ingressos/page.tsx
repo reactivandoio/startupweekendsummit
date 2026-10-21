@@ -52,7 +52,7 @@ export default async function IngressosPage() {
           <OpaKeyForm configured={Boolean(apiKey)} />
         </div>
 
-        <dl className="self-start border-t border-ink dark:border-paper">
+        <dl className="self-start border-t border-ink">
           <Row label="API">{opaApiUrl()}</Row>
           <Row label="Chave">
             {apiKey ? (
@@ -100,11 +100,11 @@ export default async function IngressosPage() {
         </div>
 
         {lots.length === 0 ? (
-          <p className="self-start border-t border-ink pt-6 text-body-md dark:border-paper">Nenhum lote ainda.</p>
+          <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum lote ainda.</p>
         ) : (
-          <ul className="self-start border-t border-ink dark:border-paper">
+          <ul className="self-start border-t border-ink">
             {lots.map((l, i) => (
-              <li key={l.id} className="flex flex-col gap-4 border-b border-ash py-6 dark:border-graphite">
+              <li key={l.id} className="flex flex-col gap-4 border-b border-ash py-6">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-body-md font-semibold">
                     {l.name} {offer.enabled && offer.lotId === l.id && <span className="font-mono text-caption">· À VENDA</span>}
@@ -174,7 +174,7 @@ export default async function IngressosPage() {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-2 border-b border-ash py-4 text-body dark:border-graphite sm:grid-cols-[120px_1fr]">
+    <div className="grid gap-2 border-b border-ash py-4 text-body sm:grid-cols-[120px_1fr]">
       <dt className="font-semibold">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>
