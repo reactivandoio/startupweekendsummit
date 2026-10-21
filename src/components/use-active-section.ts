@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-/* Scroll spy: qual das seções (por id) está passando pela faixa de 30–40% da altura da tela.
-   IntersectionObserver com rootMargin negativo: a seção "ativa" é a primeira, na ordem da lista,
-   que cruza essa faixa. Fora da home (sem as seções) devolve null. */
+/* Scroll spy: qual das seções (por id) está passando pela faixa central da tela (35–45% da altura).
+   IntersectionObserver com rootMargin negativo: a seção "ativa" é a primeira, na ordem da lista, que cruza
+   essa faixa. Regras:
+   - TOP: a rolagem está acima da primeira seção (hero) → o item "Início" acende;
+   - id de uma seção: ela ocupa a faixa; nos vãos entre seções o valor anterior é mantido (nada "pisca");
+   - null: depois da última seção (rodapé) → nenhum item marcado.
+   Fora da home (enabled=false) devolve null. */
+export const TOP = "__top";
+
 export function useActiveSection(ids: readonly string[], enabled = true): string | null {
-  const [active, setActive] = useState<string | null>(null);
+  const [active, setActive] = useState<string | null>(TOP);
   const key = ids.join(",");
   useEffect(() => {
     if (!enabled) return;
@@ -16,9 +22,14 @@ export function useActiveSection(ids: readonly string[], enabled = true): string
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) visible.set(e.target.id, e.isIntersecting);
-        setActive(ids.find((id) => visible.get(id)) ?? null);
+        const current = ids.find((id) => visible.get(id));
+        if (current) return setActive(current);
+        const band = window.innerHeight * 0.45;
+        if (els[0].getBoundingClientRect().top > band) return setActive(TOP); // acima do conteúdo
+        if (els[els.length - 1].getBoundingClientRect().bottom < band) return setActive(null); // rodapé
+        // vão entre seções: mantém a anterior
       },
-      { rootMargin: "-30% 0px -60% 0px", threshold: 0 },
+      { rootMargin: "-35% 0px -55% 0px", threshold: 0 },
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();

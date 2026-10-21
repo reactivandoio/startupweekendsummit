@@ -106,7 +106,7 @@ export default function Home() {
       </section>
 
       {/* Faixa grass: tagline + números */}
-      <section className="bg-grass text-ink">
+      <section id="o-evento" className="bg-grass text-ink">
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 py-15 sm:px-6">
           <div className="flex flex-col gap-6">
             <Eyebrow>O evento</Eyebrow>
@@ -150,7 +150,7 @@ export default function Home() {
         </section>
 
         {/* After movie da última edição */}
-        <section className="mx-auto flex w-full max-w-page flex-col gap-15 px-4 sm:px-6">
+        <section id="after-movie" className="mx-auto flex w-full max-w-page flex-col gap-15 px-4 sm:px-6">
           <div className="grid gap-6 md:grid-cols-2 md:items-end">
             <div className="flex flex-col gap-6">
               <Eyebrow>After movie</Eyebrow>
@@ -219,7 +219,7 @@ export default function Home() {
         <SponsorsSection />
 
         {/* Chamadas: patrocínio (e voluntariado, quando aberto). Card com sombra sólida, botão dentro. */}
-        <section className={`mx-auto grid w-full max-w-page gap-8 px-4 sm:px-6 ${showVolunteerCta ? "md:grid-cols-2" : ""}`}>
+        <section id="chamadas" className={`mx-auto grid w-full max-w-page gap-8 px-4 sm:px-6 ${showVolunteerCta ? "md:grid-cols-2" : ""}`}>
           <div className="flex flex-col gap-6 border-2 border-ink bg-marigold-wash p-6 shadow-hard md:p-8">
             <Eyebrow>Patrocínio</Eyebrow>
             <h2 className="max-w-[22ch] font-display text-heading-sm">Seja visto como apoiador do ecossistema empreendedor.</h2>
