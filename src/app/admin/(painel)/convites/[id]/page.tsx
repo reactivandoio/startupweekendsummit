@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Eyebrow } from "@/components/eyebrow";
-import { InviteEditForm } from "@/components/invite-form";
+import { InviteForm } from "@/components/invite-form";
 import { getInvite } from "@/lib/invites";
 import { appUrl } from "@/lib/stripe";
 
@@ -16,14 +16,14 @@ export default async function EditarConvitePage({ params }: PageProps<"/admin/co
     <div className="flex max-w-[480px] flex-col gap-6">
       <Eyebrow>Convites</Eyebrow>
       <h1 className="font-display text-heading">Editar {invite.name || invite.email || "convite"}</h1>
-      <div className="flex flex-col gap-1">
-        {invite.name && invite.email && <p className="text-body">{invite.email}</p>}
-        <code className="break-all font-mono text-caption">{`${appUrl()}/inscricao/${invite.code}`}</code>
-      </div>
+      <code className="break-all font-mono text-caption">{`${appUrl()}/inscricao/${invite.code}`}</code>
       <p className="text-body-md">
-        O desconto vale sobre o lote à venda no momento da inscrição e só para as próximas inscrições; as já feitas mantêm o valor que tiveram.
+        O link não muda. Desconto e vagas valem para as próximas inscrições ({invite.uses} de {invite.maxUses} já usadas); as já feitas mantêm o
+        valor que tiveram.
       </p>
-      <InviteEditForm id={invite.id} discount={invite.discount} />
+      <InviteForm
+        invite={{ id: invite.id, name: invite.name, email: invite.email, note: invite.note, maxUses: invite.maxUses, discount: invite.discount }}
+      />
     </div>
   );
 }

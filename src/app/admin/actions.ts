@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
 import { parseBRLCents, parseDiscount } from "@/lib/discounts";
-import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite, updateInviteDiscount } from "@/lib/invites";
+import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite, updateInvite } from "@/lib/invites";
 import { sendAccessInvite, sendInvite } from "@/lib/mail";
 import { checkApiKey, createWebhookEndpoint, reactivateWebhookEndpoint, rotateWebhookSecret, testWebhookEndpoint } from "@/lib/opapingou";
 import { isOpaApiKey, isOpaTestKey, OpaApiError } from "@/lib/opapingou-core";
@@ -90,23 +90,47 @@ export async function removeVolunteer(formData: FormData) {
 
 /* ---------- Convites e participantes ---------- */
 
-export type InviteFormState = { status: "idle" | "ok" | "error"; message?: string; url?: string };
+type InviteValues = { name: string; email: string; note: string; maxUses: string; discountKind: string; discountValue: string };
+
+// values/at: no erro, o formulário volta com o que foi digitado (o React limpa o form depois da action)
+export type InviteFormState = { status: "idle" | "ok" | "error"; message?: string; url?: string; values?: InviteValues; at?: number };
 
 const DISCOUNT_ERROR = "Desconto inválido: use um percentual inteiro de 1 a 100 ou um valor em reais (ex.: 50,00).";
 
-// Cria o convite e, se tiver e-mail, já envia o link
-export async function createInviteAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
-  const me = await requireUser();
+// Campos do formulário de convite, com as mesmas regras na criação e na edição
+function inviteFields(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim().slice(0, 120);
   const email = String(formData.get("email") ?? "").trim().slice(0, 200);
   const note = String(formData.get("note") ?? "").trim().slice(0, 300);
   const maxUses = Math.min(500, Math.max(1, Number(formData.get("maxUses") ?? 1) || 1));
-  const send = formData.get("send") === "on";
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: "error", message: "Informe um e-mail válido ou deixe em branco." };
   const discount = parseDiscount(String(formData.get("discountKind") ?? "none"), String(formData.get("discountValue") ?? ""));
-  if (!discount) return { status: "error", message: DISCOUNT_ERROR };
+  const fail = (message: string): InviteFormState => ({
+    status: "error",
+    message,
+    at: Date.now(),
+    values: {
+      name,
+      email,
+      note,
+      maxUses: String(maxUses),
+      discountKind: String(formData.get("discountKind") ?? "none"),
+      discountValue: String(formData.get("discountValue") ?? ""),
+    },
+  });
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: fail("Informe um e-mail válido ou deixe em branco.") } as const;
+  if (!discount) return { error: fail(DISCOUNT_ERROR) } as const;
+  return { data: { name, email, note, maxUses, discount } } as const;
+}
 
-  const invite = await createInvite({ name, email, note, maxUses, discount, createdBy: me.id });
+// Cria o convite e, se tiver e-mail, já envia o link
+export async function createInviteAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
+  const me = await requireUser();
+  const fields = inviteFields(formData);
+  if (fields.error) return fields.error;
+  const { name, email } = fields.data;
+  const send = formData.get("send") === "on";
+
+  const invite = await createInvite({ ...fields.data, createdBy: me.id });
   const url = inviteUrl(invite.code);
   let message = "Convite criado.";
   if (email && send) {
@@ -122,13 +146,13 @@ export async function createInviteAction(_prev: InviteFormState, formData: FormD
   return { status: "ok", message, url };
 }
 
-export async function updateInviteDiscountAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
+export async function updateInviteAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  const discount = parseDiscount(String(formData.get("discountKind") ?? "none"), String(formData.get("discountValue") ?? ""));
   if (!id) return { status: "error", message: "Convite não encontrado." };
-  if (!discount) return { status: "error", message: DISCOUNT_ERROR };
-  await updateInviteDiscount(id, discount);
+  const fields = inviteFields(formData);
+  if (fields.error) return fields.error;
+  await updateInvite(id, fields.data);
   revalidatePath("/admin/convites");
   redirect("/admin/convites");
 }

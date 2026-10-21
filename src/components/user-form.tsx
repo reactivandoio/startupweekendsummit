@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createUser, type UserFormState } from "@/app/admin/actions";
+import { buttonClass } from "@/components/button";
 
 export function UserForm() {
   const [state, action, pending] = useActionState(createUser, { status: "idle" } as UserFormState);
@@ -27,7 +28,7 @@ export function UserForm() {
       <button
         type="submit"
         disabled={pending}
-        className="self-start border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink disabled:cursor-not-allowed disabled:border-ash disabled:text-ink/50 disabled:hover:bg-transparent"
+        className={buttonClass("primary", "md", "self-start")}
       >
         {pending ? "Adicionando…" : "Dar acesso"}
       </button>

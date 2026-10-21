@@ -3,6 +3,7 @@ import { Eyebrow } from "@/components/eyebrow";
 import { formatBRL, formatCpf, formatPhone } from "@/lib/cpf";
 import { ticketNumber } from "@/lib/mail";
 import { listRegistrations, type RegistrationStatus } from "@/lib/registrations";
+import { buttonClass } from "@/components/button";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 const fmtDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" });
@@ -38,13 +39,13 @@ export default async function ParticipantesPage() {
               <button
                 type="submit"
                 title="Consulta no Opa Pingou as cobranças Pix pendentes, caso algum webhook não tenha chegado"
-                className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink"
+                className={buttonClass("secondary", "md")}
               >
                 Conferir {pendingPix} {pendingPix === 1 ? "Pix pendente" : "Pix pendentes"}
               </button>
             </form>
           )}
-          <a href="/admin/participantes.csv" className="border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper dark:border-paper dark:hover:bg-paper dark:hover:text-ink">
+          <a href="/admin/participantes.csv" className={buttonClass("secondary", "md")}>
             Baixar CSV
           </a>
         </div>
@@ -103,7 +104,7 @@ export default async function ParticipantesPage() {
               {r.status !== "paid" && (
                 <form action={removeRegistration} className="md:justify-self-end">
                   <input type="hidden" name="id" value={r.id} />
-                  <button type="submit" className="border border-ash px-3 py-2 text-caption transition-colors hover:border-ink dark:border-graphite dark:hover:border-paper">
+                  <button type="submit" className={buttonClass("secondary", "sm")}>
                     Remover
                   </button>
                 </form>

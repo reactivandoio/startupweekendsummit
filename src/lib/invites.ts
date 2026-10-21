@@ -89,10 +89,14 @@ export async function createInvite(data: {
   return toInvite(row);
 }
 
-// Vale para as próximas inscrições; as já feitas guardam o desconto que tiveram
-export async function updateInviteDiscount(id: string, discount: InviteDiscount) {
+// Edição pelo painel. Desconto e preço valem para as próximas inscrições; as já feitas guardam o que tiveram.
+export async function updateInvite(id: string, data: { name: string; email: string; note: string; maxUses: number; discount: InviteDiscount }) {
   await ensureSchema();
-  await sql`update invites set discount_kind = ${discount.kind}, discount_value = ${discount.value} where id = ${id}`;
+  await sql`
+    update invites
+    set name = ${data.name}, email = ${data.email.toLowerCase()}, note = ${data.note}, max_uses = ${data.maxUses},
+        discount_kind = ${data.discount.kind}, discount_value = ${data.discount.value}
+    where id = ${id}`;
 }
 
 export async function revokeInvite(id: string) {

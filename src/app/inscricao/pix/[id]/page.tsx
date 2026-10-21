@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { ButtonLink } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
+import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { getRegistration, type Registration } from "@/lib/registrations";
@@ -39,32 +39,22 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
 
   return (
     <>
-      <section className="bg-obsidian text-paper">
-        <SiteHeader />
-        <div className="mx-auto flex max-w-page flex-col gap-12 px-4 pb-20 pt-16 sm:px-6 md:pb-30 md:pt-30">
-          <div className="flex flex-col gap-6">
-            <Eyebrow light>Pagamento</Eyebrow>
-            <h1 className="font-display text-display">
-              {reg ? `${reg.name.split(" ")[0]}, falta só o Pix.` : "Pagamento não encontrado."}
-            </h1>
-          </div>
-          <div className="flex flex-col gap-2 text-body-md">
-            <p className="font-semibold">{site.date}</p>
-            <p>
-              {site.venue} · {site.city} · 3 dias
-            </p>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Pagamento"
+        title={reg ? `${reg.name.split(" ")[0]}, falta só o Pix.` : "Pagamento não encontrado."}
+        illustration={illustrations.estacao}
+      >
+        <EventMeta />
+      </PageHero>
 
       <main className="flex flex-col gap-30 bg-paper py-30">
         <section className="mx-auto grid w-full max-w-page gap-15 px-4 sm:px-6 md:grid-cols-[1fr_1.4fr]">
           <div className="flex flex-col gap-6">
             <Eyebrow>Valor</Eyebrow>
             {reg && reg.discountCents > 0 && (
-              <p className="flex flex-wrap items-baseline gap-x-3 text-body-md">
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-body-md">
                 <s className="text-ink/60">{formatBRL(reg.listPriceCents)}</s>
-                <span className="font-mono text-body tracking-[0.03em]">− {formatBRL(reg.discountCents)} do convite</span>
+                <span className="border-2 border-grass bg-grass-wash px-2 py-0.5 text-body font-semibold text-grass-deep">− {formatBRL(reg.discountCents)} do convite</span>
               </p>
             )}
             <h2 className="font-display text-heading">{reg ? formatBRL(reg.amountCents) : "—"}</h2>
@@ -86,9 +76,9 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
                 cta="Voltar ao convite"
               />
             ) : (
-              <div className="flex flex-col gap-6 border border-ink p-6">
+              <div className="flex flex-col gap-6 border-2 border-ink bg-paper p-6 shadow-hard">
                 <AutoRefresh seconds={5} until={reg.opaExpiresAt ?? undefined} />
-                <p className="font-mono text-body tracking-[0.03em]">AGUARDANDO PAGAMENTO</p>
+                <p className="text-body font-semibold">Aguardando o pagamento</p>
                 <div
                   className="w-full max-w-[280px] self-center bg-paper p-4 [&>svg]:h-auto [&>svg]:w-full"
                   role="img"
@@ -103,13 +93,9 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
                 {reg.opaExpiresAt && (
                   <p className="text-body">Vale até {fmtTime.format(new Date(reg.opaExpiresAt))} (horário de Brasília). Depois disso, gere outro pelo convite.</p>
                 )}
-                <Link
-                  href={`/inscricao/pix/${reg.id}?conferir=1`}
-                  prefetch={false}
-                  className="self-start border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper"
-                >
+                <ButtonLink href={`/inscricao/pix/${reg.id}?conferir=1`} prefetch={false} variant="primary" size="md" className="self-start">
                   Já paguei
-                </Link>
+                </ButtonLink>
               </div>
             )}
             <p className="text-body">
@@ -130,16 +116,15 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
   );
 }
 
-function Notice({ tag, title, text, href, cta }: { tag: string; title: string; text: string; href?: string; cta?: string }) {
+function Notice({ title, text, href, cta }: { tag?: string; title: string; text: string; href?: string; cta?: string }) {
   return (
-    <div className="flex flex-col gap-4 border border-ink p-6" role="status">
-      <p className="font-mono text-body tracking-[0.03em]">{tag}</p>
+    <div className="flex flex-col gap-4 border-2 border-ink bg-marigold-wash p-6 shadow-hard" role="status">
       <h3 className="font-display text-heading-sm">{title}</h3>
       <p className="text-body-md">{text}</p>
       {href && cta && (
-        <Link href={href} className="mt-2 self-start border border-ink px-6 py-3 text-body transition-colors hover:bg-ink hover:text-paper">
+        <ButtonLink href={href} variant="primary" size="md" className="mt-2 self-start">
           {cta}
-        </Link>
+        </ButtonLink>
       )}
     </div>
   );
