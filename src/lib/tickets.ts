@@ -1,6 +1,7 @@
 import "server-only";
 import { site } from "@/content/site";
 import { ensureSchema, sql } from "@/lib/db";
+import { applyDiscount, type InviteDiscount, type PriceBreakdown } from "@/lib/discounts";
 import { getSetting } from "@/lib/settings";
 
 export type TicketLot = {
@@ -75,6 +76,9 @@ export async function deleteLot(id: string) {
 
 export type PaymentProvider = "opapingou" | "stripe";
 
+// Menor cobrança aceita por cada meio (Stripe: R$ 0,50)
+export const minChargeCents = (provider: PaymentProvider) => (provider === "stripe" ? 50 : 1);
+
 export type TicketOffer =
   | { enabled: false; reason: "closed" | "sold_out"; name: string }
   | { enabled: true; provider: PaymentProvider; priceCents: number; lotId: string | null; lotName: string | null; name: string };
@@ -85,7 +89,7 @@ export async function currentOffer(): Promise<TicketOffer> {
   const name = `Ingresso — ${site.name}`;
   const provider: PaymentProvider | null = (await getSetting("opapingou_api_key")) ? "opapingou" : process.env.STRIPE_SECRET_KEY ? "stripe" : null;
   if (!provider) return { enabled: false, reason: "closed", name };
-  const minCents = provider === "stripe" ? 50 : 1;
+  const minCents = minChargeCents(provider);
 
   const lots = await listLots();
   if (lots.length > 0) {
@@ -97,3 +101,7 @@ export async function currentOffer(): Promise<TicketOffer> {
   if (!Number.isInteger(priceCents) || priceCents < minCents) return { enabled: false, reason: "closed", name };
   return { enabled: true, provider, priceCents, lotId: null, lotName: null, name };
 }
+
+// Preço para um convite: lote à venda agora − desconto do convite
+export const offerPrice = (offer: Extract<TicketOffer, { enabled: true }>, discount: InviteDiscount): PriceBreakdown =>
+  applyDiscount(offer.priceCents, discount, minChargeCents(offer.provider));

@@ -51,6 +51,12 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
         <section className="mx-auto grid w-full max-w-page gap-15 px-4 sm:px-6 md:grid-cols-[1fr_1.4fr]">
           <div className="flex flex-col gap-6">
             <Eyebrow>Valor</Eyebrow>
+            {reg && reg.discountCents > 0 && (
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-body-md">
+                <s className="text-ink/60">{formatBRL(reg.listPriceCents)}</s>
+                <span className="border-2 border-grass bg-grass-wash px-2 py-0.5 text-body font-semibold text-grass-deep">− {formatBRL(reg.discountCents)} do convite</span>
+              </p>
+            )}
             <h2 className="font-display text-heading">{reg ? formatBRL(reg.amountCents) : "—"}</h2>
             {reg?.lotName && <p className="text-body-md">{reg.lotName}</p>}
             <p className="max-w-[40ch] text-body-md">

@@ -76,8 +76,15 @@ export default async function ParticipantesPage() {
                 <p className="font-semibold">{statusLabel[r.status]}</p>
                 {r.status === "paid" && <p className="font-mono text-caption">Ingresso nº {ticketNumber(r.id)}</p>}
                 <p className="text-caption">
-                  {r.status === "paid" && r.paidAt ? `${formatBRL(r.amountCents)} em ${fmt.format(new Date(r.paidAt))}` : `iniciada em ${fmt.format(new Date(r.createdAt))}`}
+                  {r.status === "paid" && r.paidAt
+                    ? `${r.provider === "courtesy" ? "Cortesia" : formatBRL(r.amountCents)} em ${fmt.format(new Date(r.paidAt))}`
+                    : `iniciada em ${fmt.format(new Date(r.createdAt))}`}
                 </p>
+                {r.discountCents > 0 && (
+                  <p className="text-caption">
+                    Lote {formatBRL(r.listPriceCents)} − desconto {formatBRL(r.discountCents)} = {formatBRL(r.amountCents)}
+                  </p>
+                )}
                 {r.stripePaymentIntent && (
                   <a
                     href={`https://dashboard.stripe.com/payments/${r.stripePaymentIntent}`}

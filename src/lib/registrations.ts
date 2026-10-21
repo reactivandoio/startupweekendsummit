@@ -2,6 +2,9 @@ import "server-only";
 import { ensureSchema, sql } from "@/lib/db";
 import type { PaymentProvider } from "@/lib/tickets";
 
+// "courtesy": convite com 100% de desconto, confirmado sem cobrança
+export type RegistrationProvider = PaymentProvider | "courtesy";
+
 export type RegistrationStatus = "pending" | "paid" | "expired" | "canceled";
 
 export type Registration = {
@@ -15,10 +18,12 @@ export type Registration = {
   cpf: string; // só dígitos
   birthDate: string; // YYYY-MM-DD
   status: RegistrationStatus;
-  amountCents: number;
+  amountCents: number; // valor pago (ou a pagar)
+  listPriceCents: number; // preço do lote no momento da inscrição
+  discountCents: number; // desconto do convite
   stripeSessionId: string | null;
   stripePaymentIntent: string | null;
-  provider: PaymentProvider;
+  provider: RegistrationProvider;
   lotId: string | null;
   lotName: string;
   opaChargeId: string | null;
@@ -40,9 +45,11 @@ type Row = {
   birth_date: string | Date;
   status: RegistrationStatus;
   amount_cents: number;
+  list_price_cents: number | null;
+  discount_cents: number;
   stripe_session_id: string | null;
   stripe_payment_intent: string | null;
-  provider: PaymentProvider;
+  provider: RegistrationProvider;
   lot_id: string | null;
   lot_name?: string | null;
   opa_charge_id: string | null;
@@ -64,6 +71,8 @@ const toRegistration = (r: Row): Registration => ({
   birthDate: r.birth_date instanceof Date ? r.birth_date.toISOString().slice(0, 10) : String(r.birth_date),
   status: r.status,
   amountCents: r.amount_cents,
+  listPriceCents: r.list_price_cents ?? r.amount_cents, // inscrições de antes do desconto: sem desconto
+  discountCents: r.discount_cents,
   stripeSessionId: r.stripe_session_id,
   stripePaymentIntent: r.stripe_payment_intent,
   provider: r.provider,
@@ -127,13 +136,15 @@ export async function createRegistration(data: {
   cpf: string;
   birthDate: string;
   amountCents: number;
-  provider: PaymentProvider;
+  listPriceCents: number;
+  discountCents: number;
+  provider: RegistrationProvider;
   lotId: string | null;
 }): Promise<Registration> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
-    insert into registrations (invite_id, name, email, phone, cpf, birth_date, amount_cents, provider, lot_id)
-    values (${data.inviteId}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents}, ${data.provider}, ${data.lotId})
+    insert into registrations (invite_id, name, email, phone, cpf, birth_date, amount_cents, list_price_cents, discount_cents, provider, lot_id)
+    values (${data.inviteId}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents}, ${data.listPriceCents}, ${data.discountCents}, ${data.provider}, ${data.lotId})
     returning *`;
   return toRegistration(row);
 }

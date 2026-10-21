@@ -1,13 +1,13 @@
 import { removeInvite, resendInvite, toggleInvite } from "@/app/admin/actions";
+import { Button, ButtonLink } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
 import { InviteForm } from "@/components/invite-form";
+import { describeDiscount } from "@/lib/discounts";
 import { listInvites, type Invite } from "@/lib/invites";
 import { appUrl } from "@/lib/stripe";
-import { buttonClass } from "@/components/button";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" });
-const btn = buttonClass("secondary", "sm");
 
 const statusOf = (i: Invite) => (i.revokedAt ? "Revogado" : i.uses >= i.maxUses ? "Esgotado" : "Ativo");
 
@@ -23,7 +23,7 @@ export default async function ConvitesPage() {
         </h1>
         <p className="max-w-[40ch] text-body-md">
           Cada convite gera um link /inscricao/&lt;código&gt;. Um checkout em andamento segura a vaga por 1 hora; só a inscrição paga
-          consome a vaga de vez.
+          consome a vaga de vez. O desconto vale sobre o lote à venda no momento da inscrição; cortesia confirma sem Pix.
         </p>
         <InviteForm />
       </div>
@@ -48,30 +48,41 @@ export default async function ConvitesPage() {
                   <p className="text-caption">
                     {i.uses} de {i.maxUses} {i.maxUses === 1 ? "vaga" : "vagas"} · criado em {fmt.format(new Date(i.createdAt))}
                   </p>
+                  {i.discount.kind === "none" ? (
+                    <p className="text-caption">Sem desconto</p>
+                  ) : (
+                    <p className="self-start border-2 border-grass bg-grass-wash px-2 py-0.5 text-caption font-semibold text-grass-deep">
+                      {describeDiscount(i.discount)}
+                    </p>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-2 md:justify-self-end">
+                {/* items-start: sem isso o botão solto (Copiar) estica na altura da linha da grade */}
+                <div className="flex flex-wrap items-start gap-2 self-start md:justify-self-end">
                   <CopyButton text={url} />
+                  <ButtonLink href={`/admin/convites/${i.id}`} size="sm">
+                    Editar
+                  </ButtonLink>
                   {i.email && !i.revokedAt && (
-                    <form action={resendInvite}>
+                    <form action={resendInvite} className="flex">
                       <input type="hidden" name="id" value={i.id} />
-                      <button type="submit" className={btn}>
+                      <Button type="submit" size="sm">
                         Reenviar e-mail
-                      </button>
+                      </Button>
                     </form>
                   )}
-                  <form action={toggleInvite}>
+                  <form action={toggleInvite} className="flex">
                     <input type="hidden" name="id" value={i.id} />
                     <input type="hidden" name="action" value={i.revokedAt ? "reactivate" : "revoke"} />
-                    <button type="submit" className={btn}>
+                    <Button type="submit" size="sm">
                       {i.revokedAt ? "Reativar" : "Revogar"}
-                    </button>
+                    </Button>
                   </form>
                   {i.uses === 0 && (
-                    <form action={removeInvite}>
+                    <form action={removeInvite} className="flex">
                       <input type="hidden" name="id" value={i.id} />
-                      <button type="submit" className={btn}>
+                      <Button type="submit" size="sm">
                         Excluir
-                      </button>
+                      </Button>
                     </form>
                   )}
                 </div>

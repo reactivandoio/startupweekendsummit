@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
-import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite } from "@/lib/invites";
+import { parseBRLCents, parseDiscount } from "@/lib/discounts";
+import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite, updateInvite } from "@/lib/invites";
 import { sendAccessInvite, sendInvite } from "@/lib/mail";
 import { checkApiKey, createWebhookEndpoint, reactivateWebhookEndpoint, rotateWebhookSecret, testWebhookEndpoint } from "@/lib/opapingou";
 import { isOpaApiKey, isOpaTestKey, OpaApiError } from "@/lib/opapingou-core";
@@ -89,19 +90,47 @@ export async function removeVolunteer(formData: FormData) {
 
 /* ---------- Convites e participantes ---------- */
 
-export type InviteFormState = { status: "idle" | "ok" | "error"; message?: string; url?: string };
+type InviteValues = { name: string; email: string; note: string; maxUses: string; discountKind: string; discountValue: string };
 
-// Cria o convite e, se tiver e-mail, já envia o link
-export async function createInviteAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
-  const me = await requireUser();
+// values/at: no erro, o formulário volta com o que foi digitado (o React limpa o form depois da action)
+export type InviteFormState = { status: "idle" | "ok" | "error"; message?: string; url?: string; values?: InviteValues; at?: number };
+
+const DISCOUNT_ERROR = "Desconto inválido: use um percentual inteiro de 1 a 100 ou um valor em reais (ex.: 50,00).";
+
+// Campos do formulário de convite, com as mesmas regras na criação e na edição
+function inviteFields(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim().slice(0, 120);
   const email = String(formData.get("email") ?? "").trim().slice(0, 200);
   const note = String(formData.get("note") ?? "").trim().slice(0, 300);
   const maxUses = Math.min(500, Math.max(1, Number(formData.get("maxUses") ?? 1) || 1));
-  const send = formData.get("send") === "on";
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: "error", message: "Informe um e-mail válido ou deixe em branco." };
+  const discount = parseDiscount(String(formData.get("discountKind") ?? "none"), String(formData.get("discountValue") ?? ""));
+  const fail = (message: string): InviteFormState => ({
+    status: "error",
+    message,
+    at: Date.now(),
+    values: {
+      name,
+      email,
+      note,
+      maxUses: String(maxUses),
+      discountKind: String(formData.get("discountKind") ?? "none"),
+      discountValue: String(formData.get("discountValue") ?? ""),
+    },
+  });
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: fail("Informe um e-mail válido ou deixe em branco.") } as const;
+  if (!discount) return { error: fail(DISCOUNT_ERROR) } as const;
+  return { data: { name, email, note, maxUses, discount } } as const;
+}
 
-  const invite = await createInvite({ name, email, note, maxUses, createdBy: me.id });
+// Cria o convite e, se tiver e-mail, já envia o link
+export async function createInviteAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
+  const me = await requireUser();
+  const fields = inviteFields(formData);
+  if (fields.error) return fields.error;
+  const { name, email } = fields.data;
+  const send = formData.get("send") === "on";
+
+  const invite = await createInvite({ ...fields.data, createdBy: me.id });
   const url = inviteUrl(invite.code);
   let message = "Convite criado.";
   if (email && send) {
@@ -115,6 +144,17 @@ export async function createInviteAction(_prev: InviteFormState, formData: FormD
   }
   revalidatePath("/admin/convites");
   return { status: "ok", message, url };
+}
+
+export async function updateInviteAction(_prev: InviteFormState, formData: FormData): Promise<InviteFormState> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { status: "error", message: "Convite não encontrado." };
+  const fields = inviteFields(formData);
+  if (fields.error) return fields.error;
+  await updateInvite(id, fields.data);
+  revalidatePath("/admin/convites");
+  redirect("/admin/convites");
 }
 
 export async function resendInvite(formData: FormData) {
@@ -233,10 +273,8 @@ export async function testOpaWebhook(): Promise<OpaFormState> {
 
 // "R$ 1.234,56" / "350" / "350,00" → centavos
 function parseCents(raw: string): number | null {
-  const s = raw.replace(/[R$\s]/g, "").replace(/\./g, "").replace(",", ".");
-  if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
-  const cents = Math.round(Number(s) * 100);
-  return cents >= 1 && cents <= 2_500_000 ? cents : null; // limite do Opa Pingou: R$ 25.000,00
+  const cents = parseBRLCents(raw);
+  return cents !== null && cents >= 1 && cents <= 2_500_000 ? cents : null; // limite do Opa Pingou: R$ 25.000,00
 }
 
 function lotFields(formData: FormData) {

@@ -108,6 +108,12 @@ export function ensureSchema() {
       await sql`alter table registrations add column if not exists opa_charge_id text unique`;
       await sql`alter table registrations add column if not exists opa_br_code text`;
       await sql`alter table registrations add column if not exists opa_expires_at timestamptz`;
+      // Desconto por convite (percent: % inteiro; fixed: centavos; courtesy: sem Pix, confirma direto)
+      await sql`alter table invites add column if not exists discount_kind text not null default 'none'`;
+      await sql`alter table invites add column if not exists discount_value int not null default 0`;
+      // Na inscrição: preço do lote no momento e desconto aplicado; amount_cents segue sendo o valor pago
+      await sql`alter table registrations add column if not exists list_price_cents int`;
+      await sql`alter table registrations add column if not exists discount_cents int not null default 0`;
       // Webhooks do Opa Pingou já processados (o mesmo evento pode chegar mais de uma vez)
       await sql`
         create table if not exists opa_events (

@@ -4,11 +4,12 @@ import { ticketNumber } from "@/lib/mail";
 import { listRegistrations } from "@/lib/registrations";
 
 const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+const reais = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 
 export async function GET() {
   if (!(await getCurrentUser())) return new Response("Unauthorized", { status: 401 });
   const rows = await listRegistrations();
-  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "status", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "stripe_payment_intent", "cobranca_opapingou", "iniciada_em"];
+  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "status", "preco_lote", "desconto", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "stripe_payment_intent", "cobranca_opapingou", "iniciada_em"];
   const lines = rows.map((r) =>
     [
       r.name,
@@ -17,7 +18,9 @@ export async function GET() {
       formatCpf(r.cpf),
       r.birthDate,
       r.status,
-      (r.amountCents / 100).toFixed(2).replace(".", ","),
+      reais(r.listPriceCents),
+      reais(r.discountCents),
+      reais(r.amountCents),
       r.paidAt ?? "",
       r.inviteName,
       r.lotName,

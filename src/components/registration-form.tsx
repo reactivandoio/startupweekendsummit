@@ -37,12 +37,20 @@ function Field({
   );
 }
 
+const submitLabel = { pix: "Gerar Pix", checkout: "Ir para o pagamento", courtesy: "Confirmar inscrição" };
+const pendingLabel = { pix: "Gerando o Pix…", checkout: "Abrindo o pagamento…", courtesy: "Confirmando…" };
+const footnote = {
+  pix: "Na próxima tela aparecem o QR Code e o Pix copia e cola, válidos por 1 hora.",
+  checkout: "Pagamento seguro pelo Stripe. Você volta pra cá assim que concluir.",
+  courtesy: "Ingresso cortesia: sem pagamento. A confirmação chega no seu e-mail.",
+};
+
 const linkClass = "underline decoration-grass decoration-2 underline-offset-4 hover:text-grass-deep";
 
-// Formulário do convite: dados do participante → Pix do Opa Pingou ou Checkout do Stripe (redireciona ao enviar).
+// Formulário do convite: dados do participante → Pix do Opa Pingou, Checkout do Stripe ou cortesia (redireciona ao enviar).
 // Máscaras no cliente (CPF, WhatsApp, data); o servidor recebe CPF/telefone como estão e guarda só dígitos,
 // e a data já em YYYY-MM-DD (campo escondido). Validação no cliente antes do envio, com as mesmas regras do servidor.
-export function RegistrationForm({ code, priceLabel, method }: { code: string; priceLabel: string; method: "pix" | "checkout" }) {
+export function RegistrationForm({ code, priceLabel, method }: { code: string; priceLabel: string; method: "pix" | "checkout" | "courtesy" }) {
   const [state, formAction, pending] = useActionState(registerParticipant, initialState);
   const v = state.values ?? {};
   const [cpf, setCpf] = useState(() => maskCpf(v.cpf ?? ""));
@@ -199,13 +207,9 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string; p
       </label>
 
       <Button type="submit" variant="primary" size="lg" disabled={pending} className="w-full">
-        {pending ? (method === "pix" ? "Gerando o Pix…" : "Abrindo o pagamento…") : `${method === "pix" ? "Gerar Pix" : "Ir para o pagamento"} · ${priceLabel}`}
+        {pending ? pendingLabel[method] : `${submitLabel[method]} · ${method === "courtesy" ? "Cortesia" : priceLabel}`}
       </Button>
-      <p className="text-caption text-ink/60">
-        {method === "pix"
-          ? "Na próxima tela aparecem o QR Code e o Pix copia e cola, válidos por 1 hora."
-          : "Pagamento seguro pelo Stripe. Você volta pra cá assim que concluir."}
-      </p>
+      <p className="text-caption text-ink/60">{footnote[method]}</p>
     </form>
   );
 }

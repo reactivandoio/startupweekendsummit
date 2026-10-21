@@ -1,6 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { ensureSchema, sql } from "@/lib/db";
+import { isDiscountKind, NO_DISCOUNT, type InviteDiscount } from "@/lib/discounts";
 
 export type Invite = {
   id: string;
@@ -12,6 +13,7 @@ export type Invite = {
   uses: number; // pagas + pendentes recentes (checkout ainda aberto)
   createdAt: string;
   revokedAt: string | null;
+  discount: InviteDiscount;
 };
 
 type Row = {
@@ -24,6 +26,8 @@ type Row = {
   uses: number | string;
   created_at: Date;
   revoked_at: Date | null;
+  discount_kind: string;
+  discount_value: number;
 };
 
 const toInvite = (r: Row): Invite => ({
@@ -36,6 +40,7 @@ const toInvite = (r: Row): Invite => ({
   uses: Number(r.uses),
   createdAt: r.created_at.toISOString(),
   revokedAt: r.revoked_at ? r.revoked_at.toISOString() : null,
+  discount: isDiscountKind(r.discount_kind) ? { kind: r.discount_kind, value: r.discount_value } : NO_DISCOUNT,
 });
 
 // Um checkout pendente segura a vaga por 1h (mesmo prazo do expires_at da sessão no Stripe)
@@ -51,6 +56,13 @@ export async function listInvites(): Promise<Invite[]> {
   return rows.map(toInvite);
 }
 
+export async function getInvite(id: string): Promise<Invite | null> {
+  await ensureSchema();
+  const [row] = await sql<Row[]>`
+    select i.*, ${usesSubquery()} as uses from invites i where i.id = ${id}`;
+  return row ? toInvite(row) : null;
+}
+
 export async function getInviteByCode(code: string): Promise<Invite | null> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
@@ -60,14 +72,31 @@ export async function getInviteByCode(code: string): Promise<Invite | null> {
 
 export const inviteAvailable = (i: Invite) => !i.revokedAt && i.uses < i.maxUses;
 
-export async function createInvite(data: { name: string; email: string; note: string; maxUses: number; createdBy: string }): Promise<Invite> {
+export async function createInvite(data: {
+  name: string;
+  email: string;
+  note: string;
+  maxUses: number;
+  discount: InviteDiscount;
+  createdBy: string;
+}): Promise<Invite> {
   await ensureSchema();
   const code = randomBytes(9).toString("base64url"); // 12 chars, seguro pra URL
   const [row] = await sql<Row[]>`
-    insert into invites (code, name, email, note, max_uses, created_by)
-    values (${code}, ${data.name}, ${data.email.toLowerCase()}, ${data.note}, ${data.maxUses}, ${data.createdBy})
+    insert into invites (code, name, email, note, max_uses, discount_kind, discount_value, created_by)
+    values (${code}, ${data.name}, ${data.email.toLowerCase()}, ${data.note}, ${data.maxUses}, ${data.discount.kind}, ${data.discount.value}, ${data.createdBy})
     returning *, 0 as uses`;
   return toInvite(row);
+}
+
+// Edição pelo painel. Desconto e preço valem para as próximas inscrições; as já feitas guardam o que tiveram.
+export async function updateInvite(id: string, data: { name: string; email: string; note: string; maxUses: number; discount: InviteDiscount }) {
+  await ensureSchema();
+  await sql`
+    update invites
+    set name = ${data.name}, email = ${data.email.toLowerCase()}, note = ${data.note}, max_uses = ${data.maxUses},
+        discount_kind = ${data.discount.kind}, discount_value = ${data.discount.value}
+    where id = ${id}`;
 }
 
 export async function revokeInvite(id: string) {

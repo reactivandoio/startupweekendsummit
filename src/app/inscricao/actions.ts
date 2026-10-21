@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { isValidCpf, isValidIsoDate, isValidPhone, normalizeEmail, onlyDigits } from "@/lib/cpf";
 import { getInviteByCode, inviteAvailable } from "@/lib/invites";
 import { createCharge } from "@/lib/opapingou";
-import { attachOpaCharge, attachStripeSession, createRegistration, deleteUnpaidRegistration, findPaidRegistration } from "@/lib/registrations";
+import { sendRegistrationConfirmed } from "@/lib/mail";
+import { attachOpaCharge, attachStripeSession, createRegistration, deleteUnpaidRegistration, findPaidRegistration, markPaid } from "@/lib/registrations";
 import { appUrl, stripe } from "@/lib/stripe";
-import { currentOffer } from "@/lib/tickets";
+import { currentOffer, offerPrice } from "@/lib/tickets";
 
 export type RegistrationFieldErrors = Partial<Record<"name" | "email" | "phone" | "cpf" | "birthDate" | "consent", string>>;
 
@@ -25,7 +26,7 @@ function text(formData: FormData, key: string, max = 200) {
 }
 
 // Valida, cria a inscrição pendente e manda pro pagamento: Pix do Opa Pingou (página com QR) ou Checkout do Stripe.
-// Em sucesso, redireciona (não retorna).
+// Cortesia (desconto do convite cobre o lote): confirma direto, sem cobrança. Em sucesso, redireciona (não retorna).
 export async function registerParticipant(_prev: RegistrationFormState, formData: FormData): Promise<RegistrationFormState> {
   // Honeypot: bots preenchem; humanos não veem o campo.
   if (text(formData, "website")) return { status: "idle" };
@@ -65,6 +66,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     };
   }
 
+  const price = offerPrice(ticket, invite.discount);
   const registration = await createRegistration({
     inviteId: invite.id,
     name,
@@ -72,20 +74,28 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     phone,
     cpf,
     birthDate,
-    amountCents: ticket.priceCents,
-    provider: ticket.provider,
+    amountCents: price.finalCents,
+    listPriceCents: price.listCents,
+    discountCents: price.discountCents,
+    provider: price.courtesy ? "courtesy" : ticket.provider,
     lotId: ticket.lotId,
   });
+
+  if (price.courtesy) {
+    const paid = await markPaid(registration.id, null, 0);
+    if (paid) await sendRegistrationConfirmed(paid).catch((err) => console.error("[registerParticipant] mail", err));
+    redirect(`/inscricao/confirmada?r=${registration.id}`);
+  }
 
   let next: string;
   try {
     if (ticket.provider === "opapingou") {
-      const charge = await createCharge(registration.id, ticket.priceCents, `${ticket.name} — ${name}`);
+      const charge = await createCharge(registration.id, price.finalCents, `${ticket.name} — ${name}`);
       if (!charge.brCode) throw new Error(`Cobrança ${charge.id} sem copia e cola`);
       await attachOpaCharge(registration.id, charge);
       next = `/inscricao/pix/${registration.id}`;
     } else {
-      next = await stripeCheckout(registration.id, invite.code, email, name, ticket.priceCents, ticket.name);
+      next = await stripeCheckout(registration.id, invite.code, email, name, price.finalCents, ticket.name);
     }
   } catch (err) {
     console.error("[registerParticipant]", err);
