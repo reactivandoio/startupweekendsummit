@@ -1,0 +1,6 @@
+# `Minified React error #418` só em produção, em páginas com e-mail em texto corrido
+
+**Sintoma:** em produção (atrás do Cloudflare), /termos-de-uso e /politica-de-privacidade disparavam `Minified React error #418` (hydration text mismatch). Em `next dev` e no build local (`.next/standalone`) nada acontecia. O erro vem como `pageerror` (uncaught), não como `console.error`: um listener só de console não pega.
+**Causa:** o *Email Address Obfuscation* do Cloudflare reescreve endereços no HTML (`[email protected]` dentro de `<a class="__cf_email__">`). Num nó de texto ("E-mail: contato@…") o nó vira texto + elemento e a hidratação falha. Quando o e-mail já está num `<a href="mailto:">`, o script do Cloudflare restaura o texto antes da hidratação e nada quebra (por isso /voluntarios passava).
+**Correção:** renderizar e-mails sempre como link `mailto:` (na `LegalPage`, `[x](mailto:x)` vira `<a>`), ou desativar a ofuscação no painel do Cloudflare. Para diagnosticar: Playwright com `page.on("pageerror")` contra a URL de produção e comparação dos nós de texto do HTML do servidor com o DOM hidratado, ignorando `<script>`. Confirmado: após o PR #19, 0 erros nas 14 páginas/viewports.
+Evidência: corrigido · Card: STA-2 · PR #19
