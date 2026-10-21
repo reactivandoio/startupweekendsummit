@@ -34,6 +34,9 @@ Ao utilizar a Plataforma, você concorda com as práticas descritas nesta Polít
 • Nome completo, e-mail, telefone (WhatsApp) e cidade
 • Área de interesse, disponibilidade e motivação informadas no formulário
 
+**Imagem e Voz**
+• Fotos, vídeos, áudios e transmissões captados durante o evento, nos termos da seção [Uso de Imagem e Voz](/termos-de-uso#uso-de-imagem) dos Termos de Uso
+
 **Dados de Pagamento**
 • O pagamento da inscrição é processado pelo Stripe (cartão) ou pelo Opa Pingou (Pix). Não armazenamos dados de cartão nem de conta bancária; recebemos apenas a confirmação do pagamento, o valor pago e o identificador da cobrança.
 
@@ -58,6 +61,9 @@ Ao utilizar a Plataforma, você concorda com as práticas descritas nesta Polít
 • Avaliar e organizar as candidaturas de voluntariado
 • Emitir credenciais, comprovantes e certificados
 • Autenticar a equipe da organização no painel
+
+**Divulgação do Evento**
+• Produzir e publicar conteúdo de divulgação do evento e da organização com fotos e vídeos captados no evento, conforme a autorização de uso de imagem prevista nos [Termos de Uso](/termos-de-uso#uso-de-imagem)
 
 **Melhorias e Analytics**
 • Analisar o uso da Plataforma para identificar melhorias
@@ -92,13 +98,20 @@ Você pode gerenciar ou bloquear cookies nas configurações do seu navegador. B
 • **Google**: Utilizamos o Google Analytics para análise de dados. Os dados são processados de acordo com a Política de Privacidade do Google.
 • **Provedores de e-mail e infraestrutura**: Serviços de envio de e-mail e de hospedagem que processam dados em nosso nome.
 
+**Patrocinadores do Evento (somente com o seu consentimento)**
+• Com base no seu consentimento específico (art. 7º, I, da LGPD), dado na opção própria do formulário de inscrição, separada do aceite dos Termos, podemos compartilhar **nome completo, e-mail e telefone (WhatsApp)** com os patrocinadores do evento, para que entrem em contato com você sobre produtos, serviços, vagas, programas e oportunidades ligados ao ecossistema de startups
+• O consentimento é opcional e não é condição para a inscrição. Sem ele, seus dados não são enviados a patrocinadores
+• CPF, data de nascimento e dados de pagamento nunca são compartilhados com patrocinadores
+• Ao receber os dados, cada patrocinador passa a ser controlador independente e responde pelo tratamento que fizer deles, de acordo com a própria política de privacidade
+• Detalhes na seção [Compartilhamento de Dados com Patrocinadores](/termos-de-uso#patrocinadores) dos Termos de Uso
+
 **Obrigações Legais**
 • Quando exigido por lei, ordem judicial ou processo legal
 • Para proteger os direitos, propriedade ou segurança da organização, seus usuários ou terceiros
 
 **Dados Públicos**
 • Nomes, logotipos e sites de patrocinadores cadastrados são exibidos publicamente na Plataforma
-• Dados de participantes e voluntários não são publicados`,
+• Dados cadastrais de participantes e voluntários não são publicados; fotos e vídeos do evento podem ser publicados conforme a autorização de uso de imagem dos Termos de Uso`,
   },
   {
     id: "direitos",
@@ -110,8 +123,13 @@ Você pode gerenciar ou bloquear cookies nas configurações do seu navegador. B
 • **Exclusão**: Solicitar a exclusão dos seus dados pessoais
 • **Portabilidade**: Solicitar a portabilidade dos seus dados para outro serviço
 • **Informação**: Ser informado sobre as entidades com as quais seus dados são compartilhados
-• **Revogação**: Revogar o consentimento para o tratamento de dados, quando aplicável
+• **Revogação**: Revogar o consentimento para o tratamento de dados, quando aplicável, incluindo o consentimento para o compartilhamento com patrocinadores
 • **Oposição**: Opor-se ao tratamento de dados em determinadas situações
+
+**Dados compartilhados com patrocinadores**
+• Ao revogar o consentimento, seus dados deixam de ser enviados a patrocinadores a partir da revogação; a revogação não afeta os envios já feitos
+• Mediante pedido, informamos quais patrocinadores receberam os seus dados
+• Para corrigir ou excluir seus dados na base de um patrocinador, ou para deixar de receber as comunicações dele, fale diretamente com o patrocinador, que é o controlador desses dados; se precisar, ajudamos a encaminhar o pedido
 
 Para exercer qualquer um desses direitos, entre em contato conosco pelo e-mail [contato@8020digital.com.br](mailto:contato@8020digital.com.br). Responderemos à sua solicitação em até 15 dias úteis, conforme previsto na legislação.`,
   },
@@ -135,6 +153,7 @@ Apesar das medidas de segurança adotadas, nenhum sistema é completamente segur
 
 • **Dados de conta**: Mantidos enquanto o acesso ao painel estiver ativo. Após a exclusão do acesso, os dados serão removidos em até 30 dias.
 • **Dados de analytics**: Retidos de forma agregada e anonimizada, conforme as políticas de retenção do Google Analytics.
+• **Registro de consentimento**: O registro do seu consentimento (ou da revogação) para o compartilhamento com patrocinadores é mantido enquanto for necessário para comprovar a legalidade do tratamento.
 • **Dados de logs**: Mantidos por até 12 meses para fins de segurança e diagnóstico.`,
   },
   {

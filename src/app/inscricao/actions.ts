@@ -38,6 +38,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   const cpf = onlyDigits(text(formData, "cpf", 20));
   const birthDate = text(formData, "birthDate", 10);
   const consent = formData.get("consent") === "on";
+  const sponsorConsent = formData.get("sponsorConsent") === "on"; // opcional: não bloqueia a inscrição
   const values = { name, email, phone: text(formData, "phone", 40), cpf: text(formData, "cpf", 20), birthDate };
 
   const errors: RegistrationFieldErrors = {};
@@ -79,6 +80,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     discountCents: price.discountCents,
     provider: price.courtesy ? "courtesy" : ticket.provider,
     lotId: ticket.lotId,
+    sponsorConsent,
   });
 
   if (price.courtesy) {

@@ -9,7 +9,7 @@ const reais = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 export async function GET() {
   if (!(await getCurrentUser())) return new Response("Unauthorized", { status: 401 });
   const rows = await listRegistrations();
-  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "status", "preco_lote", "desconto", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "stripe_payment_intent", "cobranca_opapingou", "iniciada_em"];
+  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "status", "preco_lote", "desconto", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "stripe_payment_intent", "cobranca_opapingou", "consentimento_patrocinadores_em", "iniciada_em"];
   const lines = rows.map((r) =>
     [
       r.name,
@@ -28,6 +28,7 @@ export async function GET() {
       r.provider,
       r.stripePaymentIntent ?? "",
       r.opaChargeId ?? "",
+      r.sponsorConsentAt ?? "",
       r.createdAt,
     ]
       .map(esc)

@@ -57,6 +57,8 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string; p
   const [phone, setPhone] = useState(() => maskPhone(v.phone ?? ""));
   const [email, setEmail] = useState(v.email ?? "");
   const [birth, setBirth] = useState(() => isoToDateBr(v.birthDate ?? ""));
+  // controlado para não ser desmarcado quando o servidor devolve erro (a action reseta o formulário)
+  const [sponsorConsent, setSponsorConsent] = useState(false);
   const [local, setLocal] = useState<RegistrationFieldErrors>({});
   const e = { ...(state.errors ?? {}), ...local };
 
@@ -203,6 +205,31 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string; p
             Política de Privacidade
           </Link>
           .{e.consent && <span className="mt-1 block text-caption font-semibold">— {e.consent}</span>}
+        </span>
+      </label>
+
+      {/* Consentimento separado e opcional (LGPD art. 7º, I e art. 8º): não pode vir embutido no aceite dos Termos */}
+      <label className="-mt-4 flex items-start gap-3 text-body">
+        <input
+          id="sponsorConsent"
+          type="checkbox"
+          name="sponsorConsent"
+          checked={sponsorConsent}
+          onChange={(ev) => setSponsorConsent(ev.target.checked)}
+          className="mt-1 h-4 w-4 accent-ink"
+          aria-describedby="sponsorConsent-hint"
+        />
+        <span>
+          Autorizo o compartilhamento do meu nome, e-mail e WhatsApp com os patrocinadores do evento, para que entrem em contato comigo
+          sobre produtos, serviços e oportunidades, conforme a seção{" "}
+          <Link href="/termos-de-uso#patrocinadores" target="_blank" rel="noreferrer" className={linkClass}>
+            Compartilhamento de Dados com Patrocinadores
+            <span className="sr-only"> (abre em nova aba)</span>
+          </Link>{" "}
+          dos Termos de Uso.
+          <span id="sponsorConsent-hint" className="mt-1 block text-caption text-ink/60">
+            Opcional: sem esta autorização sua inscrição segue normalmente. Você pode revogá-la quando quiser.
+          </span>
         </span>
       </label>
 

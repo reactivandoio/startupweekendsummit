@@ -71,6 +71,9 @@ export default async function ParticipantesPage() {
                 <p>Nascimento {fmtDate.format(new Date(`${r.birthDate}T00:00:00Z`))}</p>
                 <p className="text-caption">Convite: {r.inviteName || "aberto"}</p>
                 {r.lotName && <p className="text-caption">Lote: {r.lotName}</p>}
+                <p className="text-caption" title="Consentimento para compartilhar nome, e-mail e WhatsApp com patrocinadores">
+                  {r.sponsorConsentAt ? `Patrocinadores: autorizou em ${fmt.format(new Date(r.sponsorConsentAt))}` : "Patrocinadores: não autorizou"}
+                </p>
               </div>
               <div className="flex flex-col gap-1 text-body">
                 <p className="font-semibold">{statusLabel[r.status]}</p>
