@@ -1,5 +1,5 @@
 import "server-only";
-import { sendRegistrationConfirmed } from "@/lib/mail";
+import { sendPaymentReceived } from "@/lib/mail";
 import { getCharge } from "@/lib/opapingou";
 import type { ChargeStatus, OpaCharge } from "@/lib/opapingou-core";
 import { markPaid, markUnpaid, type Registration } from "@/lib/registrations";
@@ -15,7 +15,7 @@ export async function applyChargeStatus(reg: Registration, charge: Pick<OpaCharg
       console.warn(`[opapingou] cobrança ${charge.id} paga com ${charge.amountCents} ≠ ${reg.amountCents} da inscrição ${reg.id}`);
     }
     const paid = await markPaid(reg.id, null, charge.amountCents);
-    if (paid) await sendRegistrationConfirmed(paid);
+    if (paid) await sendPaymentReceived(paid);
     return "paid";
   }
   if (next === "expired" || next === "canceled") await markUnpaid(reg.id, next);

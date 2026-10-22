@@ -11,6 +11,7 @@ import { illustrations } from "@/content/illustrations";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { firstName } from "@/lib/names";
+import { formPath } from "@/lib/registration-state";
 import { getRegistration, type Registration } from "@/lib/registrations";
 import { syncCharge } from "@/lib/ticket-payments";
 
@@ -39,11 +40,34 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
 
   const qr = reg?.status === "pending" && reg.opaBrCode ? await QRCode.toString(reg.opaBrCode, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : null;
 
+  // Estado da página: o hero, a coluna do valor e a caixa contam a mesma história
+  const state = !reg ? "missing" : qr ? "pending" : reg.status === "canceled" ? "canceled" : "expired";
+  const first = reg ? firstName(reg.name) : "";
+  // Cadastro aberto não tem convite: volta pra página aberta, sem vaga reservada, e o ingresso depende da aprovação
+  const open = reg?.source === "open";
+  const retry = open
+    ? "Gere um novo Pix pela página de inscrição e pague em seguida."
+    : "Sua vaga continua reservada pelo convite: gere um novo Pix e pague em seguida.";
+  const heroTitle = {
+    missing: "Pagamento não encontrado.",
+    pending: `${first}, falta só o Pix.`,
+    expired: `${first}, o prazo do Pix terminou.`,
+    canceled: `${first}, o pagamento foi cancelado.`,
+  }[state];
+  const sideText = {
+    missing: "Confira se o link chegou completo ou volte ao seu convite para gerar o pagamento de novo.",
+    pending: open
+      ? "Pague pelo app do seu banco. Assim que o Pix cair, esta página atualiza sozinha; o ingresso chega por e-mail depois da aprovação da organização."
+      : "Pague pelo app do seu banco. Assim que o Pix cair, esta página confirma sozinha e você recebe o ingresso por e-mail.",
+    expired: `Cada Pix vale por 1 hora. ${retry}`,
+    canceled: `A cobrança foi cancelada. ${retry}`,
+  }[state];
+
   return (
     <>
       <PageHero
         eyebrow="Pagamento"
-        title={reg ? `${firstName(reg.name)}, falta só o Pix.` : "Pagamento não encontrado."}
+        title={heroTitle}
         illustration={illustrations.estacao}
       >
         <EventMeta />
@@ -61,21 +85,22 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
             )}
             <h2 className="font-display text-heading">{reg ? formatBRL(reg.amountCents) : "—"}</h2>
             {reg?.lotName && <p className="text-body-md">{reg.lotName}</p>}
-            <p className="max-w-[40ch] text-body-md">
-              Pague pelo app do seu banco. Assim que o Pix cair, esta página confirma sozinha e você recebe o ingresso por e-mail.
-            </p>
+            <p className="max-w-[40ch] text-body-md">{sideText}</p>
           </div>
 
           <div className="flex flex-col gap-6">
             {!reg ? (
-              <Notice tag="404" title="Não encontramos este pagamento." text="Confira se o link está completo ou volte ao seu convite." />
+              <Notice title="Confira o link do pagamento." text="Ele deve ser o endereço completo que apareceu depois do formulário. Se não encontrar, abra o seu convite e gere o Pix de novo." />
             ) : reg.status !== "pending" || !qr ? (
               <Notice
-                tag={reg.status === "canceled" ? "CANCELADO" : "EXPIRADO"}
-                title="Este Pix não vale mais."
-                text="O prazo de pagamento terminou. Volte ao convite e preencha os dados de novo para gerar outro Pix."
-                href={`/inscricao/${reg.inviteCode}`}
-                cta="Voltar ao convite"
+                title={open ? "Gere um novo Pix pela página de inscrição." : "Gere um novo Pix pelo seu convite."}
+                text={
+                  reg.status === "canceled"
+                    ? `Volte ${open ? "à inscrição" : "ao convite"}, confira seus dados e gere outro Pix. O novo também vale por 1 hora.`
+                    : `Este QR Code e o copia e cola não valem mais. Volte ${open ? "à inscrição" : "ao convite"}, confira seus dados e gere outro Pix, válido por mais 1 hora.`
+                }
+                href={formPath(reg)}
+                cta="Gerar novo Pix"
               />
             ) : (
               <div className="flex flex-col gap-6 border-2 border-ink bg-paper p-6 shadow-hard">
@@ -94,7 +119,9 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
                   <CopyButton text={reg.opaBrCode ?? ""} label="Copiar código Pix" className="self-start" />
                 </div>
                 {reg.opaExpiresAt && (
-                  <p className="text-body">Vale até {fmtTime.format(new Date(reg.opaExpiresAt))} (horário de Brasília). Depois disso, gere outro pelo convite.</p>
+                  <p className="text-body">
+                    Vale até {fmtTime.format(new Date(reg.opaExpiresAt))} (horário de Brasília). Depois disso, gere outro {open ? "pela página de inscrição" : "pelo convite"}.
+                  </p>
                 )}
                 <ButtonLink href={`/inscricao/pix/${reg.id}?conferir=1`} prefetch={false} variant="primary" size="md" className="self-start">
                   Já paguei
@@ -102,10 +129,7 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
               </div>
             )}
             <p className="text-body">
-              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                WhatsApp {site.whatsapp}
-              </a>{" "}
-              ·{" "}
+              Dúvidas:{" "}
               <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
                 {site.contactEmail}
               </a>

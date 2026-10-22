@@ -2,10 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { isValidCpf, isValidIsoDate, isValidPhone, normalizeEmail, onlyDigits } from "@/lib/cpf";
-import { getInviteByCode, inviteAvailable } from "@/lib/invites";
+import { NO_DISCOUNT } from "@/lib/discounts";
+import { getInviteByCode, inviteAvailable, type Invite } from "@/lib/invites";
 import { createCharge } from "@/lib/opapingou";
-import { sendRegistrationConfirmed } from "@/lib/mail";
+import { sendPaymentReceived } from "@/lib/mail";
+import { formPath } from "@/lib/registration-state";
 import { attachOpaCharge, attachStripeSession, createRegistration, deleteUnpaidRegistration, findPaidRegistration, markPaid } from "@/lib/registrations";
+import { openRegistrationEnabled } from "@/lib/settings";
 import { appUrl, stripe } from "@/lib/stripe";
 import { currentOffer, offerPrice } from "@/lib/tickets";
 
@@ -27,6 +30,7 @@ function text(formData: FormData, key: string, max = 200) {
 
 // Valida, cria a inscrição pendente e manda pro pagamento: Pix do Opa Pingou (página com QR) ou Checkout do Stripe.
 // Cortesia (desconto do convite cobre o lote): confirma direto, sem cobrança. Em sucesso, redireciona (não retorna).
+// mode=open: cadastro aberto, sem convite; mesma cobrança, mas a inscrição paga fica aguardando aprovação no painel.
 export async function registerParticipant(_prev: RegistrationFormState, formData: FormData): Promise<RegistrationFormState> {
   // Honeypot: bots preenchem; humanos não veem o campo.
   if (text(formData, "website")) return { status: "idle" };
@@ -38,6 +42,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   const cpf = onlyDigits(text(formData, "cpf", 20));
   const birthDate = text(formData, "birthDate", 10);
   const consent = formData.get("consent") === "on";
+  const sponsorConsent = formData.get("sponsorConsent") === "on"; // opcional: não bloqueia a inscrição
   const values = { name, email, phone: text(formData, "phone", 40), cpf: text(formData, "cpf", 20), birthDate };
 
   const errors: RegistrationFieldErrors = {};
@@ -49,9 +54,18 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   if (!consent) errors.consent = "Precisamos do seu consentimento para concluir a inscrição.";
   if (Object.keys(errors).length > 0) return { status: "error", message: "Revise os campos destacados.", errors, values };
 
-  const invite = code ? await getInviteByCode(code) : null;
-  if (!invite || !inviteAvailable(invite)) {
-    return { status: "error", message: "Este convite não está mais disponível. Fale com a organização.", values };
+  // Cadastro aberto (/inscricao/aberta): sem convite e sem desconto; paga e entra em análise
+  const open = formData.get("mode") === "open";
+  let invite: Invite | null = null;
+  if (open) {
+    if (!(await openRegistrationEnabled())) {
+      return { status: "error", message: "As inscrições por esta página estão fechadas no momento. Fale com a organização.", values };
+    }
+  } else {
+    invite = code ? await getInviteByCode(code) : null;
+    if (!invite || !inviteAvailable(invite)) {
+      return { status: "error", message: "Este convite não está mais disponível. Fale com a organização.", values };
+    }
   }
   const ticket = await currentOffer();
   if (!ticket.enabled) {
@@ -66,9 +80,10 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     };
   }
 
-  const price = offerPrice(ticket, invite.discount);
+  const price = offerPrice(ticket, invite?.discount ?? NO_DISCOUNT);
   const registration = await createRegistration({
-    inviteId: invite.id,
+    inviteId: invite?.id ?? null,
+    source: open ? "open" : "invite",
     name,
     email,
     phone,
@@ -79,11 +94,12 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     discountCents: price.discountCents,
     provider: price.courtesy ? "courtesy" : ticket.provider,
     lotId: ticket.lotId,
+    sponsorConsent,
   });
 
   if (price.courtesy) {
     const paid = await markPaid(registration.id, null, 0);
-    if (paid) await sendRegistrationConfirmed(paid).catch((err) => console.error("[registerParticipant] mail", err));
+    if (paid) await sendPaymentReceived(paid).catch((err) => console.error("[registerParticipant] mail", err));
     redirect(`/inscricao/confirmada?r=${registration.id}`);
   }
 
@@ -95,7 +111,8 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
       await attachOpaCharge(registration.id, charge);
       next = `/inscricao/pix/${registration.id}`;
     } else {
-      next = await stripeCheckout(registration.id, invite.code, email, name, price.finalCents, ticket.name);
+      const inviteCode = invite?.code ?? "";
+      next = await stripeCheckout(registration.id, inviteCode, formPath({ source: registration.source, inviteCode }), email, name, price.finalCents, ticket.name);
     }
   } catch (err) {
     console.error("[registerParticipant]", err);
@@ -106,7 +123,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   redirect(next);
 }
 
-async function stripeCheckout(registrationId: string, inviteCode: string, email: string, name: string, priceCents: number, productName: string) {
+async function stripeCheckout(registrationId: string, inviteCode: string, backPath: string, email: string, name: string, priceCents: number, productName: string) {
   const session = await stripe().checkout.sessions.create({
     mode: "payment",
     locale: "pt-BR",
@@ -123,7 +140,7 @@ async function stripeCheckout(registrationId: string, inviteCode: string, email:
     payment_intent_data: { description: `${productName} — ${name}`, metadata: { registration_id: registrationId } },
     expires_at: Math.floor(Date.now() / 1000) + SESSION_TTL_MIN * 60,
     success_url: `${appUrl()}/inscricao/confirmada?s={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl()}/inscricao/${inviteCode}?cancelado=1`,
+    cancel_url: `${appUrl()}${backPath}?cancelado=1`,
   });
   if (!session.url) throw new Error("Checkout sem URL");
   await attachStripeSession(registrationId, session.id);

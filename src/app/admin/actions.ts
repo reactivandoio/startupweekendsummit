@@ -5,10 +5,10 @@ import { revalidatePath } from "next/cache";
 import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
 import { parseBRLCents, parseDiscount } from "@/lib/discounts";
 import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite, updateInvite } from "@/lib/invites";
-import { sendAccessInvite, sendInvite } from "@/lib/mail";
+import { sendAccessInvite, sendInvite, sendRegistrationApproved, sendRegistrationRejected } from "@/lib/mail";
 import { checkApiKey, createWebhookEndpoint, reactivateWebhookEndpoint, rotateWebhookSecret, testWebhookEndpoint } from "@/lib/opapingou";
 import { isOpaApiKey, isOpaTestKey, OpaApiError } from "@/lib/opapingou-core";
-import { deleteUnpaidRegistration, listPendingOpaRegistrations } from "@/lib/registrations";
+import { deleteUnpaidRegistration, listPendingOpaRegistrations, reviewRegistration, setRefunded } from "@/lib/registrations";
 import { deleteSetting, getSetting, setSetting } from "@/lib/settings";
 import { createSponsor, deleteSponsor, getSponsor, isSponsorTier, moveSponsor, updateSponsor } from "@/lib/sponsors";
 import { appUrl } from "@/lib/stripe";
@@ -187,6 +187,42 @@ export async function removeRegistration(formData: FormData) {
   if (id) await deleteUnpaidRegistration(id);
   revalidatePath("/admin/participantes");
   revalidatePath("/admin/convites");
+}
+
+/* ---------- Cadastro aberto: aprovação ---------- */
+
+// Aprovada: manda o ingresso. A aprovação vale mesmo se o e-mail falhar (o erro fica no log, como nos pagamentos).
+export async function approveRegistration(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const reg = id ? await reviewRegistration(id, "approved", me.id) : null;
+  if (reg) await sendRegistrationApproved(reg).catch((err) => console.error("[approveRegistration] mail", err));
+  revalidatePath("/admin/participantes");
+}
+
+// Reprovada: fica marcada e libera a vaga do lote; o reembolso é manual no Opa Pingou. O aviso por e-mail é opcional.
+export async function rejectRegistration(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const reg = id ? await reviewRegistration(id, "rejected", me.id) : null;
+  if (reg && formData.get("notify") === "on") await sendRegistrationRejected(reg).catch((err) => console.error("[rejectRegistration] mail", err));
+  revalidatePath("/admin/participantes");
+  revalidatePath("/admin/ingressos");
+}
+
+export async function toggleRefunded(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await setRefunded(id, formData.get("refunded") === "1");
+  revalidatePath("/admin/participantes");
+}
+
+export async function toggleOpenRegistration(formData: FormData) {
+  const me = await requireUser();
+  if (formData.get("enabled") === "1") await setSetting("open_registration", "on", me.id);
+  else await deleteSetting("open_registration");
+  revalidatePath("/admin/ingressos");
+  revalidatePath("/inscricao/aberta");
 }
 
 /* ---------- Ingressos: Opa Pingou e lotes ---------- */

@@ -51,7 +51,7 @@ export default function VoluntariosPage() {
           <div className="flex flex-col gap-4">
             <h2 className="font-display text-heading">Inscrições abertas.</h2>
             <p className="max-w-[44ch] text-body-md">
-              Preencha o formulário no fim da página. A organização responde pelo WhatsApp em poucos dias.
+              Preencha o formulário no fim da página. A organização responde por e-mail em poucos dias.
             </p>
           </div>
           <div className="flex flex-col gap-4 md:items-end md:text-right">
@@ -141,14 +141,10 @@ export default function VoluntariosPage() {
             <Eyebrow>Inscreva-se</Eyebrow>
             <h2 className="font-display text-heading">Inscreva-se como voluntário</h2>
             <p className="max-w-[40ch] text-body-md">
-              Leva menos de 2 minutos. A organização entra em contato pelo WhatsApp com os próximos passos.
+              Leva menos de 2 minutos. A organização entra em contato por e-mail com os próximos passos.
             </p>
             <p className="text-body">
               Dúvidas:{" "}
-              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                WhatsApp {site.whatsapp}
-              </a>{" "}
-              ou{" "}
               <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
                 {site.contactEmail}
               </a>

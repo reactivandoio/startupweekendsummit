@@ -80,10 +80,6 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
             </ul>
             <p className="text-body">
               Dúvidas:{" "}
-              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                WhatsApp {site.whatsapp}
-              </a>{" "}
-              ou{" "}
               <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
                 {site.contactEmail}
               </a>
@@ -98,7 +94,7 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
                 </h3>
                 <p className="text-body-md">
                   {invite
-                    ? "Se você acredita que isso é um engano, fale com a organização pelo WhatsApp."
+                    ? "Se você acredita que isso é um engano, fale com a organização por e-mail."
                     : "Confira se o link chegou completo ou peça um novo à organização."}
                 </p>
               </div>

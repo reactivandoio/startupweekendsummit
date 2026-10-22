@@ -153,24 +153,38 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
         } ${collapsed ? "md:w-16" : "md:w-64"}`}
       >
         <div className="flex flex-col">
-          <div className={`flex h-16 items-center border-b border-white/20 ${collapsed ? "justify-center md:px-0" : "justify-between px-4"}`}>
-            {!collapsed && (
-              <Link href="/admin" aria-label="Painel" className="shrink-0">
-                <Image src="/logo-negativo.svg" alt={site.name} width={86} height={40} priority className="h-[40px] w-auto" />
-              </Link>
+          {/* Topo: logo + ☰ (aberta). Recolhida no desktop, só a marca compacta "ts_", que expande a barra. Celular: logo + X. */}
+          <div className={`flex h-16 items-center border-b border-white/20 ${collapsed ? "justify-between px-4 md:justify-center md:px-0" : "justify-between px-4"}`}>
+            <Link href="/admin" aria-label="Painel" className={`shrink-0 ${collapsed ? "md:hidden" : ""}`}>
+              <Image src="/logo-negativo.svg" alt={site.name} width={86} height={40} priority className="h-[40px] w-auto" />
+            </Link>
+            {collapsed ? (
+              <button
+                type="button"
+                onClick={toggle}
+                aria-expanded={false}
+                aria-controls="admin-sidebar"
+                aria-label="Expandir menu"
+                title="Expandir menu"
+                className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-white/10 md:flex"
+              >
+                <span className="flex h-8 w-8 items-center justify-center bg-white font-display text-caption font-bold text-obsidian" aria-hidden="true">
+                  ts_
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={toggle}
+                aria-expanded={true}
+                aria-controls="admin-sidebar"
+                aria-label="Recolher menu"
+                title="Recolher menu"
+                className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-white/10 md:flex"
+              >
+                <Burger open={false} />
+              </button>
             )}
-            {/* Desktop: recolhe/expande a coluna. Celular: fecha a gaveta. */}
-            <button
-              type="button"
-              onClick={toggle}
-              aria-expanded={!collapsed}
-              aria-controls="admin-sidebar"
-              aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-              title={collapsed ? "Expandir menu" : "Recolher menu"}
-              className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-white/10 md:flex"
-            >
-              <Burger open={!collapsed} />
-            </button>
             <button
               type="button"
               onClick={() => setDrawer(false)}

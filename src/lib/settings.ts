@@ -3,13 +3,16 @@ import { ensureSchema, sql } from "@/lib/db";
 
 // Chaves conhecidas. Segredos (chave de API, segredo do webhook) nunca voltam para o navegador.
 // site_theme: tema padrão do site ("dark" | "light"), escolhido em /admin/configuracoes.
-export type SettingKey = "opapingou_api_key" | "opapingou_webhook_id" | "opapingou_webhook_secret" | "site_theme";
+// open_registration: "on" abre /inscricao/aberta (cadastro sem convite, com aprovação); sem a chave, fica fechada.
+export type SettingKey = "opapingou_api_key" | "opapingou_webhook_id" | "opapingou_webhook_secret" | "site_theme" | "open_registration";
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
   await ensureSchema();
   const [row] = await sql<{ value: string }[]>`select value from settings where key = ${key}`;
   return row?.value ?? null;
 }
+
+export const openRegistrationEnabled = async () => (await getSetting("open_registration")) === "on";
 
 export async function setSetting(key: SettingKey, value: string, userId: string | null) {
   await ensureSchema();
