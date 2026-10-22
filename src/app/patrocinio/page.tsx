@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { ButtonAnchor, buttonClass } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
-import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
+import { EventMeta, PageHero } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
 import { SponsorsSection } from "@/components/sponsors-section";
+import { illustrations } from "@/content/illustrations";
 import { commercialContacts, site, sponsorship, stats } from "@/content/site";
 
 const title = `Patrocínio | ${site.name}`;
@@ -23,8 +24,9 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title, description: site.seoDescriptionSponsors },
 };
 
-// Fundos chapados dos cards de cota, do mais forte ao mais leve: tinta, Marigold, Grass e os dois tons claros
-const tierColors = ["bg-ink text-paper", "bg-marigold", "bg-grass", "bg-grass-wash", "bg-marigold-wash"];
+// Fundos chapados dos cards de cota, do mais forte ao mais leve: tinta, Marigold, Grass e os dois tons "wash".
+// Sobre Marigold e Grass o texto é preto fixo (no escuro a tinta vira clara e não passaria AA).
+const tierColors = ["bg-ink text-paper", "bg-marigold text-obsidian", "bg-grass text-obsidian", "bg-grass-wash", "bg-marigold-wash"];
 
 const reasons = [
   {
@@ -46,7 +48,7 @@ const reasons = [
 ];
 
 function Mark({ v }: { v: boolean | string }) {
-  if (v === false) return <span className="text-ash">—</span>;
+  if (v === false) return <span className="text-ink/40">—</span>;
   if (v === true) return <span aria-label="incluso">▲</span>;
   return <span className="font-semibold">{v}</span>;
 }
@@ -72,14 +74,14 @@ export default function PatrocinioPage() {
         </div>
       </PageHero>
 
-      {/* Faixa Grass: números da última edição */}
-      <section className="bg-grass text-ink">
+      {/* Faixa Grass: números da última edição. Texto preto fixo: branco sobre Grass não passa AA. */}
+      <section className="bg-grass text-obsidian">
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 py-15 sm:px-6">
           <div className="flex flex-col gap-6">
-            <Eyebrow>Alcance</Eyebrow>
+            <Eyebrow tone="obsidian">Alcance</Eyebrow>
             <p className="max-w-[22ch] font-display text-heading-lg">A edição de 2025 reuniu 86 lideranças e 30 patrocinadores.</p>
           </div>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-ink pt-6 lg:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-obsidian pt-6 lg:grid-cols-4">
             {stats.map((st) => (
               <div key={st.label} className="flex flex-col gap-2">
                 <dd className="font-display text-heading">{st.value}</dd>

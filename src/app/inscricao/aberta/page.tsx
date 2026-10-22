@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Eyebrow } from "@/components/eyebrow";
-import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
+import { EventMeta, PageHero } from "@/components/page-hero";
+import { illustrations } from "@/content/illustrations";
 import { RegistrationForm } from "@/components/registration-form";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/content/site";

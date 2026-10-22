@@ -6,7 +6,7 @@ const linkClass = "decoration-marigold decoration-2 underline-offset-[6px] hover
 
 export function SiteFooter() {
   return (
-    <footer className="bg-obsidian text-paper">
+    <footer className="bg-obsidian text-white">
       <div aria-hidden="true" className="h-3 bg-linear-to-r from-grass to-marigold" />
       <div className="mx-auto flex max-w-page flex-col justify-between gap-8 px-4 py-15 sm:flex-row sm:items-end sm:px-6">
         <div className="flex flex-col gap-6">

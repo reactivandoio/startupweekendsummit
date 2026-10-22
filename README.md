@@ -54,8 +54,24 @@ e-mail com link de entrada — o botão "Reenviar convite" manda outro, e diz na
 - `/admin/convites` — cria os links de inscrição (e envia por e-mail, se informado)
 - `/admin/patrocinadores` — patrocinadores do site (ver abaixo)
 - `/admin/usuarios` — quem pode entrar
+- `/admin/configuracoes` — tema padrão do site (ver abaixo)
 
 O schema do banco é criado automaticamente na primeira conexão (`src/lib/db.ts`).
+
+## Tema claro e escuro
+
+O site e o painel têm os dois temas, com a mesma marca (Grass, Marigold, papel e tinta). O tema padrão é escolhido
+em `/admin/configuracoes` (tabela `settings`, chave `site_theme`; começa escuro) e vale pra quem chega pela
+primeira vez, independente da preferência do sistema. O botão de tema (topo do site, barra do painel) guarda a
+escolha da pessoa no cookie `sws-theme` por um ano, e ela passa na frente do padrão. O layout raiz lê cookie e
+padrão no servidor e já manda `data-theme` no `<html>`, então não há flash do tema errado — por isso todas as
+páginas são dinâmicas.
+
+Os tokens de cor ficam em `src/app/globals.css`: `paper`, `ink`, `ash`, `graphite` e os tons `*-wash` trocam de
+valor no escuro; `obsidian` e `white` são fixos (rodapé, faixas Grass/Marigold, texto sobre Marigold). O logo
+negativo entra no escuro via CSS; as ilustrações têm uma versão `-escuro.webp` (papel transparente, tinta branca,
+Marigold preservado) gerada por `pnpm ilustracoes` a partir das originais — rode de novo ao receber arte nova. Os
+logos de patrocinadores viram brancos no escuro (`.logo-mono`). Og-images e e-mails não mudam com o tema.
 
 ## Patrocinadores
 
@@ -120,6 +136,8 @@ atualiza o código em `/mnt/hd2tb/projetos/startupweekendsummit` e roda `bash de
   `src/lib/invites.ts`, `src/lib/registrations.ts`, `src/lib/tickets.ts` (lotes e o que está à venda),
   `src/lib/opapingou.ts` (cliente REST), `src/lib/opapingou-core.ts` (assinatura, testado),
   `src/lib/ticket-payments.ts` (aplica o estado da cobrança) e `src/lib/stripe.ts` — convites, inscrições, pagamentos.
-- `src/lib/settings.ts` — configurações editadas no painel (chave e webhook do Opa Pingou).
+- `src/lib/settings.ts` — configurações editadas no painel (chave e webhook do Opa Pingou, tema padrão).
+- `src/lib/theme.ts` e `src/lib/theme-core.ts` — tema da requisição (cookie ou padrão) e helpers puros (testados);
+  `src/components/theme.tsx` — provider e botão de tema; `src/content/illustrations.ts` — ilustrações nos dois temas.
 - `src/lib/auth.ts` — magic link, sessões e usuários do painel; `src/lib/mail.ts` — envio de e-mail (SMTP).
 - `src/lib/sponsors.ts` e `src/lib/uploads.ts` — patrocinadores no Postgres e arquivos de logo no volume de uploads.

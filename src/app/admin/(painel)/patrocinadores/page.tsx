@@ -32,16 +32,16 @@ export default async function PatrocinadoresPage() {
       </div>
 
       {groups.length === 0 ? (
-        <p className="self-start border-t border-ink pt-6 text-body-md dark:border-paper">Nenhum patrocinador ainda.</p>
+        <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum patrocinador ainda.</p>
       ) : (
         <div className="flex flex-col gap-10 self-start">
           {groups.map((g) => (
             <section key={g.id} className="flex flex-col">
-              <h2 className="border-b border-ink pb-2 font-display text-subheading dark:border-paper">{g.label}</h2>
+              <h2 className="border-b border-ink pb-2 font-display text-subheading">{g.label}</h2>
               <ul>
                 {g.items.map((s, i) => (
-                  <li key={s.id} className="grid gap-4 border-b border-ash py-4 dark:border-graphite sm:grid-cols-[160px_1fr_auto] sm:items-center">
-                    <div className="relative h-20 w-40 border border-ash bg-paper dark:border-graphite">
+                  <li key={s.id} className="grid gap-4 border-b border-ash py-4 sm:grid-cols-[160px_1fr_auto] sm:items-center">
+                    <div className="relative h-20 w-40 border border-ash bg-paper">
                       <Image src={uploadUrl(s.logo)} alt={sponsorAlt(s)} fill unoptimized sizes="160px" className="logo-mono object-contain p-2" />
                     </div>
                     <div className="flex min-w-0 flex-col gap-1">

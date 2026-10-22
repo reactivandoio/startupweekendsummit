@@ -2,10 +2,15 @@
 
 /* Tokens — marca TSW Summit Brasil, edição Goiânia: papel branco, tinta preta
    e a dupla Grass + Marigold (conceito visual "goianidade", Remix 2026).
-   Mono só em <code> (links de convite no painel). */
+   Mono só em <code> (links de convite no painel).
+
+   Dois temas pelos mesmos nomes: paper, ink, ash, graphite e os tons "wash" trocam de valor no
+   escuro (html[data-theme="dark"], abaixo); obsidian e white são fixos pra quem precisa de preto
+   ou branco de verdade (rodapé, faixas Grass/Marigold, texto sobre Marigold). */
 @theme {
   --color-*: initial;
   --color-obsidian: #000000;
+  --color-white: #ffffff;
   --color-ink: #0f0f0f;
   --color-paper: #ffffff;
   --color-ash: #e2e2e2;
@@ -60,14 +65,25 @@
   --radius-none: 0px;
 }
 
-/* Dark mode só onde data-theme="dark" for aplicado (painel /admin) */
+/* O tema é decidido no servidor (cookie do visitante ou padrão do painel) e vai em data-theme no <html>;
+   a preferência do sistema não entra. A variante dark: fica pra ajustes pontuais (logo, blend de imagem). */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 html {
   scroll-behavior: smooth;
 }
+
+/* Tema escuro: papel vira tinta e vice-versa; cinzas e tons "wash" ganham versão escura.
+   Contrastes no papel #0f0f0f — ink 17:1, graphite 8:1, grass-deep 10:1, grass puro 5:1, marigold 10:1. */
 html[data-theme="dark"] {
   color-scheme: dark;
+  --color-ink: #f4f4f4;
+  --color-paper: #0f0f0f;
+  --color-ash: #2e2e2e;
+  --color-graphite: #a8a8a8;
+  --color-grass-deep: #8fcf8d;
+  --color-grass-wash: #172a19;
+  --color-marigold-wash: #2a2312;
 }
 
 body {
@@ -79,7 +95,7 @@ body {
 
 ::selection {
   background: var(--color-marigold);
-  color: var(--color-ink);
+  color: var(--color-obsidian);
 }
 
 /* Foco visível igual em tudo: contorno Ink de 2px afastado do elemento (Marigold no papel preto) */
@@ -124,10 +140,14 @@ body {
   }
 }
 
-/* Logos de patrocinadores: sempre em tinta preta, qualquer que seja a arte enviada (SVG/PNG/WebP com
-   transparência). brightness(0) zera a cor e preserva o alfa; por isso o upload recusa fundo opaco. */
+/* Logos de patrocinadores: sempre em tinta, qualquer que seja a arte enviada (SVG/PNG/WebP com
+   transparência). brightness(0) zera a cor e preserva o alfa; por isso o upload recusa fundo opaco.
+   No escuro, invert(1) leva o preto a branco. */
 .logo-mono {
   filter: brightness(0);
+}
+html[data-theme="dark"] .logo-mono {
+  filter: brightness(0) invert(1);
 }
 
 /* Campos: borda Ash que vira Ink no foco/erro. Sem cor de estado. */
@@ -156,4 +176,7 @@ select.field {
   background-repeat: no-repeat;
   background-position: right 16px center;
   padding-right: 40px;
+}
+html[data-theme="dark"] select.field {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23f4f4f4' stroke-width='1.5'/%3E%3C/svg%3E");
 }
