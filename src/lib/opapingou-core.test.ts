@@ -1,7 +1,18 @@
 // pnpm test — roteiro de testes do guia do Opa Pingou (item 4: verificação de assinatura) e utilitários
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { chargeEventStatus, isOpaApiKey, isOpaTestKey, maskOpaKey, parseOpaEvent, signOpaPayload, verifyOpaSignature } from "./opapingou-core.ts";
+import {
+  chargeEventStatus,
+  duplicateWebhooks,
+  isOpaApiKey,
+  isOpaTestKey,
+  maskOpaKey,
+  parseOpaEvent,
+  planWebhookSetup,
+  sameWebhookUrl,
+  signOpaPayload,
+  verifyOpaSignature,
+} from "./opapingou-core.ts";
 
 const secret = "whsec_Zx3kQ8mT1vN7pR5sB2cD9fG4hJ6wY0aL";
 const body = JSON.stringify({
@@ -71,5 +82,38 @@ describe("chave de API", () => {
     assert.equal(isOpaTestKey(test), true);
     assert.equal(isOpaTestKey(live), false);
     assert.equal(maskOpaKey(live), "opk_live_…aaaa");
+  });
+});
+
+describe("webhooks duplicados", () => {
+  const url = "https://startupweekendsummit.com.br/api/opapingou/webhook";
+  const saved = { id: "d5cd93df", url, status: "ACTIVE" as const };
+  const manual = { id: "616925d6", url: `${url}/`, status: "DISABLED" as const };
+  const other = { id: "4d1b83ab", url: "https://bff.hubcommunity.io/webhooks/opapingou", status: "ACTIVE" as const };
+
+  it("compara URL sem caixa do host nem barra no fim", () => {
+    assert.equal(sameWebhookUrl(url, "https://StartupWeekendSummit.com.br/api/opapingou/webhook/"), true);
+    assert.equal(sameWebhookUrl(url, "https://startupweekendsummit.com.br/api/opapingou/webhook2"), false);
+    assert.equal(sameWebhookUrl(url, "http://startupweekendsummit.com.br/api/opapingou/webhook"), false);
+  });
+  it("aponta como duplicado só o que tem a URL do site e não é o salvo", () => {
+    assert.deepEqual(duplicateWebhooks([saved, manual, other], url, saved.id).map((e) => e.id), ["616925d6"]);
+    assert.deepEqual(duplicateWebhooks([saved, other], url, saved.id), []);
+  });
+  it("sem webhook salvo, todo endpoint da URL é duplicado", () => {
+    assert.deepEqual(duplicateWebhooks([saved, manual, other], url, null).map((e) => e.id), ["d5cd93df", "616925d6"]);
+  });
+  it("com o salvo existindo, troca o segredo dele em vez de criar", () => {
+    assert.deepEqual(planWebhookSetup([manual, saved, other], url, saved.id), { action: "rotate", id: "d5cd93df", status: "ACTIVE" });
+  });
+  it("sem salvo, adota o endpoint ativo da URL", () => {
+    assert.deepEqual(planWebhookSetup([manual, saved, other], url, null), { action: "rotate", id: "d5cd93df", status: "ACTIVE" });
+  });
+  it("salvo que sumiu: adota o que existir para a URL, mesmo desativado", () => {
+    assert.deepEqual(planWebhookSetup([manual, other], url, "apagado"), { action: "rotate", id: "616925d6", status: "DISABLED" });
+  });
+  it("cria só quando a conta não tem endpoint para a URL", () => {
+    assert.deepEqual(planWebhookSetup([other], url, null), { action: "create" });
+    assert.deepEqual(planWebhookSetup([], url, "apagado"), { action: "create" });
   });
 });
