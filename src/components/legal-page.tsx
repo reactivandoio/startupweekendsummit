@@ -101,7 +101,7 @@ export function LegalPage({
       </section>
       <main className="bg-paper py-15 text-ink md:py-30">
         <div className="mx-auto grid max-w-page gap-12 px-4 sm:px-6 md:grid-cols-[280px_1fr] md:gap-15">
-          <nav aria-label="Índice" className="flex flex-col gap-3 self-start border-t-4 border-grass pt-4 md:sticky md:top-8">
+          <nav aria-label="Índice" className="flex min-w-0 flex-col gap-3 self-start border-t-4 border-grass pt-4 md:sticky md:top-8">
             <p className="text-body-md font-semibold">Índice</p>
             <ol className="flex flex-col gap-2 text-body">
               {sections.map((s, i) => (
@@ -116,7 +116,7 @@ export function LegalPage({
               ))}
             </ol>
           </nav>
-          <div className="flex max-w-[70ch] flex-col gap-12">
+          <div className="flex min-w-0 max-w-[70ch] flex-col gap-12">
             {intro && (
               <div className="flex flex-col gap-4 border-2 border-ink bg-paper p-6 shadow-hard md:p-8">
                 <Eyebrow>{intro.label}</Eyebrow>
