@@ -23,8 +23,6 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title, description: site.seoDescriptionSponsors },
 };
 
-const commercial = commercialContacts[0];
-
 // Fundos chapados dos cards de cota, do mais forte ao mais leve: tinta, Marigold, Grass e os dois tons claros
 const tierColors = ["bg-ink text-paper", "bg-marigold", "bg-grass", "bg-grass-wash", "bg-marigold-wash"];
 
@@ -187,27 +185,22 @@ export default function PatrocinioPage() {
             <Eyebrow>Contato comercial</Eyebrow>
             <h2 className="font-display text-heading">Vamos conversar sobre a sua cota</h2>
             <p className="max-w-[40ch] text-body-md">
-              Fale com o time comercial pelo WhatsApp ou e-mail. Retornamos com a proposta e os próximos passos.
+              Fale com o time comercial por e-mail. Retornamos com a proposta e os próximos passos.
             </p>
-            <ButtonAnchor href={`https://wa.me/${commercial.wa}`} target="_blank" rel="noreferrer" variant="primary" size="lg" className="self-stretch sm:self-start">
-              Chamar no WhatsApp
+            <ButtonAnchor href={`mailto:${site.contactEmail}`} variant="primary" size="lg" className="self-stretch sm:self-start">
+              Enviar e-mail
             </ButtonAnchor>
+            <p className="text-body">
+              <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4 break-all">
+                {site.contactEmail}
+              </a>
+            </p>
           </div>
           <ul className="flex flex-col border-t border-ink">
             {commercialContacts.map((c) => (
-              <li key={c.email} className="grid gap-2 border-b border-ash py-6 sm:grid-cols-[1fr_1.2fr]">
-                <div>
-                  <p className="text-body-md font-semibold">{c.name}</p>
-                  <p className="text-body">{c.role}</p>
-                </div>
-                <div className="flex flex-col gap-1 text-body">
-                  <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                    {c.phone}
-                  </a>
-                  <a href={`mailto:${c.email}`} className="underline underline-offset-4 break-all">
-                    {c.email}
-                  </a>
-                </div>
+              <li key={c.name} className="flex flex-col gap-1 border-b border-ash py-6">
+                <p className="text-body-md font-semibold">{c.name}</p>
+                <p className="text-body">{c.role}</p>
               </li>
             ))}
           </ul>

@@ -58,7 +58,7 @@ const copy: Record<Outcome, { tag: string; title: string; box: string; text: str
     tag: "OK",
     title: "Inscrição confirmada.",
     box: "Seu ingresso está no e-mail.",
-    text: "Enviamos o comprovante e o ingresso para o endereço cadastrado. Em breve mandamos a programação e as orientações pelo WhatsApp.",
+    text: "Enviamos o comprovante e o ingresso para o endereço cadastrado. Em breve mandamos a programação e as orientações por e-mail.",
   },
   processing: {
     tag: "Aguardando",
@@ -112,10 +112,7 @@ export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscr
               </ButtonLink>
             )}
             <p className="text-body">
-              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                WhatsApp {site.whatsapp}
-              </a>{" "}
-              ·{" "}
+              Dúvidas:{" "}
               <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
                 {site.contactEmail}
               </a>

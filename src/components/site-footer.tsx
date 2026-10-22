@@ -29,14 +29,11 @@ export function SiteFooter() {
           <a href={site.instagram} target="_blank" rel="noreferrer" className={linkClass}>
             Instagram
           </a>
-          <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className={linkClass}>
-            WhatsApp
-          </a>
           <a href={`mailto:${site.contactEmail}`} className={linkClass}>
             Contato
           </a>
           <Link href="/termos-de-uso" className={linkClass}>
-            Termos de uso
+            Termos de participação
           </Link>
           <Link href="/politica-de-privacidade" className={linkClass}>
             Privacidade
