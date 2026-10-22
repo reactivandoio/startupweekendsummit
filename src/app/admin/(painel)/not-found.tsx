@@ -16,7 +16,7 @@ export default function AdminNotFound() {
       <div className="flex flex-col gap-4">
         <Eyebrow>Erro 404</Eyebrow>
         <h1 className="font-display text-heading">
-          Nada por aqui<span className="text-marigold">_</span>
+          Nada por aqui<span className="text-marigold" aria-hidden="true">_</span>
         </h1>
         <p className="text-body-md">
           Essa página do painel não existe, ou o registro que você abriu foi removido. Escolha uma seção no menu ou volte

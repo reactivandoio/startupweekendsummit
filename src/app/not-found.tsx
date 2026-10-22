@@ -19,7 +19,7 @@ export default function NotFound() {
         eyebrow="Erro 404 · página não encontrada"
         title={
           <>
-            Esse salto caiu fora do mapa<span className="text-marigold">_</span>
+            Esse salto caiu fora do mapa<span className="text-marigold" aria-hidden="true">_</span>
           </>
         }
         lead="O endereço não existe ou mudou de lugar. Volte pro começo e bora pro futuro."
