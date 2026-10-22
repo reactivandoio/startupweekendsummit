@@ -50,7 +50,8 @@ const linkClass = "underline decoration-grass decoration-2 underline-offset-4 ho
 // Formulário do convite: dados do participante → Pix do Opa Pingou, Checkout do Stripe ou cortesia (redireciona ao enviar).
 // Máscaras no cliente (CPF, WhatsApp, data); o servidor recebe CPF/telefone como estão e guarda só dígitos,
 // e a data já em YYYY-MM-DD (campo escondido). Validação no cliente antes do envio, com as mesmas regras do servidor.
-export function RegistrationForm({ code, priceLabel, method }: { code: string; priceLabel: string; method: "pix" | "checkout" | "courtesy" }) {
+// code null: cadastro aberto (sem convite), cuja inscrição paga passa pela aprovação da organização.
+export function RegistrationForm({ code, priceLabel, method }: { code: string | null; priceLabel: string; method: "pix" | "checkout" | "courtesy" }) {
   const [state, formAction, pending] = useActionState(registerParticipant, initialState);
   const v = state.values ?? {};
   const [cpf, setCpf] = useState(() => maskCpf(v.cpf ?? ""));
@@ -96,7 +97,7 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string; p
         </p>
       )}
 
-      <input type="hidden" name="code" value={code} />
+      {code === null ? <input type="hidden" name="mode" value="open" /> : <input type="hidden" name="code" value={code} />}
 
       {/* honeypot */}
       <div className="absolute -left-[9999px] top-0" aria-hidden="true">
@@ -236,7 +237,10 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string; p
       <Button type="submit" variant="primary" size="lg" disabled={pending} className="w-full">
         {pending ? pendingLabel[method] : `${submitLabel[method]} · ${method === "courtesy" ? "Cortesia" : priceLabel}`}
       </Button>
-      <p className="text-caption text-ink/60">{footnote[method]}</p>
+      <p className="text-caption text-ink/60">
+        {footnote[method]}
+        {code === null && " A inscrição passa pela aprovação da organização: o ingresso chega por e-mail depois dela; se não for aprovada, o valor é devolvido."}
+      </p>
     </form>
   );
 }

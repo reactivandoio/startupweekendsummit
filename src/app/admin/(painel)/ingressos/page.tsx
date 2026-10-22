@@ -1,11 +1,12 @@
-import { moveLotAction, removeLotAction, removeOpaKey, updateLotAction } from "@/app/admin/actions";
+import { moveLotAction, removeLotAction, removeOpaKey, toggleOpenRegistration, updateLotAction } from "@/app/admin/actions";
 import { buttonClass } from "@/components/button";
+import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
 import { LotForm, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
 import { formatBRL } from "@/lib/cpf";
 import { getWebhookEndpoint, opaApiUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
 import { isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
-import { getSetting } from "@/lib/settings";
+import { getSetting, openRegistrationEnabled } from "@/lib/settings";
 import { appUrl } from "@/lib/stripe";
 import { currentOffer, listLots } from "@/lib/tickets";
 
@@ -15,7 +16,14 @@ const btn = buttonClass("secondary", "sm");
 const centsToInput = (c: number) => (c / 100).toFixed(2).replace(".", ",");
 
 export default async function IngressosPage() {
-  const [apiKey, webhookId, lots, offer] = await Promise.all([getSetting("opapingou_api_key"), getSetting("opapingou_webhook_id"), listLots(), currentOffer()]);
+  const [apiKey, webhookId, lots, offer, openEnabled] = await Promise.all([
+    getSetting("opapingou_api_key"),
+    getSetting("opapingou_webhook_id"),
+    listLots(),
+    currentOffer(),
+    openRegistrationEnabled(),
+  ]);
+  const openUrl = `${appUrl()}/inscricao/aberta`;
 
   // Estado do endpoint direto do Opa Pingou (desativado depois de falhas, última entrega)
   let endpoint: OpaWebhookEndpoint | null = null;
@@ -42,6 +50,36 @@ export default async function IngressosPage() {
             : "Configure o Opa Pingou e crie pelo menos um lote ativo para abrir as vendas nos convites."}
         </p>
       </div>
+
+      <section className="grid gap-10 lg:grid-cols-[minmax(280px,420px)_1fr]">
+        <div className="flex flex-col gap-6">
+          <Eyebrow>Inscrição aberta</Eyebrow>
+          <p className="max-w-[40ch] text-body-md">
+            Página de inscrição sem convite, para enviar a quem você quiser. Paga pelo mesmo lote à venda e entra como &quot;aguardando aprovação&quot; em
+            Participantes; o ingresso só sai quando você aprova. Não aparece no site nem nos buscadores.
+          </p>
+        </div>
+
+        <dl className="self-start border-t border-ink dark:border-paper">
+          <Row label="Situação">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-semibold">{openEnabled ? "Aberta" : "Fechada"}</span>
+              <form action={toggleOpenRegistration}>
+                <input type="hidden" name="enabled" value={openEnabled ? "0" : "1"} />
+                <button type="submit" className={btn}>
+                  {openEnabled ? "Fechar" : "Abrir"}
+                </button>
+              </form>
+            </div>
+          </Row>
+          <Row label="Link">
+            <div className="flex flex-col gap-3">
+              <code className="break-all font-mono text-caption">{openUrl}</code>
+              <CopyButton text={openUrl} label="Copiar link" className="self-start" />
+            </div>
+          </Row>
+        </dl>
+      </section>
 
       <section className="grid gap-10 lg:grid-cols-[minmax(280px,420px)_1fr]">
         <div className="flex flex-col gap-6">

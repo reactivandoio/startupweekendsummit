@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { sendRegistrationConfirmed } from "@/lib/mail";
+import { sendPaymentReceived } from "@/lib/mail";
 import { getRegistrationBySession, markPaid, markUnpaid } from "@/lib/registrations";
 import { stripe } from "@/lib/stripe";
 
@@ -55,7 +55,7 @@ async function confirm(session: Stripe.Checkout.Session) {
   if (!reg) return;
   const pi = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
   const paid = await markPaid(reg.id, pi, session.amount_total);
-  if (paid) await sendRegistrationConfirmed(paid);
+  if (paid) await sendPaymentReceived(paid);
 }
 
 async function settle(session: Stripe.Checkout.Session, status: "expired" | "canceled") {

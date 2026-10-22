@@ -1,17 +1,22 @@
 import "server-only";
 import { ensureSchema, sql } from "@/lib/db";
+import type { ApprovalStatus, RegistrationSource, RegistrationStatus } from "@/lib/registration-state";
 import type { PaymentProvider } from "@/lib/tickets";
+
+export type { ApprovalStatus, RegistrationSource, RegistrationStatus } from "@/lib/registration-state";
 
 // "courtesy": convite com 100% de desconto, confirmado sem cobrança
 export type RegistrationProvider = PaymentProvider | "courtesy";
 
-export type RegistrationStatus = "pending" | "paid" | "expired" | "canceled";
-
 export type Registration = {
   id: string;
-  inviteId: string;
+  inviteId: string | null; // null no cadastro aberto
   inviteName: string;
   inviteCode: string;
+  source: RegistrationSource;
+  approval: ApprovalStatus | null; // null = convite (não passa por aprovação)
+  reviewedAt: string | null;
+  refundedAt: string | null; // reprovada paga: quando o reembolso foi feito no meio de pagamento
   name: string;
   email: string;
   phone: string; // só dígitos
@@ -36,9 +41,13 @@ export type Registration = {
 
 type Row = {
   id: string;
-  invite_id: string;
-  invite_name?: string;
-  invite_code?: string;
+  invite_id: string | null;
+  invite_name?: string | null;
+  invite_code?: string | null;
+  source: RegistrationSource;
+  approval: ApprovalStatus | null;
+  reviewed_at: Date | null;
+  refunded_at: Date | null;
   name: string;
   email: string;
   phone: string;
@@ -66,6 +75,10 @@ const toRegistration = (r: Row): Registration => ({
   inviteId: r.invite_id,
   inviteName: r.invite_name ?? "",
   inviteCode: r.invite_code ?? "",
+  source: r.source,
+  approval: r.approval,
+  reviewedAt: r.reviewed_at ? r.reviewed_at.toISOString() : null,
+  refundedAt: r.refunded_at ? r.refunded_at.toISOString() : null,
   name: r.name,
   email: r.email,
   phone: r.phone,
@@ -90,7 +103,7 @@ const toRegistration = (r: Row): Registration => ({
 
 const withInvite = () => sql`
   select r.*, i.name as invite_name, i.code as invite_code, l.name as lot_name
-  from registrations r join invites i on i.id = r.invite_id left join ticket_lots l on l.id = r.lot_id`;
+  from registrations r left join invites i on i.id = r.invite_id left join ticket_lots l on l.id = r.lot_id`;
 
 export async function listRegistrations(): Promise<Registration[]> {
   await ensureSchema();
@@ -123,16 +136,17 @@ export async function listPendingOpaRegistrations(): Promise<Registration[]> {
   return rows.map(toRegistration);
 }
 
-// Mesma pessoa (e-mail ou CPF) já com ingresso pago?
+// Mesma pessoa (e-mail ou CPF) já com inscrição paga? Reprovada não conta: pode entrar de novo por um convite.
 export async function findPaidRegistration(email: string, cpf: string): Promise<Registration | null> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
-    ${withInvite()} where r.status = 'paid' and (r.email = ${email} or r.cpf = ${cpf}) limit 1`;
+    ${withInvite()} where r.status = 'paid' and r.approval is distinct from 'rejected' and (r.email = ${email} or r.cpf = ${cpf}) limit 1`;
   return row ? toRegistration(row) : null;
 }
 
 export async function createRegistration(data: {
-  inviteId: string;
+  inviteId: string | null;
+  source: RegistrationSource;
   name: string;
   email: string;
   phone: string;
@@ -147,8 +161,8 @@ export async function createRegistration(data: {
 }): Promise<Registration> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
-    insert into registrations (invite_id, name, email, phone, cpf, birth_date, amount_cents, list_price_cents, discount_cents, provider, lot_id, sponsor_consent_at)
-    values (${data.inviteId}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents}, ${data.listPriceCents}, ${data.discountCents}, ${data.provider}, ${data.lotId}, ${data.sponsorConsent ? new Date() : null})
+    insert into registrations (invite_id, source, approval, name, email, phone, cpf, birth_date, amount_cents, list_price_cents, discount_cents, provider, lot_id, sponsor_consent_at)
+    values (${data.inviteId}, ${data.source}, ${data.source === "open" ? "pending" : null}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents}, ${data.listPriceCents}, ${data.discountCents}, ${data.provider}, ${data.lotId}, ${data.sponsorConsent ? new Date() : null})
     returning *`;
   return toRegistration(row);
 }
@@ -182,6 +196,24 @@ export async function markPaid(id: string, paymentIntent: string | null, amountC
 export async function markUnpaid(id: string, status: "expired" | "canceled") {
   await ensureSchema();
   await sql`update registrations set status = ${status} where id = ${id} and status = 'pending'`;
+}
+
+// Aprovar/reprovar: só cadastro aberto já pago e ainda em análise. Idempotente: só quem muda recebe a inscrição (e envia o e-mail).
+export async function reviewRegistration(id: string, decision: "approved" | "rejected", userId: string): Promise<Registration | null> {
+  await ensureSchema();
+  const [row] = await sql<{ id: string }[]>`
+    update registrations set approval = ${decision}, reviewed_at = now(), reviewed_by = ${userId}
+    where id = ${id} and status = 'paid' and approval = 'pending'
+    returning id`;
+  return row ? getRegistration(row.id) : null;
+}
+
+// Reembolso de reprovada paga é manual no painel do Opa Pingou; aqui só fica a marcação
+export async function setRefunded(id: string, refunded: boolean) {
+  await ensureSchema();
+  await sql`
+    update registrations set refunded_at = ${refunded ? new Date() : null}
+    where id = ${id} and status = 'paid' and approval = 'rejected'`;
 }
 
 // Remove só o que nunca foi pago (pago se resolve no Stripe, com estorno)

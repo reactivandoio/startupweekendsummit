@@ -10,6 +10,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { firstName } from "@/lib/names";
+import { formPath } from "@/lib/registration-state";
 import { getRegistration, type Registration } from "@/lib/registrations";
 import { syncCharge } from "@/lib/ticket-payments";
 
@@ -41,6 +42,11 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
   // Estado da página: o hero, a coluna do valor e a caixa contam a mesma história
   const state = !reg ? "missing" : qr ? "pending" : reg.status === "canceled" ? "canceled" : "expired";
   const first = reg ? firstName(reg.name) : "";
+  // Cadastro aberto não tem convite: volta pra página aberta, sem vaga reservada, e o ingresso depende da aprovação
+  const open = reg?.source === "open";
+  const retry = open
+    ? "Gere um novo Pix pela página de inscrição e pague em seguida."
+    : "Sua vaga continua reservada pelo convite: gere um novo Pix e pague em seguida.";
   const heroTitle = {
     missing: "Pagamento não encontrado.",
     pending: `${first}, falta só o Pix.`,
@@ -49,9 +55,11 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
   }[state];
   const sideText = {
     missing: "Confira se o link chegou completo ou volte ao seu convite para gerar o pagamento de novo.",
-    pending: "Pague pelo app do seu banco. Assim que o Pix cair, esta página confirma sozinha e você recebe o ingresso por e-mail.",
-    expired: "Cada Pix vale por 1 hora. Sua vaga continua reservada pelo convite: gere um novo Pix e pague em seguida.",
-    canceled: "A cobrança foi cancelada. Sua vaga continua reservada pelo convite: gere um novo Pix e pague em seguida.",
+    pending: open
+      ? "Pague pelo app do seu banco. Assim que o Pix cair, esta página atualiza sozinha; o ingresso chega por e-mail depois da aprovação da organização."
+      : "Pague pelo app do seu banco. Assim que o Pix cair, esta página confirma sozinha e você recebe o ingresso por e-mail.",
+    expired: `Cada Pix vale por 1 hora. ${retry}`,
+    canceled: `A cobrança foi cancelada. ${retry}`,
   }[state];
 
   return (
@@ -84,13 +92,13 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
               <Notice title="Confira o link do pagamento." text="Ele deve ser o endereço completo que apareceu depois do formulário. Se não encontrar, abra o seu convite e gere o Pix de novo." />
             ) : reg.status !== "pending" || !qr ? (
               <Notice
-                title="Gere um novo Pix pelo seu convite."
+                title={open ? "Gere um novo Pix pela página de inscrição." : "Gere um novo Pix pelo seu convite."}
                 text={
                   reg.status === "canceled"
-                    ? "Volte ao convite, confira seus dados e gere outro Pix. O novo também vale por 1 hora."
-                    : "Este QR Code e o copia e cola não valem mais. Volte ao convite, confira seus dados e gere outro Pix, válido por mais 1 hora."
+                    ? `Volte ${open ? "à inscrição" : "ao convite"}, confira seus dados e gere outro Pix. O novo também vale por 1 hora.`
+                    : `Este QR Code e o copia e cola não valem mais. Volte ${open ? "à inscrição" : "ao convite"}, confira seus dados e gere outro Pix, válido por mais 1 hora.`
                 }
-                href={`/inscricao/${reg.inviteCode}`}
+                href={formPath(reg)}
                 cta="Gerar novo Pix"
               />
             ) : (
@@ -109,7 +117,9 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
                   <CopyButton text={reg.opaBrCode ?? ""} label="Copiar código Pix" className="self-start" />
                 </div>
                 {reg.opaExpiresAt && (
-                  <p className="text-body">Vale até {fmtTime.format(new Date(reg.opaExpiresAt))} (horário de Brasília). Depois disso, gere outro pelo convite.</p>
+                  <p className="text-body">
+                    Vale até {fmtTime.format(new Date(reg.opaExpiresAt))} (horário de Brasília). Depois disso, gere outro {open ? "pela página de inscrição" : "pelo convite"}.
+                  </p>
                 )}
                 <ButtonLink href={`/inscricao/pix/${reg.id}?conferir=1`} prefetch={false} variant="primary" size="md" className="self-start">
                   Já paguei

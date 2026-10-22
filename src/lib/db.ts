@@ -116,6 +116,14 @@ export function ensureSchema() {
       await sql`alter table registrations add column if not exists discount_cents int not null default 0`;
       // Consentimento opcional (LGPD art. 7º, I) para compartilhar nome, e-mail e WhatsApp com patrocinadores; null = não consentiu
       await sql`alter table registrations add column if not exists sponsor_consent_at timestamptz`;
+      // Cadastro aberto (/inscricao/aberta): sem convite, entra "pending" na aprovação (approval null = convite, não passa por aprovação).
+      // Reprovada paga é reembolsada à mão no Opa Pingou; refunded_at marca que já foi feito.
+      await sql`alter table registrations alter column invite_id drop not null`;
+      await sql`alter table registrations add column if not exists source text not null default 'invite'`;
+      await sql`alter table registrations add column if not exists approval text`;
+      await sql`alter table registrations add column if not exists reviewed_at timestamptz`;
+      await sql`alter table registrations add column if not exists reviewed_by uuid references users(id) on delete set null`;
+      await sql`alter table registrations add column if not exists refunded_at timestamptz`;
       // Webhooks do Opa Pingou já processados (o mesmo evento pode chegar mais de uma vez)
       await sql`
         create table if not exists opa_events (
