@@ -101,7 +101,7 @@ export function VolunteerForm() {
             placeholder="voce@exemplo.com"
           />
         </Field>
-        <Field label="WhatsApp" htmlFor="phone" error={e.phone} hint="Com DDD. É por aqui que falamos com você.">
+        <Field label="WhatsApp" htmlFor="phone" error={e.phone} hint="Com DDD. O contato da organização é por e-mail; o WhatsApp fica para o dia do evento.">
           <input
             id="phone"
             name="phone"

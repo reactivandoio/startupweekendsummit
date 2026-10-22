@@ -139,7 +139,7 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string; p
             placeholder="voce@exemplo.com"
           />
         </Field>
-        <Field label="WhatsApp" htmlFor="phone" error={e.phone} hint="Com DDD. As orientações do evento chegam por aqui.">
+        <Field label="WhatsApp" htmlFor="phone" error={e.phone} hint="Com DDD. As orientações chegam por e-mail; o WhatsApp fica para o dia do evento.">
           <input
             id="phone"
             name="phone"
