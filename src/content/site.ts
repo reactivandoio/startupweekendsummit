@@ -15,9 +15,8 @@ export const site = {
   cityName: "Goiânia",
   state: "GO",
   venue: "Local a confirmar",
-  contactEmail: "contato@8020digital.com.br",
-  whatsapp: "+55 62 98221-4275",
-  whatsappUrl: "https://wa.me/5562982214275",
+  // Único contato público do site (e-mails, páginas, termos); sem WhatsApp
+  contactEmail: "tsstartupweekendbrasil@gmail.com",
   instagram: "https://www.instagram.com/techstarsstartupweekendsummit/",
   organizer: "Techstars",
   // Google Analytics 4 (stream do projeto Firebase "startupweekendsummit")
@@ -110,13 +109,6 @@ export const steps = [
   { title: "Bate-papo", text: "A organização entra em contato pelo WhatsApp para alinhar expectativas." },
   { title: "Onboarding", text: "Encontro online com toda a equipe para explicar funções e cronograma." },
   { title: "Summit", text: "4 a 6 de dezembro. Você faz parte da história do evento em Goiânia." },
-];
-
-// Contatos comerciais (deck institucional, slide "Contato comercial")
-export const commercialContacts = [
-  { name: "Jackeline Mendes", role: "Comercial", email: "jackeline.m.ferreira@gmail.com", phone: "(62) 99402-5205", wa: "5562994025205" },
-  { name: "Roldão Barros Jr.", role: "Líder da organização", email: "ola@roldaobarros.com", phone: "(62) 98221-4275", wa: "5562982214275" },
-  { name: "Pedro Silva", role: "Marketing", email: "contato@8020digital.com.br", phone: "(62) 99396-2325", wa: "5562993962325" },
 ];
 
 // Cotas de patrocínio e contrapartidas (deck institucional). Ordem das colunas = ordem de `tiers`.

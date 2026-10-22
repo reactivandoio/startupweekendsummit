@@ -81,7 +81,7 @@ A organização não se responsabiliza pelo conteúdo enviado por usuários, mas
 
 Esta autorização é concedida sem qualquer remuneração, no Brasil e no exterior, pelo prazo de 5 (cinco) anos contados da data do evento. Conteúdos publicados dentro desse prazo poderão permanecer disponíveis nos canais onde foram veiculados, sem obrigação de remoção.
 
-A organização não utilizará sua imagem de forma vexatória, que atente contra a sua honra ou em associação a produtos ou serviços de terceiros sem a sua autorização específica. Se não quiser ser registrado de perto, procure a equipe da organização no credenciamento; para pedir a retirada de um conteúdo específico, escreva para [contato@8020digital.com.br](mailto:contato@8020digital.com.br) e avaliaremos o pedido.`,
+A organização não utilizará sua imagem de forma vexatória, que atente contra a sua honra ou em associação a produtos ou serviços de terceiros sem a sua autorização específica. Se não quiser ser registrado de perto, procure a equipe da organização no credenciamento; para pedir a retirada de um conteúdo específico, escreva para [${site.contactEmail}](mailto:${site.contactEmail}) e avaliaremos o pedido.`,
   },
   {
     id: "patrocinadores",
@@ -97,7 +97,7 @@ A organização não utilizará sua imagem de forma vexatória, que atente contr
 • Convites para ações e ativações do patrocinador durante ou após o evento
 
 **Como exercer seus direitos**
-• Você pode revogar o consentimento a qualquer momento, sem custo, pelo e-mail [contato@8020digital.com.br](mailto:contato@8020digital.com.br); a partir da revogação, seus dados deixam de ser enviados a patrocinadores
+• Você pode revogar o consentimento a qualquer momento, sem custo, pelo e-mail [${site.contactEmail}](mailto:${site.contactEmail}); a partir da revogação, seus dados deixam de ser enviados a patrocinadores
 • Você pode pedir a lista dos patrocinadores que receberam os seus dados
 • Ao receber os dados, cada patrocinador passa a ser responsável pelo tratamento que fizer deles; para corrigir ou excluir seus dados na base de um patrocinador, ou para deixar de receber as comunicações dele, fale diretamente com ele (toda comunicação deve oferecer uma forma de descadastro)
 
@@ -146,7 +146,7 @@ A data da última atualização será sempre indicada no início deste documento
     title: "13. Contato",
     content: `Se você tiver dúvidas sobre estes Termos de Uso, entre em contato conosco:
 
-• E-mail: [contato@8020digital.com.br](mailto:contato@8020digital.com.br)
+• E-mail: [${site.contactEmail}](mailto:${site.contactEmail})
 • Site: ${site.shortName} (startupweekendsummit.com.br)`,
   },
 ];

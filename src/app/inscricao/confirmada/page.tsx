@@ -131,10 +131,7 @@ export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscr
               </ButtonLink>
             )}
             <p className="text-body">
-              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                WhatsApp {site.whatsapp}
-              </a>{" "}
-              ·{" "}
+              Dúvidas:{" "}
               <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
                 {site.contactEmail}
               </a>

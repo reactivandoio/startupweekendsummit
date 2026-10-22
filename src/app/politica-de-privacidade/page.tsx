@@ -131,7 +131,7 @@ Você pode gerenciar ou bloquear cookies nas configurações do seu navegador. B
 • Mediante pedido, informamos quais patrocinadores receberam os seus dados
 • Para corrigir ou excluir seus dados na base de um patrocinador, ou para deixar de receber as comunicações dele, fale diretamente com o patrocinador, que é o controlador desses dados; se precisar, ajudamos a encaminhar o pedido
 
-Para exercer qualquer um desses direitos, entre em contato conosco pelo e-mail [contato@8020digital.com.br](mailto:contato@8020digital.com.br). Responderemos à sua solicitação em até 15 dias úteis, conforme previsto na legislação.`,
+Para exercer qualquer um desses direitos, entre em contato conosco pelo e-mail [${site.contactEmail}](mailto:${site.contactEmail}). Responderemos à sua solicitação em até 15 dias úteis, conforme previsto na legislação.`,
   },
   {
     id: "seguranca",
@@ -175,7 +175,7 @@ Recomendamos que revise esta Política periodicamente para se manter informado s
     title: "11. Contato",
     content: `Se você tiver dúvidas, solicitações ou preocupações sobre esta Política de Privacidade ou sobre o tratamento dos seus dados pessoais, entre em contato conosco:
 
-• E-mail: [contato@8020digital.com.br](mailto:contato@8020digital.com.br)
+• E-mail: [${site.contactEmail}](mailto:${site.contactEmail})
 • Site: ${site.shortName} (startupweekendsummit.com.br)
 
 Para questões relacionadas à LGPD, nosso encarregado de proteção de dados pode ser contactado pelo mesmo e-mail.`,

@@ -23,7 +23,8 @@ export async function sendMail(opts: { to: string } & Mail) {
     console.info(`[mail] (sem SMTP) para ${opts.to}: ${opts.subject}\n${opts.text}`);
     return;
   }
-  await t.sendMail({ from, ...opts });
+  // Remetente fica no domínio verificado no SMTP (EMAIL_FROM); as respostas vão para o contato do site
+  await t.sendMail({ from, replyTo: site.contactEmail, ...opts });
 }
 
 export const sendLoginLink = (to: string, url: string) => sendMail({ to, ...loginLinkMail(url) });

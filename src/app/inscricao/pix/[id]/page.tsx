@@ -127,10 +127,7 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
               </div>
             )}
             <p className="text-body">
-              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                WhatsApp {site.whatsapp}
-              </a>{" "}
-              ·{" "}
+              Dúvidas:{" "}
               <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
                 {site.contactEmail}
               </a>

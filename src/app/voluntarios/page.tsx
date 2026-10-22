@@ -148,10 +148,6 @@ export default function VoluntariosPage() {
             </p>
             <p className="text-body">
               Dúvidas:{" "}
-              <a href={site.whatsappUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
-                WhatsApp {site.whatsapp}
-              </a>{" "}
-              ou{" "}
               <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4">
                 {site.contactEmail}
               </a>

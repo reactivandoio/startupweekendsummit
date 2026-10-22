@@ -76,7 +76,7 @@ export default function Home() {
 
       <Mural />
 
-      {/* Faixa marigold: participação por convite + WhatsApp */}
+      {/* Faixa marigold: participação por convite + e-mail de contato */}
       <section className="bg-marigold-wash text-ink">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-15 sm:px-6 md:grid-cols-2 md:items-end">
           <div className="flex flex-col gap-4">
@@ -84,13 +84,13 @@ export default function Home() {
             <h2 className="font-display text-heading">Participação por convite.</h2>
             <p className="max-w-[44ch] text-body-md">
               As vagas para participantes do Summit são limitadas e as inscrições acontecem por convite da
-              organização. Para dúvidas, fale com a gente no WhatsApp.
+              organização. Para dúvidas, fale com a gente por e-mail.
             </p>
           </div>
           <div className="flex flex-col gap-4 md:items-end md:text-right">
             <p className="text-body-md font-semibold">Dúvidas sobre o evento</p>
-            <ButtonAnchor href={site.whatsappUrl} target="_blank" rel="noreferrer" variant="secondary" size="md">
-              WhatsApp {site.whatsapp}
+            <ButtonAnchor href={`mailto:${site.contactEmail}`} variant="secondary" size="md">
+              {site.contactEmail}
             </ButtonAnchor>
             {showVolunteerCta && (
               <p className="text-body">
