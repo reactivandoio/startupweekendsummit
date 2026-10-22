@@ -92,4 +92,10 @@ export const illustrations = {
     width: 654,
     height: 720,
   },
+  trampolim: {
+    src: "/ilustracoes/trampolim-lago-das-rosas.webp",
+    alt: "Ilustração do trampolim do Lago das Rosas, em Goiânia",
+    width: 466,
+    height: 720,
+  },
 } satisfies Record<string, HeroIllustration>;
