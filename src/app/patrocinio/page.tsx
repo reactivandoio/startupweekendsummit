@@ -4,7 +4,7 @@ import { Eyebrow } from "@/components/eyebrow";
 import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
 import { SponsorsSection } from "@/components/sponsors-section";
-import { site, sponsorship, stats } from "@/content/site";
+import { commercialContacts, site, sponsorship, stats } from "@/content/site";
 
 const title = `Patrocínio | ${site.name}`;
 
@@ -22,9 +22,6 @@ export const metadata: Metadata = {
   openGraph: { url: "/patrocinio", title, description: site.seoDescriptionSponsors },
   twitter: { card: "summary_large_image", title, description: site.seoDescriptionSponsors },
 };
-
-// Contato comercial: o e-mail único do site, com assunto pronto
-const sponsorMailto = `mailto:${site.contactEmail}?subject=${encodeURIComponent(`Patrocínio — ${site.shortName}`)}`;
 
 // Fundos chapados dos cards de cota, do mais forte ao mais leve: tinta, Marigold, Grass e os dois tons claros
 const tierColors = ["bg-ink text-paper", "bg-marigold", "bg-grass", "bg-grass-wash", "bg-marigold-wash"];
@@ -190,16 +187,23 @@ export default function PatrocinioPage() {
             <p className="max-w-[40ch] text-body-md">
               Fale com o time comercial por e-mail. Retornamos com a proposta e os próximos passos.
             </p>
-            <ButtonAnchor href={sponsorMailto} variant="primary" size="lg" className="self-stretch sm:self-start">
-              Escrever para o comercial
+            <ButtonAnchor href={`mailto:${site.contactEmail}`} variant="primary" size="lg" className="self-stretch sm:self-start">
+              Enviar e-mail
             </ButtonAnchor>
+            <p className="text-body">
+              <a href={`mailto:${site.contactEmail}`} className="underline underline-offset-4 break-all">
+                {site.contactEmail}
+              </a>
+            </p>
           </div>
-          <div className="flex flex-col gap-2 self-start border-t border-ink pt-6">
-            <p className="text-body-md font-semibold">E-mail</p>
-            <a href={sponsorMailto} className="break-all text-body-md underline underline-offset-4">
-              {site.contactEmail}
-            </a>
-          </div>
+          <ul className="flex flex-col border-t border-ink">
+            {commercialContacts.map((c) => (
+              <li key={c.name} className="flex flex-col gap-1 border-b border-ash py-6">
+                <p className="text-body-md font-semibold">{c.name}</p>
+                <p className="text-body">{c.role}</p>
+              </li>
+            ))}
+          </ul>
         </section>
       </main>
 

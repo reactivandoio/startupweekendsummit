@@ -76,7 +76,7 @@ export default function Home() {
 
       <Mural />
 
-      {/* Faixa marigold: participação por convite + e-mail de contato */}
+      {/* Faixa marigold: participação por convite + e-mail */}
       <section className="bg-marigold-wash text-ink">
         <div className="mx-auto grid max-w-page gap-12 px-4 py-15 sm:px-6 md:grid-cols-2 md:items-end">
           <div className="flex flex-col gap-4">
@@ -90,8 +90,11 @@ export default function Home() {
           <div className="flex flex-col gap-4 md:items-end md:text-right">
             <p className="text-body-md font-semibold">Dúvidas sobre o evento</p>
             <ButtonAnchor href={`mailto:${site.contactEmail}`} variant="secondary" size="md">
-              {site.contactEmail}
+              Enviar e-mail
             </ButtonAnchor>
+            <a href={`mailto:${site.contactEmail}`} className="text-body underline underline-offset-4 break-all">
+              {site.contactEmail}
+            </a>
             {showVolunteerCta && (
               <p className="text-body">
                 Quer ajudar a fazer acontecer?{" "}

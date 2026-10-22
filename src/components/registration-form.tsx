@@ -140,7 +140,7 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string | 
             placeholder="voce@exemplo.com"
           />
         </Field>
-        <Field label="WhatsApp" htmlFor="phone" error={e.phone} hint="Com DDD. As orientações do evento chegam por aqui.">
+        <Field label="WhatsApp" htmlFor="phone" error={e.phone} hint="Com DDD. As orientações chegam por e-mail; o WhatsApp fica para o dia do evento.">
           <input
             id="phone"
             name="phone"
@@ -199,7 +199,7 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string | 
           Autorizo o uso dos meus dados para a inscrição e a comunicação sobre o Techstars Startup Weekend Summit Brasil 2026,
           conforme os{" "}
           <Link href="/termos-de-uso" target="_blank" rel="noreferrer" className={linkClass}>
-            Termos de Uso
+            Termos de Participação
           </Link>{" "}
           e a{" "}
           <Link href="/politica-de-privacidade" target="_blank" rel="noreferrer" className={linkClass}>
@@ -227,7 +227,7 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string | 
             Compartilhamento de Dados com Patrocinadores
             <span className="sr-only"> (abre em nova aba)</span>
           </Link>{" "}
-          dos Termos de Uso.
+          dos Termos de Participação.
           <span id="sponsorConsent-hint" className="mt-1 block text-caption text-ink/60">
             Opcional: sem esta autorização sua inscrição segue normalmente. Você pode revogá-la quando quiser.
           </span>

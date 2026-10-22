@@ -74,7 +74,7 @@ export async function registerVolunteer(_prev: FormState, formData: FormData): P
         values,
       };
     }
-    return { status: "success", message: "Inscrição recebida! Em breve entraremos em contato pelo WhatsApp." };
+    return { status: "success", message: "Inscrição recebida! Em breve entraremos em contato por e-mail." };
   } catch (err) {
     console.error("[registerVolunteer]", err);
     return {

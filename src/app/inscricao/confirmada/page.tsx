@@ -65,7 +65,7 @@ const copy: Record<Outcome, { tag: string; title: string; box: string; text: str
     tag: "OK",
     title: "Inscrição confirmada.",
     box: "Seu ingresso está no e-mail.",
-    text: "Enviamos o comprovante e o ingresso para o endereço cadastrado. Em breve mandamos a programação e as orientações pelo WhatsApp.",
+    text: "Enviamos o comprovante e o ingresso para o endereço cadastrado. Em breve mandamos a programação e as orientações por e-mail.",
   },
   review: {
     tag: "Em análise",

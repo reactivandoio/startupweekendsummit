@@ -33,7 +33,7 @@ export function SiteFooter() {
             Contato
           </a>
           <Link href="/termos-de-uso" className={linkClass}>
-            Termos de uso
+            Termos de participação
           </Link>
           <Link href="/politica-de-privacidade" className={linkClass}>
             Privacidade

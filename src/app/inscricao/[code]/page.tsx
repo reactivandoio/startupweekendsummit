@@ -93,7 +93,7 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
                 </h3>
                 <p className="text-body-md">
                   {invite
-                    ? `Se você acredita que isso é um engano, fale com a organização pelo e-mail ${site.contactEmail}.`
+                    ? "Se você acredita que isso é um engano, fale com a organização por e-mail."
                     : "Confira se o link chegou completo ou peça um novo à organização."}
                 </p>
               </div>

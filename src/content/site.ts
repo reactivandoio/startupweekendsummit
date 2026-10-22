@@ -15,7 +15,7 @@ export const site = {
   cityName: "Goiânia",
   state: "GO",
   venue: "Local a confirmar",
-  // Único contato público do site (e-mails, páginas, termos); sem WhatsApp
+  // Único canal de contato do site (decisão de 2026-10-22: sem WhatsApp da organização nas páginas públicas)
   contactEmail: "tsstartupweekendbrasil@gmail.com",
   instagram: "https://www.instagram.com/techstarsstartupweekendsummit/",
   organizer: "Techstars",
@@ -106,9 +106,16 @@ export const benefits = [
 
 export const steps = [
   { title: "Inscreva-se", text: "Preencha o formulário abaixo. Leva menos de 2 minutos." },
-  { title: "Bate-papo", text: "A organização entra em contato pelo WhatsApp para alinhar expectativas." },
+  { title: "Bate-papo", text: "A organização entra em contato por e-mail para alinhar expectativas." },
   { title: "Onboarding", text: "Encontro online com toda a equipe para explicar funções e cronograma." },
   { title: "Summit", text: "4 a 6 de dezembro. Você faz parte da história do evento em Goiânia." },
+];
+
+// Time comercial (deck institucional, slide "Contato comercial"). O contato é só pelo e-mail único do site (`site.contactEmail`).
+export const commercialContacts = [
+  { name: "Jackeline Mendes", role: "Comercial" },
+  { name: "Roldão Barros Jr.", role: "Líder da organização" },
+  { name: "Pedro Silva", role: "Marketing" },
 ];
 
 // Cotas de patrocínio e contrapartidas (deck institucional). Ordem das colunas = ordem de `tiers`.
