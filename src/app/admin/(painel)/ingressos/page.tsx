@@ -2,10 +2,10 @@ import { moveLotAction, removeLotAction, removeOpaKey, toggleOpenRegistration, u
 import { buttonClass } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
-import { LotForm, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
+import { LotForm, OpaDuplicateWebhookDelete, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
 import { formatBRL } from "@/lib/cpf";
-import { getWebhookEndpoint, opaApiUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
-import { isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
+import { listWebhookEndpoints, opaApiUrl, opaWebhookUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
+import { duplicateWebhooks, isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
 import { getSetting, openRegistrationEnabled } from "@/lib/settings";
 import { appUrl } from "@/lib/stripe";
 import { currentOffer, listLots } from "@/lib/tickets";
@@ -25,12 +25,17 @@ export default async function IngressosPage() {
   ]);
   const openUrl = `${appUrl()}/inscricao/aberta`;
 
-  // Estado do endpoint direto do Opa Pingou (desativado depois de falhas, última entrega)
+  // Endpoints da conta direto do Opa Pingou: estado do salvo (desativado depois de falhas, última entrega) e
+  // outros cadastros para a mesma URL, que recebem 400 de assinatura e acabam desativados pelo Opa Pingou
+  const webhookUrl = opaWebhookUrl();
   let endpoint: OpaWebhookEndpoint | null = null;
+  let duplicates: OpaWebhookEndpoint[] = [];
   let endpointError = false;
-  if (apiKey && webhookId) {
+  if (apiKey) {
     try {
-      endpoint = await getWebhookEndpoint(webhookId);
+      const endpoints = await listWebhookEndpoints();
+      endpoint = endpoints.find((e) => e.id === webhookId) ?? null;
+      duplicates = duplicateWebhooks(endpoints, webhookUrl, webhookId);
     } catch (err) {
       console.error("[admin/ingressos] webhook", err);
       endpointError = true;
@@ -109,7 +114,7 @@ export default async function IngressosPage() {
           </Row>
           <Row label="Webhook">
             <div className="flex flex-col gap-3">
-              <code className="break-all font-mono text-caption">{appUrl()}/api/opapingou/webhook</code>
+              <code className="break-all font-mono text-caption">{webhookUrl}</code>
               <p>
                 {!webhookId
                   ? "Não cadastrado"
@@ -119,11 +124,34 @@ export default async function IngressosPage() {
                       ? `${endpoint.status === "ACTIVE" ? "Ativo" : "Desativado"} · ${endpoint.events.join(", ")}${
                           endpoint.lastDeliveredAt ? ` · última entrega ${fmt.format(new Date(endpoint.lastDeliveredAt))}` : ""
                         }`
-                      : "Cadastrado"}
+                      : "Cadastrado, mas não existe mais no Opa Pingou: clique em Trocar segredo para cadastrar de novo"}
               </p>
               {apiKey && <OpaWebhookButtons registered={Boolean(webhookId)} />}
             </div>
           </Row>
+          {duplicates.length > 0 && (
+            <Row label="Duplicados">
+              <div className="flex flex-col gap-4">
+                <p className="font-semibold" role="alert">
+                  {duplicates.length === 1 ? "Há outro webhook" : `Há ${duplicates.length} outros webhooks`} no Opa Pingou para esta URL, fora o salvo aqui.
+                  O segredo {duplicates.length === 1 ? "dele" : "deles"} não está no site: as entregas recebem 400 e o Opa Pingou desativa o
+                  cadastro depois de ~45h, avisando por e-mail. Exclua, a não ser que outro sistema use o mesmo endereço.
+                </p>
+                <ul className="flex flex-col gap-4">
+                  {duplicates.map((d) => (
+                    <li key={d.id} className="flex flex-col gap-2 border-l-2 border-ink pl-4 dark:border-paper">
+                      <code className="break-all font-mono text-caption">{d.id}</code>
+                      <p className="text-caption">
+                        {d.status === "ACTIVE" ? "Ativo" : "Desativado"} · {d.events.join(", ")}
+                        {d.lastDeliveredAt ? ` · última entrega ${fmt.format(new Date(d.lastDeliveredAt))}` : " · nunca entregou"}
+                      </p>
+                      <OpaDuplicateWebhookDelete id={d.id} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Row>
+          )}
         </dl>
       </section>
 
