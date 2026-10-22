@@ -154,20 +154,29 @@ export function inviteMail(name: string, url: string): Mail {
 // Número do ingresso: 8 primeiros caracteres do id da inscrição, o mesmo que o painel mostra
 export const ticketNumber = (registrationId: string) => registrationId.replace(/-/g, "").slice(0, 8).toUpperCase();
 
-/* Confirmação + ingresso: vale como comprovante e traz o número conferido no credenciamento */
-export function registrationConfirmedMail(reg: { id: string; name: string; cpf: string; amountCents: number; lotName?: string }): Mail {
-  const first = reg.name.trim().split(/\s+/)[0];
+const maskCpf = (cpf: string) => cpf.replace(/^(\d{3})\d{6}(\d{2})$/, "$1.***.***-$2");
+const firstOf = (name: string) => name.trim().split(/\s+/)[0];
+
+/* Confirmação + ingresso: vale como comprovante e traz o número conferido no credenciamento.
+   approved: cadastro aberto aprovado no painel (o pagamento já tinha chegado antes). */
+export function registrationConfirmedMail(reg: { id: string; name: string; cpf: string; amountCents: number; lotName?: string }, opts: { approved?: boolean } = {}): Mail {
+  const first = firstOf(reg.name);
   const amountLabel = brl(reg.amountCents);
   const number = ticketNumber(reg.id);
-  const cpf = reg.cpf.replace(/^(\d{3})\d{6}(\d{2})$/, "$1.***.***-$2");
+  const cpf = maskCpf(reg.cpf);
   const kind = reg.lotName ? `Ingresso — ${reg.lotName}` : "Ingresso";
   const courtesy = reg.amountCents === 0; // convite com 100% de desconto
-  const text = `${first}, sua inscrição no ${site.name} está confirmada.\n\n${courtesy ? "Seu ingresso é cortesia da organização." : `Pagamento de ${amountLabel} recebido.`}\n\n${kind}\nNº ${number}\nParticipante: ${reg.name}\nCPF: ${cpf}\n\nGuarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto.\n\nNos vemos em ${site.city}, ${site.date}.${textFooter}`;
+  const lead = opts.approved
+    ? { text: `Sua inscrição foi aprovada pela organização. O pagamento de ${amountLabel} já tinha sido recebido.`, html: `Sua inscrição foi <strong>aprovada</strong> pela organização. O pagamento de <strong>${amountLabel}</strong> já tinha sido recebido.` }
+    : courtesy
+      ? { text: "Seu ingresso é cortesia da organização.", html: "Seu ingresso é <strong>cortesia</strong> da organização e sua inscrição está confirmada." }
+      : { text: `Pagamento de ${amountLabel} recebido.`, html: `Recebemos o pagamento de <strong>${amountLabel}</strong> e sua inscrição está confirmada.` };
+  const text = `${first}, sua inscrição no ${site.name} está ${opts.approved ? "aprovada" : "confirmada"}.\n\n${lead.text}\n\n${kind}\nNº ${number}\nParticipante: ${reg.name}\nCPF: ${cpf}\n\nGuarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto.\n\nNos vemos em ${site.city}, ${site.date}.${textFooter}`;
   const html = layout({
-    eyebrow: "Inscrição confirmada",
+    eyebrow: opts.approved ? "Inscrição aprovada" : "Inscrição confirmada",
     title: `${escapeHtml(first)}, sua vaga está garantida.`,
     preheader: `${kind} nº ${number}. Este e-mail é o seu comprovante.`,
-    body: `${p(courtesy ? "Seu ingresso é <strong>cortesia</strong> da organização e sua inscrição está confirmada." : `Recebemos o pagamento de <strong>${amountLabel}</strong> e sua inscrição está confirmada.`)}
+    body: `${p(lead.html)}
       ${box(`
         <p style="margin:0 0 6px;font-family:${FONT};font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:${GRASS_DEEP}">${escapeHtml(kind)}</p>
         <p style="margin:0 0 12px;font-family:${FONT};font-size:32px;font-weight:700;letter-spacing:.04em;line-height:36px;color:${INK}">${number}</p>
@@ -175,7 +184,39 @@ export function registrationConfirmedMail(reg: { id: string; name: string; cpf: 
       ${p("Guarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto. Em breve mandamos a programação e as orientações pelo WhatsApp cadastrado.")}
       ${p(`Nos vemos em ${escapeHtml(site.city)}, ${escapeHtml(site.date)}.`, "margin:0 0 8px")}`,
   });
-  return { subject: `Seu ingresso — ${site.shortName}`, text, html };
+  return { subject: opts.approved ? `Inscrição aprovada: seu ingresso — ${site.shortName}` : `Seu ingresso — ${site.shortName}`, text, html };
+}
+
+/* Cadastro aberto pago: recebemos o pagamento, a inscrição passa pela aprovação da organização (ainda sem ingresso) */
+export function registrationUnderReviewMail(reg: { name: string; amountCents: number }): Mail {
+  const first = firstOf(reg.name);
+  const amountLabel = brl(reg.amountCents);
+  const text = `${first}, recebemos o pagamento de ${amountLabel} da sua inscrição no ${site.name}.\n\nAs inscrições pelo cadastro aberto passam pela aprovação da organização. Assim que a sua for analisada, você recebe outro e-mail: com o ingresso, se aprovada; se não for, o valor pago é devolvido integralmente.${textFooter}`;
+  const html = layout({
+    eyebrow: "Inscrição em análise",
+    title: `${escapeHtml(first)}, recebemos sua inscrição.`,
+    preheader: "Pagamento recebido. O ingresso chega depois da aprovação.",
+    body: `${p(`Recebemos o pagamento de <strong>${amountLabel}</strong>. As inscrições pelo cadastro aberto passam pela aprovação da organização.`)}
+      ${notice(p("Assim que a sua for analisada, você recebe outro e-mail: <strong>com o ingresso</strong>, se aprovada; se não for, o valor pago é devolvido integralmente.", "margin:0"))}
+      ${small("Este e-mail ainda não é o ingresso. Guarde-o como comprovante do pagamento.")}`,
+  });
+  return { subject: `Inscrição recebida, em análise — ${site.shortName}`, text, html };
+}
+
+/* Cadastro aberto reprovado: avisa que o reembolso será feito (manual, no meio de pagamento) */
+export function registrationRejectedMail(reg: { name: string; amountCents: number }): Mail {
+  const first = firstOf(reg.name);
+  const amountLabel = brl(reg.amountCents);
+  const text = `${first}, sua inscrição no ${site.name} não foi aprovada desta vez.\n\nO valor pago (${amountLabel}) será devolvido integralmente pelo mesmo meio de pagamento. Se tiver dúvidas, responda este e-mail ou escreva para ${site.contactEmail}.${textFooter}`;
+  const html = layout({
+    eyebrow: "Inscrição",
+    title: `${escapeHtml(first)}, sua inscrição não foi aprovada.`,
+    preheader: "O valor pago será devolvido integralmente.",
+    body: `${p("Agradecemos o interesse. As vagas do Summit são limitadas e, desta vez, sua inscrição não foi aprovada pela organização.")}
+      ${notice(p(`O valor pago (<strong>${amountLabel}</strong>) será devolvido integralmente pelo mesmo meio de pagamento.`, "margin:0"))}
+      ${small(`Dúvidas: responda este e-mail ou escreva para ${link(`mailto:${site.contactEmail}`, site.contactEmail)}.`)}`,
+  });
+  return { subject: `Sobre sua inscrição — ${site.shortName}`, text, html };
 }
 
 /* Aviso de uso: caixa Marigold claro (reservada pra e-mails futuros de alerta) */

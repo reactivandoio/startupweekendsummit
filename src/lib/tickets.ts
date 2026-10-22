@@ -26,10 +26,12 @@ const toLot = (r: Row): TicketLot => ({
   sold: Number(r.sold),
 });
 
-// Mesma regra de vaga dos convites: pendente segura o lugar por 1h (validade da cobrança)
+// Mesma regra de vaga dos convites: pendente segura o lugar por 1h (validade da cobrança).
+// Cadastro aberto conta desde o pagamento (mesmo em análise); reprovada devolve a vaga.
 const soldSubquery = () => sql`
   (select count(*) from registrations r
     where r.lot_id = l.id
+      and r.approval is distinct from 'rejected'
       and (r.status = 'paid' or (r.status = 'pending' and r.created_at > now() - interval '1 hour')))`;
 
 export async function listLots(): Promise<TicketLot[]> {

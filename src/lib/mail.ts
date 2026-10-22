@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { site } from "@/content/site";
-import { accessInviteMail, inviteMail, loginLinkMail, registrationConfirmedMail, type Mail } from "./mail-templates.ts";
+import { accessInviteMail, inviteMail, loginLinkMail, registrationConfirmedMail, registrationRejectedMail, registrationUnderReviewMail, type Mail } from "./mail-templates.ts";
 
 export { ticketNumber } from "./mail-templates.ts";
 
@@ -33,6 +33,15 @@ export const sendAccessInvite = (to: string, name: string, url: string, loginUrl
 
 export const sendInvite = (to: string, name: string, url: string) => sendMail({ to, ...inviteMail(name, url) });
 
+type RegistrationMail = { id: string; email: string; name: string; cpf: string; amountCents: number; lotName?: string };
+
 // Confirmação + ingresso: vale como comprovante e traz o número que a organização confere no credenciamento
-export const sendRegistrationConfirmed = (reg: { id: string; email: string; name: string; cpf: string; amountCents: number; lotName?: string }) =>
-  sendMail({ to: reg.email, ...registrationConfirmedMail(reg) });
+export const sendRegistrationConfirmed = (reg: RegistrationMail) => sendMail({ to: reg.email, ...registrationConfirmedMail(reg) });
+
+// Pagamento confirmado: convite recebe o ingresso; cadastro aberto (em análise) recebe o aviso de que o ingresso vem na aprovação
+export const sendPaymentReceived = (reg: RegistrationMail & { approval: string | null }) =>
+  reg.approval === "pending" ? sendMail({ to: reg.email, ...registrationUnderReviewMail(reg) }) : sendRegistrationConfirmed(reg);
+
+// Decisão do painel sobre o cadastro aberto
+export const sendRegistrationApproved = (reg: RegistrationMail) => sendMail({ to: reg.email, ...registrationConfirmedMail(reg, { approved: true }) });
+export const sendRegistrationRejected = (reg: RegistrationMail) => sendMail({ to: reg.email, ...registrationRejectedMail(reg) });
