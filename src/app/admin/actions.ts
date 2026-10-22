@@ -6,8 +6,17 @@ import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, req
 import { parseBRLCents, parseDiscount } from "@/lib/discounts";
 import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite, updateInvite } from "@/lib/invites";
 import { sendAccessInvite, sendInvite, sendRegistrationApproved, sendRegistrationRejected } from "@/lib/mail";
-import { checkApiKey, createWebhookEndpoint, reactivateWebhookEndpoint, rotateWebhookSecret, testWebhookEndpoint } from "@/lib/opapingou";
-import { isOpaApiKey, isOpaTestKey, OpaApiError } from "@/lib/opapingou-core";
+import {
+  checkApiKey,
+  createWebhookEndpoint,
+  deleteWebhookEndpoint,
+  listWebhookEndpoints,
+  opaWebhookUrl,
+  reactivateWebhookEndpoint,
+  rotateWebhookSecret,
+  testWebhookEndpoint,
+} from "@/lib/opapingou";
+import { duplicateWebhooks, isOpaApiKey, isOpaTestKey, OpaApiError, planWebhookSetup } from "@/lib/opapingou-core";
 import { deleteUnpaidRegistration, listPendingOpaRegistrations, reviewRegistration, setRefunded } from "@/lib/registrations";
 import { deleteSetting, getSetting, setSetting } from "@/lib/settings";
 import { createSponsor, deleteSponsor, getSponsor, isSponsorTier, moveSponsor, updateSponsor } from "@/lib/sponsors";
@@ -279,24 +288,37 @@ export async function saveSiteTheme(_prev: ThemeFormState, formData: FormData): 
   return { status: "ok", message: `Tema padrão salvo: ${themeLabel[theme].toLowerCase()}. Quem já escolheu um tema no site continua com a escolha dele.` };
 }
 
-// Cadastra o endpoint /api/opapingou/webhook. Se já existe, troca o segredo (o antigo se perdeu ou vazou).
+// Cadastra o endpoint /api/opapingou/webhook sem nunca criar um segundo para a mesma URL (ver planWebhookSetup):
+// troca o segredo do salvo, adota um que já exista na conta ou, sem nenhum, cria.
 export async function setupOpaWebhook(): Promise<OpaFormState> {
   const me = await requireUser();
   if (!(await getSetting("opapingou_api_key"))) return { status: "error", message: "Salve a chave do Opa Pingou primeiro." };
-  const existing = await getSetting("opapingou_webhook_id");
+  const saved = await getSetting("opapingou_webhook_id");
+  const url = opaWebhookUrl();
+  let message: string;
   try {
-    const endpoint = existing ? await rotateWebhookSecret(existing) : await createWebhookEndpoint(`${appUrl()}/api/opapingou/webhook`);
+    const endpoints = await listWebhookEndpoints();
+    const plan = planWebhookSetup(endpoints, url, saved);
+    const endpoint = plan.action === "rotate" ? await rotateWebhookSecret(plan.id) : await createWebhookEndpoint(url);
     await setSetting("opapingou_webhook_id", endpoint.id, me.id);
     await setSetting("opapingou_webhook_secret", endpoint.secret, me.id);
     if (endpoint.status === "DISABLED") await reactivateWebhookEndpoint(endpoint.id);
+    message =
+      plan.action === "create"
+        ? 'Webhook cadastrado. Use "Enviar teste" para conferir a entrega.'
+        : plan.id === saved
+          ? "Segredo do webhook trocado."
+          : 'Já havia um webhook para este site no Opa Pingou: passamos a usar esse, com segredo novo. Use "Enviar teste" para conferir.';
+    const others = duplicateWebhooks(endpoints, url, endpoint.id).length;
+    if (others > 0) message += ` Atenção: há ${others === 1 ? "outro cadastro" : `${others} outros cadastros`} para esta URL; exclua abaixo.`;
   } catch (err) {
     console.error("[setupOpaWebhook]", err);
-    if (existing && err instanceof OpaApiError && err.code === "NOT_FOUND") {
-      // removido do lado do Opa Pingou: esquece e deixa cadastrar de novo
+    if (err instanceof OpaApiError && err.code === "NOT_FOUND") {
+      // removido do lado do Opa Pingou entre a listagem e a troca: esquece e deixa cadastrar de novo
       await deleteSetting("opapingou_webhook_id");
       await deleteSetting("opapingou_webhook_secret");
       revalidatePath("/admin/ingressos");
-      return { status: "error", message: "O webhook salvo não existe mais no Opa Pingou. Clique de novo para cadastrar outro." };
+      return { status: "error", message: "O webhook não existe mais no Opa Pingou. Clique de novo para cadastrar outro." };
     }
     if (err instanceof OpaApiError && err.code === "WEBHOOK_URL_INVALID") {
       return { status: "error", message: `O Opa Pingou só aceita URL https pública; a deste site é ${appUrl()} (confira APP_URL).` };
@@ -304,7 +326,28 @@ export async function setupOpaWebhook(): Promise<OpaFormState> {
     return { status: "error", message: opaErrorMessage(err) };
   }
   revalidatePath("/admin/ingressos");
-  return { status: "ok", message: existing ? "Segredo do webhook trocado." : "Webhook cadastrado. Use \"Enviar teste\" para conferir a entrega." };
+  return { status: "ok", message };
+}
+
+// Exclui no Opa Pingou um cadastro duplicado da URL do site. Confere de novo na API que ele é duplicado
+// (mesma URL e diferente do salvo) para nunca apagar o webhook em uso nem o de outro sistema da conta.
+export async function deleteDuplicateOpaWebhook(_prev: OpaFormState, formData: FormData): Promise<OpaFormState> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  try {
+    const endpoints = await listWebhookEndpoints();
+    const target = duplicateWebhooks(endpoints, opaWebhookUrl(), await getSetting("opapingou_webhook_id")).find((e) => e.id === id);
+    if (!target) {
+      revalidatePath("/admin/ingressos");
+      return { status: "error", message: "Esse cadastro não é um duplicado deste site (ou já foi excluído)." };
+    }
+    await deleteWebhookEndpoint(id);
+  } catch (err) {
+    console.error("[deleteDuplicateOpaWebhook]", err);
+    return { status: "error", message: opaErrorMessage(err) };
+  }
+  revalidatePath("/admin/ingressos");
+  return { status: "ok", message: "Cadastro duplicado excluído." };
 }
 
 export async function testOpaWebhook(): Promise<OpaFormState> {
