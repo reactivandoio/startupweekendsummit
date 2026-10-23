@@ -40,6 +40,12 @@ export function SiteFooter() {
           </Link>
         </div>
       </div>
+      {/* Razão social e CNPJ da organizadora, exigidos pelos meios de pagamento. O rodapé é preto nos dois temas. */}
+      <div className="border-t border-white/15">
+        <p className="mx-auto max-w-page px-4 py-5 text-caption leading-normal text-white/70 sm:px-6">
+          {site.legalName} — <span className="whitespace-nowrap">CNPJ {site.cnpj}</span>
+        </p>
+      </div>
     </footer>
   );
 }

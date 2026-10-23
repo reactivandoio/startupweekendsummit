@@ -19,6 +19,9 @@ export const site = {
   contactEmail: "tsstartupweekendbrasil@gmail.com",
   instagram: "https://www.instagram.com/techstarsstartupweekendsummit/",
   organizer: "Techstars",
+  // Empresa organizadora, exigida no rodapé pelos meios de pagamento (sem endereço nem telefone)
+  legalName: "D. PICUCCI GESTAO DE COMUNIDADES LTDA",
+  cnpj: "41.092.588/0001-38",
   // Google Analytics 4 (stream do projeto Firebase "startupweekendsummit")
   gaId: "G-T2LRML1JEF",
   organizerUrl: "https://www.techstars.com",
