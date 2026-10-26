@@ -40,6 +40,11 @@ cada build — as duas cores ficariam com chaves diferentes e quem carregou a p�
 "Failed to find Server Action" ao enviar um formulário. O deploy falha na hora do build se ela faltar, antes de
 qualquer troca de nginx, então a cor no ar continua servindo.
 
+Deploy contínuo: push na `main` dispara `.github/workflows/deploy.yml` no runner self-hosted do jarvis, que faz o
+blue/green acima. Os PRs para a `main` passam pelo `.github/workflows/ci.yml` (lint, typecheck com `next typegen`,
+testes e build), num runner do GitHub e sem segredos — nunca no self-hosted, porque o repo é público e PR de fork
+rodaria código no servidor.
+
 ## Painel (/admin)
 
 Login sem senha: a pessoa informa o e-mail em `/admin/login` e, se estiver na lista de usuários, recebe um link
