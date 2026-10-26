@@ -1,0 +1,58 @@
+name: CI
+
+# Checagem dos PRs para a main: lint, typecheck, testes e build.
+# Roda em runner do GitHub, nunca no self-hosted do jarvis: o repo é público e PR de fork executaria
+# código no servidor de produção. Sem segredos: o build não precisa de banco, SMTP nem chaves.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      # versão do pnpm vem do packageManager do package.json
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      # next typegen gera os tipos de rota (PageProps, RouteContext) que o tsc precisa
+      - name: Typecheck
+        run: |
+          pnpm exec next typegen
+          pnpm exec tsc --noEmit
+
+      - name: Testes
+        run: pnpm test
+
+      - name: Cache do build do Next
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Build
+        run: pnpm build
