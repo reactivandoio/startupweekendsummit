@@ -200,10 +200,14 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string | 
           conforme os{" "}
           <Link href="/termos-de-uso" target="_blank" rel="noreferrer" className={linkClass}>
             Termos de Participação
-          </Link>{" "}
-          e a{" "}
+          </Link>
+          , a{" "}
           <Link href="/politica-de-privacidade" target="_blank" rel="noreferrer" className={linkClass}>
             Política de Privacidade
+          </Link>{" "}
+          e a{" "}
+          <Link href="/politica-de-cancelamento-e-reembolso" target="_blank" rel="noreferrer" className={linkClass}>
+            Política de Cancelamento e Reembolso
           </Link>
           .{e.consent && <span className="mt-1 block text-caption font-semibold">— {e.consent}</span>}
         </span>

@@ -38,6 +38,9 @@ export function SiteFooter() {
           <Link href="/politica-de-privacidade" className={linkClass}>
             Privacidade
           </Link>
+          <Link href="/politica-de-cancelamento-e-reembolso" className={linkClass}>
+            Cancelamento e reembolso
+          </Link>
         </div>
       </div>
       {/* Razão social e CNPJ da organizadora, exigidos pelos meios de pagamento. O rodapé é preto nos dois temas. */}
