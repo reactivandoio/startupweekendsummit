@@ -2,10 +2,10 @@ import { moveLotAction, removeLotAction, removeOpaKey, toggleOpenRegistration, u
 import { buttonClass } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
-import { LotForm, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
+import { LotForm, OpaDuplicateWebhookDelete, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
 import { formatBRL } from "@/lib/cpf";
-import { getWebhookEndpoint, opaApiUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
-import { isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
+import { listWebhookEndpoints, opaApiUrl, opaWebhookUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
+import { duplicateWebhooks, isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
 import { getSetting, openRegistrationEnabled } from "@/lib/settings";
 import { appUrl } from "@/lib/stripe";
 import { currentOffer, listLots } from "@/lib/tickets";
@@ -25,12 +25,17 @@ export default async function IngressosPage() {
   ]);
   const openUrl = `${appUrl()}/inscricao/aberta`;
 
-  // Estado do endpoint direto do Opa Pingou (desativado depois de falhas, última entrega)
+  // Endpoints da conta direto do Opa Pingou: estado do salvo (desativado depois de falhas, última entrega) e
+  // outros cadastros para a mesma URL, que recebem 400 de assinatura e acabam desativados pelo Opa Pingou
+  const webhookUrl = opaWebhookUrl();
   let endpoint: OpaWebhookEndpoint | null = null;
+  let duplicates: OpaWebhookEndpoint[] = [];
   let endpointError = false;
-  if (apiKey && webhookId) {
+  if (apiKey) {
     try {
-      endpoint = await getWebhookEndpoint(webhookId);
+      const endpoints = await listWebhookEndpoints();
+      endpoint = endpoints.find((e) => e.id === webhookId) ?? null;
+      duplicates = duplicateWebhooks(endpoints, webhookUrl, webhookId);
     } catch (err) {
       console.error("[admin/ingressos] webhook", err);
       endpointError = true;
@@ -60,7 +65,7 @@ export default async function IngressosPage() {
           </p>
         </div>
 
-        <dl className="self-start border-t border-ink dark:border-paper">
+        <dl className="self-start border-t border-ink">
           <Row label="Situação">
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-semibold">{openEnabled ? "Aberta" : "Fechada"}</span>
@@ -90,7 +95,7 @@ export default async function IngressosPage() {
           <OpaKeyForm configured={Boolean(apiKey)} />
         </div>
 
-        <dl className="self-start border-t border-ink dark:border-paper">
+        <dl className="self-start border-t border-ink">
           <Row label="API">{opaApiUrl()}</Row>
           <Row label="Chave">
             {apiKey ? (
@@ -109,7 +114,7 @@ export default async function IngressosPage() {
           </Row>
           <Row label="Webhook">
             <div className="flex flex-col gap-3">
-              <code className="break-all font-mono text-caption">{appUrl()}/api/opapingou/webhook</code>
+              <code className="break-all font-mono text-caption">{webhookUrl}</code>
               <p>
                 {!webhookId
                   ? "Não cadastrado"
@@ -119,11 +124,34 @@ export default async function IngressosPage() {
                       ? `${endpoint.status === "ACTIVE" ? "Ativo" : "Desativado"} · ${endpoint.events.join(", ")}${
                           endpoint.lastDeliveredAt ? ` · última entrega ${fmt.format(new Date(endpoint.lastDeliveredAt))}` : ""
                         }`
-                      : "Cadastrado"}
+                      : "Cadastrado, mas não existe mais no Opa Pingou: clique em Trocar segredo para cadastrar de novo"}
               </p>
               {apiKey && <OpaWebhookButtons registered={Boolean(webhookId)} />}
             </div>
           </Row>
+          {duplicates.length > 0 && (
+            <Row label="Duplicados">
+              <div className="flex flex-col gap-4">
+                <p className="font-semibold" role="alert">
+                  {duplicates.length === 1 ? "Há outro webhook" : `Há ${duplicates.length} outros webhooks`} no Opa Pingou para esta URL, fora o salvo aqui.
+                  O segredo {duplicates.length === 1 ? "dele" : "deles"} não está no site: as entregas recebem 400 e o Opa Pingou desativa o
+                  cadastro depois de ~45h, avisando por e-mail. Exclua, a não ser que outro sistema use o mesmo endereço.
+                </p>
+                <ul className="flex flex-col gap-4">
+                  {duplicates.map((d) => (
+                    <li key={d.id} className="flex flex-col gap-2 border-l-2 border-ink pl-4">
+                      <code className="break-all font-mono text-caption">{d.id}</code>
+                      <p className="text-caption">
+                        {d.status === "ACTIVE" ? "Ativo" : "Desativado"} · {d.events.join(", ")}
+                        {d.lastDeliveredAt ? ` · última entrega ${fmt.format(new Date(d.lastDeliveredAt))}` : " · nunca entregou"}
+                      </p>
+                      <OpaDuplicateWebhookDelete id={d.id} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Row>
+          )}
         </dl>
       </section>
 
@@ -138,11 +166,11 @@ export default async function IngressosPage() {
         </div>
 
         {lots.length === 0 ? (
-          <p className="self-start border-t border-ink pt-6 text-body-md dark:border-paper">Nenhum lote ainda.</p>
+          <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum lote ainda.</p>
         ) : (
-          <ul className="self-start border-t border-ink dark:border-paper">
+          <ul className="self-start border-t border-ink">
             {lots.map((l, i) => (
-              <li key={l.id} className="flex flex-col gap-4 border-b border-ash py-6 dark:border-graphite">
+              <li key={l.id} className="flex flex-col gap-4 border-b border-ash py-6">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-body-md font-semibold">
                     {l.name} {offer.enabled && offer.lotId === l.id && <span className="font-mono text-caption">· À VENDA</span>}
@@ -212,7 +240,7 @@ export default async function IngressosPage() {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-2 border-b border-ash py-4 text-body dark:border-graphite sm:grid-cols-[120px_1fr]">
+    <div className="grid gap-2 border-b border-ash py-4 text-body sm:grid-cols-[120px_1fr]">
       <dt className="font-semibold">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>

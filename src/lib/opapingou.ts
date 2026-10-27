@@ -1,6 +1,7 @@
 import "server-only";
-import { OpaApiError, type OpaCharge } from "@/lib/opapingou-core";
+import { OpaApiError, type OpaCharge, type OpaWebhookEndpoint } from "@/lib/opapingou-core";
 import { getSetting } from "@/lib/settings";
+import { appUrl } from "@/lib/stripe";
 
 // Cliente REST do Opa Pingou. Só as rotas da v1 listadas em docs/opapingou-api.md.
 // A chave de API vem do painel (/admin/ingressos), não do .env; a URL base pode apontar pra staging.
@@ -55,14 +56,24 @@ export function createCharge(registrationId: string, amountCents: number, descri
 
 export const getCharge = (id: string) => request<OpaCharge>("GET", `/charges/${encodeURIComponent(id)}`);
 
-export type OpaWebhookEndpoint = { id: string; url: string; events: string[]; testMode: boolean; status: "ACTIVE" | "DISABLED"; lastDeliveredAt: string | null };
+export type { OpaWebhookEndpoint };
+
+// URL que o site cadastra no Opa Pingou
+export const opaWebhookUrl = () => `${appUrl()}/api/opapingou/webhook`;
+
+// Todos os endpoints da conta no modo da chave, inclusive de outros sistemas. O guia mostra uma lista,
+// mas a API devolve { items: [...] }: aceitamos os dois.
+export async function listWebhookEndpoints(): Promise<OpaWebhookEndpoint[]> {
+  const res = await request<OpaWebhookEndpoint[] | { items: OpaWebhookEndpoint[] }>("GET", "/webhook-endpoints");
+  return Array.isArray(res) ? res : (res?.items ?? []);
+}
 
 export const createWebhookEndpoint = (url: string) =>
   request<OpaWebhookEndpoint & { secret: string }>("POST", "/webhook-endpoints", {
     body: { url, description: "Startup Weekend Summit — ingressos", events: [...WEBHOOK_EVENTS] },
   });
 
-export const getWebhookEndpoint = (id: string) => request<OpaWebhookEndpoint>("GET", `/webhook-endpoints/${encodeURIComponent(id)}`);
+export const deleteWebhookEndpoint = (id: string) => request<void>("DELETE", `/webhook-endpoints/${encodeURIComponent(id)}`);
 
 export const reactivateWebhookEndpoint = (id: string) =>
   request<OpaWebhookEndpoint>("PATCH", `/webhook-endpoints/${encodeURIComponent(id)}`, { body: { status: "ACTIVE" } });

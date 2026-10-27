@@ -2,7 +2,10 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { MobileNav } from "@/components/site-nav";
+import { ThemeProvider } from "@/components/theme";
 import { site } from "@/content/site";
+import { themeColor } from "@/lib/theme-core";
+import { resolveTheme } from "@/lib/theme";
 import "./globals.css";
 
 const inter = Inter({
@@ -59,16 +62,21 @@ export const metadata: Metadata = {
   category: "events",
 };
 
-export const viewport: Viewport = {
-  themeColor: "#ffffff",
-};
+// Cor da barra do navegador acompanha o tema da requisição
+export async function generateViewport(): Promise<Viewport> {
+  return { themeColor: themeColor[await resolveTheme()] };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// O tema (cookie do visitante, senão o padrão do painel) já vai no HTML: nada de flash do tema errado
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const theme = await resolveTheme();
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} h-full`}>
+    <html lang="pt-BR" data-theme={theme} className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} h-full`}>
       <body className="flex min-h-full flex-col overflow-x-hidden">
-        {children}
-        <MobileNav />
+        <ThemeProvider initial={theme}>
+          {children}
+          <MobileNav />
+        </ThemeProvider>
       </body>
       <GoogleAnalytics gaId={site.gaId} />
     </html>

@@ -99,11 +99,11 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/ad
       </nav>
 
       {shown.length === 0 ? (
-        <p className="border-t border-ink pt-6 text-body-md dark:border-paper">
+        <p className="border-t border-ink pt-6 text-body-md">
           {all.length === 0 ? "Nenhuma inscrição ainda." : "Nenhuma inscrição com esses filtros."}
         </p>
       ) : (
-        <ul className="border-t border-ink dark:border-paper">
+        <ul className="border-t border-ink">
           {shown.map((r) => (
             <RegistrationRow key={r.id} r={r} />
           ))}
@@ -122,7 +122,7 @@ function FilterRow({ label, options }: { label: string; options: { label: string
           key={o.href}
           href={o.href}
           aria-current={o.active ? "page" : undefined}
-          className={`${buttonClass("secondary", "sm")} ${o.active ? "bg-ink! text-paper! dark:bg-paper! dark:text-ink!" : ""}`}
+          className={`${buttonClass("secondary", "sm")} ${o.active ? "bg-ink! text-paper!" : ""}`}
         >
           {o.label}
         </Link>
@@ -134,7 +134,7 @@ function FilterRow({ label, options }: { label: string; options: { label: string
 function RegistrationRow({ r }: { r: Registration }) {
   const s = situation(r);
   return (
-    <li className="grid gap-4 border-b border-ash py-6 dark:border-graphite md:grid-cols-[1.2fr_1fr_1fr_auto]">
+    <li className="grid gap-4 border-b border-ash py-6 md:grid-cols-[1.2fr_1fr_1fr_auto]">
       <div className="flex flex-col gap-1">
         <p className="text-body-md font-semibold">{r.name}</p>
         <a href={`mailto:${r.email}`} className="text-body underline underline-offset-4">
@@ -229,7 +229,7 @@ function RegistrationRow({ r }: { r: Registration }) {
 function RefundBox({ r }: { r: Registration }) {
   const charge = r.opaChargeId ? `Opa Pingou · cobrança ${r.opaChargeId}` : r.stripePaymentIntent ? `Stripe · ${r.stripePaymentIntent}` : "sem cobrança registrada";
   return (
-    <div className={`mt-2 flex flex-col gap-2 border-2 border-ink p-3 text-caption text-ink dark:border-paper ${r.refundedAt ? "bg-grass-wash" : "bg-marigold-wash"}`}>
+    <div className={`mt-2 flex flex-col gap-2 border-2 border-ink p-3 text-caption text-ink ${r.refundedAt ? "bg-grass-wash" : "bg-marigold-wash"}`}>
       <p className="font-semibold">{r.refundedAt ? `Reembolsada em ${fmt.format(new Date(r.refundedAt))}` : "Reembolso pendente"}</p>
       <p className="break-all">{charge}</p>
       <p>

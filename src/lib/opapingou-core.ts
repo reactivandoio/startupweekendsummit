@@ -84,3 +84,35 @@ export class OpaApiError extends Error {
     this.retryAfter = retryAfter;
   }
 }
+
+// Endpoint de webhook como a API devolve (só os campos que o painel usa)
+export type OpaWebhookEndpoint = { id: string; url: string; events: string[]; testMode: boolean; status: "ACTIVE" | "DISABLED"; lastDeliveredAt: string | null };
+
+// Mesma URL de webhook: host sem diferença de caixa e sem a barra do fim
+const normalizeUrl = (url: string) => {
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.host.toLowerCase()}${u.pathname.replace(/\/+$/, "")}${u.search}`;
+  } catch {
+    return url.trim().replace(/\/+$/, "");
+  }
+};
+export const sameWebhookUrl = (a: string, b: string) => normalizeUrl(a) === normalizeUrl(b);
+
+// Outros cadastros apontando para a URL deste site que não são o salvo no banco: o segredo deles não está aqui,
+// então toda entrega recebe 400 de assinatura e o Opa Pingou desativa o endpoint depois de ~45h de tentativas.
+export const duplicateWebhooks = <E extends Pick<OpaWebhookEndpoint, "id" | "url">>(endpoints: E[], url: string, savedId: string | null) =>
+  endpoints.filter((e) => e.id !== savedId && sameWebhookUrl(e.url, url));
+
+// "Cadastrar webhook" / "Trocar segredo": nunca cria um segundo endpoint para a mesma URL.
+// - o salvo ainda existe para esta URL: troca o segredo dele (pedido explícito do botão);
+// - não há salvo (ou ele sumiu), mas a conta já tem um endpoint para a URL: adota esse, preferindo o ativo,
+//   trocando o segredo (o atual não está no banco);
+// - nenhum: cria.
+export type WebhookSetupPlan = { action: "rotate"; id: string; status: OpaWebhookEndpoint["status"] } | { action: "create" };
+
+export function planWebhookSetup(endpoints: Pick<OpaWebhookEndpoint, "id" | "url" | "status">[], url: string, savedId: string | null): WebhookSetupPlan {
+  const forUrl = endpoints.filter((e) => sameWebhookUrl(e.url, url));
+  const target = forUrl.find((e) => e.id === savedId) ?? forUrl.find((e) => e.status === "ACTIVE") ?? forUrl[0];
+  return target ? { action: "rotate", id: target.id, status: target.status } : { action: "create" };
+}

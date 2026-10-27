@@ -4,7 +4,7 @@ import { site } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "Termos de Participação",
-  description: `Termos de Participação do ${site.name}: condições de inscrição, conduta, uso de imagem, compartilhamento com patrocinadores, uso e privacidade e reembolso. Leia antes de se inscrever.`,
+  description: `Termos de Participação do ${site.name}: condições de inscrição, conduta, uso de imagem, compartilhamento com patrocinadores, uso e privacidade e cancelamento e reembolso. Leia antes de se inscrever.`,
   alternates: { canonical: "/termos-de-uso" },
 };
 
@@ -91,10 +91,14 @@ As marcas, logotipos e nomes exibidos no site e no evento, incluindo os da Techs
   },
   {
     id: "reembolso",
-    title: "Reembolso",
-    content: `Se você precisar de um reembolso, entre em contato com a organização do evento. Reembolsos aprovados são devolvidos pelo mesmo meio de pagamento usado na inscrição (cartão, pelo Stripe, ou Pix, pelo Opa Pingou).
+    title: "Cancelamento e Reembolso",
+    content: `A inscrição é um pagamento único, sem assinatura. Cancelamentos, reembolsos e transferências de inscrição seguem a nossa [Política de Cancelamento e Reembolso](/politica-de-cancelamento-e-reembolso), que é parte integrante destes Termos. Em resumo:
 
-Contato: ${mail}.`,
+• Até 7 dias depois da compra, você pode desistir e recebe o valor integral de volta (direito de arrependimento, art. 49 do Código de Defesa do Consumidor)
+• Depois disso, cancelamento com reembolso de 50% até 19 de novembro de 2026 e transferência da inscrição para outra pessoa até 2 de dezembro de 2026
+• Inscrições não aprovadas e eventos cancelados pela organização são reembolsados integralmente
+
+Reembolsos são devolvidos pelo mesmo meio de pagamento usado na inscrição (Pix, pelo Opa Pingou, ou cartão, pelo Stripe). Pedidos: ${mail}.`,
   },
 ];
 
@@ -103,7 +107,7 @@ export default function TermosDeUsoPage() {
     <LegalPage
       eyebrow="Documento"
       title="Termos de Participação."
-      updated="22 de outubro de 2026"
+      updated="26 de outubro de 2026"
       intro={{
         label: "Descrição do evento",
         text: `O ${site.name} reúne, por três dias, as lideranças voluntárias que disseminam empreendedorismo e influenciam o ecossistema de startups no Brasil inteiro. De ${site.date}, em ${site.cityName}, você vai conhecer quem organiza as comunidades Startup Weekend pelo país, mentores, parceiros e patrocinadores, trocar aprendizados e construir, junto, os próximos passos do movimento no Brasil.`,

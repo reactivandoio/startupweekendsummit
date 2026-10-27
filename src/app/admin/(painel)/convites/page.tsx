@@ -29,14 +29,14 @@ export default async function ConvitesPage() {
       </div>
 
       {invites.length === 0 ? (
-        <p className="self-start border-t border-ink pt-6 text-body-md dark:border-paper">Nenhum convite ainda.</p>
+        <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum convite ainda.</p>
       ) : (
-        <ul className="self-start border-t border-ink dark:border-paper">
+        <ul className="self-start border-t border-ink">
           {invites.map((i) => {
             const url = `${appUrl()}/inscricao/${i.code}`;
             const status = statusOf(i);
             return (
-              <li key={i.id} className="grid gap-4 border-b border-ash py-6 dark:border-graphite md:grid-cols-[1.4fr_1fr_auto]">
+              <li key={i.id} className="grid gap-4 border-b border-ash py-6 md:grid-cols-[1.4fr_1fr_auto]">
                 <div className="flex min-w-0 flex-col gap-1">
                   <p className="text-body-md font-semibold">{i.name || i.email || "Convite aberto"}</p>
                   {i.name && i.email && <p className="text-body">{i.email}</p>}

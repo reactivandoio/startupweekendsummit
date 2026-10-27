@@ -25,11 +25,11 @@ export default async function InscricoesPage() {
       </div>
 
       {volunteers.length === 0 ? (
-        <p className="border-t border-ink dark:border-paper pt-6 text-body-md">Nenhuma inscrição ainda.</p>
+        <p className="border-t border-ink pt-6 text-body-md">Nenhuma inscrição ainda.</p>
       ) : (
-        <ul className="border-t border-ink dark:border-paper">
+        <ul className="border-t border-ink">
           {volunteers.map((v) => (
-            <li key={v.id} className="grid gap-4 border-b border-ash dark:border-graphite py-6 md:grid-cols-[1.2fr_1fr_1fr_auto]">
+            <li key={v.id} className="grid gap-4 border-b border-ash py-6 md:grid-cols-[1.2fr_1fr_1fr_auto]">
               <div className="flex flex-col gap-1">
                 <p className="text-body-md font-semibold">{v.name}</p>
                 <a href={`mailto:${v.email}`} className="text-body underline underline-offset-4">

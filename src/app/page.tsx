@@ -3,9 +3,10 @@ import Link from "next/link";
 import { ButtonAnchor, ButtonLink, buttonClass } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
 import { Mural } from "@/components/mural";
-import { EventMeta, PageHero, illustrations } from "@/components/page-hero";
+import { EventMeta, PageHero } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
 import { SponsorsSection } from "@/components/sponsors-section";
+import { illustrations } from "@/content/illustrations";
 import { pastHosts, photos, schedule, showVolunteerCta, site, stats } from "@/content/site";
 
 // Dados estruturados pra Google (rich result de evento) — https://schema.org/Event
@@ -108,14 +109,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Faixa grass: tagline + números */}
-      <section id="o-evento" className="bg-grass text-ink">
+      {/* Faixa grass: tagline + números. Texto preto fixo: branco sobre Grass não passa AA. */}
+      <section id="o-evento" className="bg-grass text-obsidian">
         <div className="mx-auto flex max-w-page flex-col gap-12 px-4 py-15 sm:px-6">
           <div className="flex flex-col gap-6">
-            <Eyebrow>O evento</Eyebrow>
+            <Eyebrow tone="obsidian">O evento</Eyebrow>
             <p className="max-w-[20ch] font-display text-heading-lg">{site.tagline}.</p>
           </div>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-ink pt-6 lg:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-obsidian pt-6 lg:grid-cols-4">
             {stats.map((st) => (
               <div key={st.label} className="flex flex-col gap-2">
                 <dd className="font-display text-heading">{st.value}</dd>

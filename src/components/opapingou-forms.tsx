@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createLotAction, saveOpaKey, setupOpaWebhook, testOpaWebhook, type OpaFormState } from "@/app/admin/actions";
+import { createLotAction, deleteDuplicateOpaWebhook, saveOpaKey, setupOpaWebhook, testOpaWebhook, type OpaFormState } from "@/app/admin/actions";
 import { buttonClass } from "@/components/button";
 
 const idle: OpaFormState = { status: "idle" };
@@ -25,7 +25,7 @@ export function OpaKeyForm({ configured }: { configured: boolean }) {
           {configured ? "Trocar a chave de API" : "Chave de API"}
         </label>
         <input id="opa-key" name="apiKey" type="password" autoComplete="off" spellCheck={false} className="field font-mono" placeholder="opk_live_… ou opk_test_…" required />
-        <p className="text-caption text-ink/60 dark:text-paper/60">Escopos necessários: charges:write, charges:read, webhooks:read e webhooks:write.</p>
+        <p className="text-caption text-ink/60">Escopos necessários: charges:write, charges:read, webhooks:read e webhooks:write.</p>
       </div>
       <Message state={state} />
       <button type="submit" disabled={pending} className={primary}>
@@ -56,6 +56,27 @@ export function OpaWebhookButtons({ registered }: { registered: boolean }) {
       </div>
       <Message state={setupState.message ? setupState : testState} />
     </div>
+  );
+}
+
+// Excluir um cadastro duplicado da URL do site no Opa Pingou (não tem volta, por isso confirma)
+export function OpaDuplicateWebhookDelete({ id }: { id: string }) {
+  const [state, action, pending] = useActionState(deleteDuplicateOpaWebhook, idle);
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <input type="hidden" name="id" value={id} />
+      <button
+        type="submit"
+        disabled={pending}
+        className={buttonClass("secondary", "sm", "self-start")}
+        onClick={(e) => {
+          if (!window.confirm(`Excluir no Opa Pingou o webhook ${id}? O cadastro salvo neste site continua.`)) e.preventDefault();
+        }}
+      >
+        {pending ? "Excluindo…" : "Excluir"}
+      </button>
+      <Message state={state} />
+    </form>
   );
 }
 

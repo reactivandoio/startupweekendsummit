@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ButtonLink } from "@/components/button";
-import { PageHero, illustrations } from "@/components/page-hero";
+import { PageHero } from "@/components/page-hero";
+import { illustrations } from "@/content/illustrations";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/content/site";
 
@@ -18,7 +19,7 @@ export default function NotFound() {
         eyebrow="Erro 404 · página não encontrada"
         title={
           <>
-            Esse salto caiu fora do mapa<span className="text-marigold">_</span>
+            Esse salto caiu fora do mapa<span className="text-marigold" aria-hidden="true">_</span>
           </>
         }
         lead="O endereço não existe ou mudou de lugar. Volte pro começo e bora pro futuro."

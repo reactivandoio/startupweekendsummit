@@ -9,7 +9,8 @@
     "lint": "eslint",
     "docker:dev": "docker compose --profile dev up --build",
     "docker:prod": "bash deploy/blue-green.sh",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"src/**/*.test.ts\"",
+    "ilustracoes": "node scripts/ilustracoes-escuro.mjs"
   },
   "dependencies": {
     "@next/third-parties": "16.3.5",

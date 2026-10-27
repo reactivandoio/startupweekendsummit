@@ -21,9 +21,9 @@ export default async function UsuariosPage() {
         </p>
         <UserForm />
       </div>
-      <ul className="border-t border-ink dark:border-paper self-start">
+      <ul className="border-t border-ink self-start">
         {users.map((u) => (
-          <li key={u.id} className="flex items-center justify-between gap-4 border-b border-ash dark:border-graphite py-4">
+          <li key={u.id} className="flex items-center justify-between gap-4 border-b border-ash py-4">
             <div className="flex flex-col gap-1">
               <p className="text-body-md font-semibold">{u.name || u.email}</p>
               {u.name && <p className="text-body">{u.email}</p>}

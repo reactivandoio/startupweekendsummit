@@ -6,7 +6,7 @@ const linkClass = "decoration-marigold decoration-2 underline-offset-[6px] hover
 
 export function SiteFooter() {
   return (
-    <footer className="bg-obsidian text-paper">
+    <footer className="bg-obsidian text-white">
       <div aria-hidden="true" className="h-3 bg-linear-to-r from-grass to-marigold" />
       <div className="mx-auto flex max-w-page flex-col justify-between gap-8 px-4 py-15 sm:flex-row sm:items-end sm:px-6">
         <div className="flex flex-col gap-6">
@@ -38,7 +38,16 @@ export function SiteFooter() {
           <Link href="/politica-de-privacidade" className={linkClass}>
             Privacidade
           </Link>
+          <Link href="/politica-de-cancelamento-e-reembolso" className={linkClass}>
+            Cancelamento e reembolso
+          </Link>
         </div>
+      </div>
+      {/* Razão social e CNPJ da organizadora, exigidos pelos meios de pagamento. O rodapé é preto nos dois temas. */}
+      <div className="border-t border-white/15">
+        <p className="mx-auto max-w-page px-4 py-5 text-caption leading-normal text-white/70 sm:px-6">
+          {site.legalName} — <span className="whitespace-nowrap">CNPJ {site.cnpj}</span>
+        </p>
       </div>
     </footer>
   );

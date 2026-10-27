@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { ComponentProps } from "react";
 
 /* Botão da marca: borda Ink de 2px e sombra projetada sólida (recurso Techstars) que "afunda" no hover.
-   primary = Marigold (uma ação principal por tela); secondary = papel.
+   primary = Marigold (uma ação principal por tela), sempre com texto preto; secondary = papel.
+   Ink, papel e sombra seguem o tema pelos tokens (globals.css): no escuro viram claros sozinhos.
    lg nos heros e formulários, md em faixas e painéis, sm (sem sombra) em ações de tabela. */
 export type ButtonVariant = "primary" | "secondary";
 export type ButtonSize = "lg" | "md" | "sm";
@@ -10,17 +11,17 @@ export type ButtonSize = "lg" | "md" | "sm";
 const base =
   "inline-flex max-w-full items-center justify-center gap-2 border-2 border-ink text-center font-semibold text-ink " +
   "transition-[translate,box-shadow,background-color,color] duration-150 " +
-  "disabled:cursor-not-allowed disabled:opacity-50 dark:border-paper";
+  "disabled:cursor-not-allowed disabled:opacity-50";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-marigold text-ink",
-  secondary: "bg-paper dark:bg-ink dark:text-paper",
+  primary: "bg-marigold text-obsidian",
+  secondary: "bg-paper",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  lg: "min-h-16 px-6 py-3 text-subheading leading-tight text-balance shadow-hard sm:px-8 not-disabled:hover:translate-x-1.5 not-disabled:hover:translate-y-1.5 not-disabled:hover:shadow-none dark:shadow-hard-paper",
-  md: "h-12 whitespace-nowrap px-6 text-body shadow-hard-sm not-disabled:hover:translate-x-1 not-disabled:hover:translate-y-1 not-disabled:hover:shadow-none dark:shadow-hard-paper",
-  sm: "h-10 whitespace-nowrap px-4 text-caption not-disabled:hover:bg-ink not-disabled:hover:text-paper dark:not-disabled:hover:bg-paper dark:not-disabled:hover:text-ink",
+  lg: "min-h-16 px-6 py-3 text-subheading leading-tight text-balance shadow-hard sm:px-8 not-disabled:hover:translate-x-1.5 not-disabled:hover:translate-y-1.5 not-disabled:hover:shadow-none",
+  md: "h-12 whitespace-nowrap px-6 text-body shadow-hard-sm not-disabled:hover:translate-x-1 not-disabled:hover:translate-y-1 not-disabled:hover:shadow-none",
+  sm: "h-10 whitespace-nowrap px-4 text-caption not-disabled:hover:bg-ink not-disabled:hover:text-paper",
 };
 
 export function buttonClass(variant: ButtonVariant = "secondary", size: ButtonSize = "md", className = "") {

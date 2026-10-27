@@ -5,8 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { signOut } from "@/app/admin/actions";
+import { ThemeIcon, useTheme } from "@/components/theme";
 import { site } from "@/content/site";
 import type { User } from "@/lib/auth";
+import { otherTheme, themeLabel } from "@/lib/theme-core";
 
 type NavItem = { href: string; label: string; icon: React.ReactNode };
 
@@ -71,13 +73,21 @@ const nav: NavItem[] = [
       </svg>
     ),
   },
+  {
+    href: "/admin/configuracoes",
+    label: "Configurações",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+        <circle cx="10" cy="10" r="3" />
+        <path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.3 4.3l2.2 2.2M13.5 13.5l2.2 2.2M4.3 15.7l2.2-2.2M13.5 6.5l2.2-2.2" />
+      </svg>
+    ),
+  },
 ];
 
 const STORAGE_KEY = "sws-admin-sidebar";
-const THEME_KEY = "sws-admin-theme";
-type Theme = "light" | "dark";
 
-/* Preferências em localStorage lidas como store externo: sem setState em effect e sincronizado entre abas */
+/* Sidebar recolhida em localStorage lida como store externo: sem setState em effect e sincronizado entre abas */
 const PREF_EVENT = "sws-admin-pref";
 function subscribe(cb: () => void) {
   window.addEventListener("storage", cb);
@@ -101,11 +111,6 @@ function writePref(key: string, value: string) {
   window.dispatchEvent(new Event(PREF_EVENT));
 }
 const readCollapsed = () => readPref(STORAGE_KEY) === "1";
-const readTheme = (): Theme => {
-  const saved = readPref(THEME_KEY);
-  if (saved === "dark" || saved === "light") return saved;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-};
 
 const Burger = ({ open }: { open: boolean }) => (
   <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" {...stroke} strokeWidth={2}>
@@ -114,15 +119,16 @@ const Burger = ({ open }: { open: boolean }) => (
 );
 
 /* Moldura do painel: sidebar preta (recolhível no desktop pelo ☰ ao lado do logo; gaveta no celular, aberta pelo ☰
-   do cabeçalho) + header com breadcrumb + conteúdo com rolagem própria */
+   do cabeçalho) + header com breadcrumb + conteúdo com rolagem própria. O tema é o mesmo do site (ThemeProvider
+   no layout raiz, cookie): o botão aqui embaixo troca pra tudo. A sidebar é sempre preta, com brancos fixos. */
 export function AdminShell({ user, children }: { user: User; children: React.ReactNode }) {
   const pathname = usePathname();
-  // no servidor (e durante a hidratação) usa os padrões; depois lê a preferência salva
+  // no servidor (e durante a hidratação) usa o padrão; depois lê a preferência salva
   const collapsed = useSyncExternalStore(subscribe, readCollapsed, () => false);
-  const theme = useSyncExternalStore(subscribe, readTheme, () => "light" as Theme);
+  const { theme, setTheme } = useTheme();
   const [drawer, setDrawer] = useState(false); // gaveta do celular: não persiste
   const toggle = () => writePref(STORAGE_KEY, collapsed ? "0" : "1");
-  const toggleTheme = () => writePref(THEME_KEY, theme === "dark" ? "light" : "dark");
+  const nextTheme = otherTheme(theme);
 
   // gaveta fecha ao escolher uma seção (onClick nos links) e no Esc
   useEffect(() => {
@@ -132,31 +138,23 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
     return () => document.removeEventListener("keydown", onKey);
   }, [drawer]);
 
-  // aplica no <html> só enquanto o painel está montado; o site público não usa data-theme
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    return () => {
-      delete document.documentElement.dataset.theme;
-    };
-  }, [theme]);
-
   const current = nav.find((n) => n.href === pathname) ?? nav.find((n) => n.href !== "/admin" && pathname.startsWith(n.href));
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-paper text-ink dark:bg-ink dark:text-paper">
+    <div className="flex h-dvh w-full overflow-hidden bg-paper text-ink">
       {/* Fundo escurecido atrás da gaveta (celular) */}
-      {drawer && <button type="button" aria-label="Fechar menu" onClick={() => setDrawer(false)} className="fixed inset-0 z-30 bg-ink/60 md:hidden" />}
+      {drawer && <button type="button" aria-label="Fechar menu" onClick={() => setDrawer(false)} className="fixed inset-0 z-30 bg-obsidian/60 md:hidden" />}
 
       {/* Sidebar: gaveta no celular (translate), coluna fixa no desktop (largura 64 ou 16) */}
       <aside
         id="admin-sidebar"
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col justify-between bg-obsidian text-paper transition-[transform,width] duration-150 md:static md:translate-x-0 dark:border-r dark:border-graphite ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col justify-between bg-obsidian text-white transition-[transform,width] duration-150 md:static md:translate-x-0 dark:border-r dark:border-white/20 ${
           drawer ? "translate-x-0" : "-translate-x-full"
         } ${collapsed ? "md:w-16" : "md:w-64"}`}
       >
         <div className="flex flex-col">
           {/* Topo: logo + ☰ (aberta). Recolhida no desktop, só a marca compacta "ts_", que expande a barra. Celular: logo + X. */}
-          <div className={`flex h-16 items-center border-b border-graphite ${collapsed ? "justify-between px-4 md:justify-center md:px-0" : "justify-between px-4"}`}>
+          <div className={`flex h-16 items-center border-b border-white/20 ${collapsed ? "justify-between px-4 md:justify-center md:px-0" : "justify-between px-4"}`}>
             <Link href="/admin" aria-label="Painel" className={`shrink-0 ${collapsed ? "md:hidden" : ""}`}>
               <Image src="/logo-negativo.svg" alt={site.name} width={86} height={40} priority className="h-[40px] w-auto" />
             </Link>
@@ -168,9 +166,9 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
                 aria-controls="admin-sidebar"
                 aria-label="Expandir menu"
                 title="Expandir menu"
-                className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-ink md:flex"
+                className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-white/10 md:flex"
               >
-                <span className="flex h-8 w-8 items-center justify-center bg-paper font-display text-caption font-bold text-obsidian" aria-hidden="true">
+                <span className="flex h-8 w-8 items-center justify-center bg-white font-display text-caption font-bold text-obsidian" aria-hidden="true">
                   ts_
                 </span>
               </button>
@@ -182,7 +180,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
                 aria-controls="admin-sidebar"
                 aria-label="Recolher menu"
                 title="Recolher menu"
-                className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-ink md:flex"
+                className="hidden h-10 w-10 items-center justify-center transition-colors hover:bg-white/10 md:flex"
               >
                 <Burger open={false} />
               </button>
@@ -192,7 +190,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
               onClick={() => setDrawer(false)}
               aria-label="Fechar menu"
               title="Fechar menu"
-              className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-ink md:hidden"
+              className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-white/10 md:hidden"
             >
               <Burger open />
             </button>
@@ -207,8 +205,8 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
                   title={n.label}
                   aria-current={active ? "page" : undefined}
                   onClick={() => setDrawer(false)}
-                  className={`flex h-12 items-center gap-3 border-l-2 px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink ${
-                    active ? "border-paper bg-ink" : "border-transparent"
+                  className={`flex h-12 items-center gap-3 border-l-2 px-4 text-body tracking-[0.03em] transition-colors hover:bg-white/10 ${
+                    active ? "border-white bg-white/10" : "border-transparent"
                   }`}
                 >
                   <span className="shrink-0">{n.icon}</span>
@@ -219,13 +217,13 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
           </nav>
         </div>
 
-        <div className="flex flex-col border-t border-graphite">
+        <div className="flex flex-col border-t border-white/20">
           <div className={`flex flex-col gap-1 px-4 py-3 ${collapsed ? "md:hidden" : ""}`}>
             <p className="truncate text-caption" title={user.email}>
               {user.name || user.email}
             </p>
             {user.name && (
-              <p className="truncate text-caption text-paper/60" title={user.email}>
+              <p className="truncate text-caption text-white/60" title={user.email}>
                 {user.email}
               </p>
             )}
@@ -234,7 +232,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
             <button
               type="submit"
               title="Sair"
-              className="flex h-12 w-full items-center gap-3 px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink"
+              className="flex h-12 w-full items-center gap-3 px-4 text-body tracking-[0.03em] transition-colors hover:bg-white/10"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
                 <path d="M8 3H3v14h5M12 6l4 4-4 4M7 10h9" />
@@ -244,28 +242,19 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
           </form>
           <button
             type="button"
-            onClick={toggleTheme}
-            title={theme === "dark" ? "Tema claro" : "Tema escuro"}
-            className="flex h-12 items-center gap-3 border-t border-graphite px-4 text-body tracking-[0.03em] transition-colors hover:bg-ink"
+            onClick={() => setTheme(nextTheme)}
+            title={`Tema ${themeLabel[nextTheme].toLowerCase()}`}
+            className="flex h-12 items-center gap-3 border-t border-white/20 px-4 text-body tracking-[0.03em] transition-colors hover:bg-white/10"
           >
-            {theme === "dark" ? (
-              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
-                <circle cx="10" cy="10" r="3.5" />
-                <path d="M10 2v2.5M10 15.5V18M2 10h2.5M15.5 10H18M4.3 4.3l1.8 1.8M13.9 13.9l1.8 1.8M4.3 15.7l1.8-1.8M13.9 6.1l1.8-1.8" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
-                <path d="M16 12.5A7 7 0 0 1 7.5 4a7 7 0 1 0 8.5 8.5Z" />
-              </svg>
-            )}
-            <span className={collapsed ? "md:sr-only" : ""}>{theme === "dark" ? "Claro" : "Escuro"}</span>
+            <ThemeIcon theme={theme} />
+            <span className={collapsed ? "md:sr-only" : ""}>{themeLabel[nextTheme]}</span>
           </button>
         </div>
       </aside>
 
       {/* Coluna de conteúdo: header fixo, main rola */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-ash px-4 sm:px-6 dark:border-graphite">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-ash px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -274,25 +263,25 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
               aria-controls="admin-sidebar"
               aria-label="Abrir menu"
               title="Abrir menu"
-              className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink transition-colors hover:bg-ink hover:text-paper md:hidden dark:border-paper dark:hover:bg-paper dark:hover:text-ink"
+              className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-ink transition-colors hover:bg-ink hover:text-paper md:hidden"
             >
               <Burger open={false} />
             </button>
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body tracking-[0.03em]">
-            <Link href="/admin" className="hover:underline hover:underline-offset-4">
-              Painel
-            </Link>
-            {current && (
-              <>
-                <span className="text-ash dark:text-graphite" aria-hidden="true">
-                  /
-                </span>
-                <span className="font-semibold" aria-current="page">
-                  {current.label}
-                </span>
-              </>
-            )}
-          </nav>
+            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-body tracking-[0.03em]">
+              <Link href="/admin" className="hover:underline hover:underline-offset-4">
+                Painel
+              </Link>
+              {current && (
+                <>
+                  <span className="text-graphite" aria-hidden="true">
+                    /
+                  </span>
+                  <span className="font-semibold" aria-current="page">
+                    {current.label}
+                  </span>
+                </>
+              )}
+            </nav>
           </div>
           <Link href="/" className="hidden text-caption tracking-[0.03em] hover:underline hover:underline-offset-4 sm:inline">
             Ver site ↗
