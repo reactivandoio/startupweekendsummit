@@ -14,7 +14,7 @@ export const site = {
   city: "Goiânia, GO",
   cityName: "Goiânia",
   state: "GO",
-  venue: "Local a confirmar",
+  venue: "Hub Goiás e Hub Cerrado",
   // Único canal de contato do site (decisão de 2026-10-22: sem WhatsApp da organização nas páginas públicas)
   contactEmail: "tsstartupweekendbrasil@gmail.com",
   instagram: "https://www.instagram.com/techstarsstartupweekendsummit/",
