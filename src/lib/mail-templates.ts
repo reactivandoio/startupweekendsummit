@@ -89,7 +89,7 @@ export function layout(opts: { eyebrow: string; title: string; body: string; pre
           <td bgcolor="#000000" style="background-color:#000000;padding:28px 32px 32px">
             <img src="${asset("logo-negativo.png")}" width="120" height="56" alt="${escapeHtml(site.name)}" style="display:block;border:0;width:120px;height:auto;margin:0 0 16px">
             <p style="margin:0 0 16px;font-family:${FONT};font-size:20px;font-weight:700;line-height:24px;color:${PAPER}">Bora pro futuro<span style="color:${MARIGOLD}">_</span></p>
-            <p style="margin:0 0 12px;font-family:${FONT};font-size:13px;line-height:20px;color:#e2e2e2">${escapeHtml(site.name)}<br>${escapeHtml(site.date)} · ${escapeHtml(site.city)}</p>
+            <p style="margin:0 0 12px;font-family:${FONT};font-size:13px;line-height:20px;color:#e2e2e2">${escapeHtml(site.name)}<br>${escapeHtml(site.date)} · ${escapeHtml(site.venue)} · ${escapeHtml(site.city)}</p>
             <p style="margin:0 0 12px;font-family:${FONT};font-size:13px;line-height:20px;color:#e2e2e2">Dúvidas: ${link(`mailto:${site.contactEmail}`, site.contactEmail, PAPER)}</p>
             <p style="margin:0;font-family:${FONT};font-size:13px;line-height:20px;color:#e2e2e2">${link(`${site.url}/termos-de-uso`, "Termos de Participação", PAPER)} &nbsp;·&nbsp; ${link(`${site.url}/politica-de-privacidade`, "Política de Privacidade", PAPER)} &nbsp;·&nbsp; ${link(`${site.url}/politica-de-cancelamento-e-reembolso`, "Cancelamento e Reembolso", PAPER)} &nbsp;·&nbsp; ${link(site.url, "startupweekendsummit.com.br", PAPER)}</p>
           </td>
@@ -102,7 +102,7 @@ export function layout(opts: { eyebrow: string; title: string; body: string; pre
 </html>`;
 }
 
-const textFooter = `\n\n—\n${site.name}\n${site.date} · ${site.city}\nDúvidas: ${site.contactEmail}\nTermos de Participação: ${site.url}/termos-de-uso · Política de Privacidade: ${site.url}/politica-de-privacidade · Cancelamento e Reembolso: ${site.url}/politica-de-cancelamento-e-reembolso`;
+const textFooter = `\n\n—\n${site.name}\n${site.date} · ${site.venue} · ${site.city}\nDúvidas: ${site.contactEmail}\nTermos de Participação: ${site.url}/termos-de-uso · Política de Privacidade: ${site.url}/politica-de-privacidade · Cancelamento e Reembolso: ${site.url}/politica-de-cancelamento-e-reembolso`;
 
 /* Link de acesso de uso único ao painel (pedido na tela de login) */
 export function loginLinkMail(url: string): Mail {
