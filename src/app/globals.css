@@ -149,6 +149,40 @@ body {
 html[data-theme="dark"] .logo-mono {
   filter: brightness(0) invert(1);
 }
+/* Na faixa Grass → Marigold o logo fica preto nos dois temas (branco não passa AA sobre Marigold) */
+.logo-mono-obsidian {
+  filter: brightness(0);
+}
+
+/* Carrossel de patrocinadores (components/sponsor-marquee.tsx): a pista anda exatamente uma cópia da
+   lista por ciclo — como todas as cópias são iguais, o loop não tem emenda. A duração vem medida do
+   cliente (--marquee-duration, velocidade constante); antes disso, estimativa por quantidade de logos. */
+@keyframes sponsor-marquee {
+  to {
+    transform: translateX(calc(-100% / var(--marquee-copies, 2)));
+  }
+}
+.sponsor-marquee-track {
+  animation: sponsor-marquee var(--marquee-duration, calc(var(--marquee-items, 6) * 3.5s)) linear infinite;
+  will-change: transform;
+}
+.sponsor-marquee:hover .sponsor-marquee-track,
+.sponsor-marquee:focus-within .sponsor-marquee-track {
+  animation-play-state: paused;
+}
+/* Sem movimento: lista estática, rolável na horizontal, só com a primeira cópia */
+@media (prefers-reduced-motion: reduce) {
+  .sponsor-marquee {
+    overflow-x: auto;
+  }
+  .sponsor-marquee-track {
+    animation: none;
+    will-change: auto;
+  }
+  .sponsor-marquee-track > [aria-hidden="true"] {
+    display: none;
+  }
+}
 
 /* Campos: borda Ash que vira Ink no foco/erro. Sem cor de estado. */
 .field {
