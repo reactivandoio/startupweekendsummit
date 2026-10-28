@@ -2,7 +2,7 @@ import Image from "next/image";
 import { connection } from "next/server";
 import { Eyebrow } from "@/components/eyebrow";
 import { sponsorCategories } from "@/content/site";
-import { listSponsors, sponsorAlt, type Sponsor, type SponsorTier } from "@/lib/sponsors";
+import { listSponsorsCached, sponsorAlt, type Sponsor, type SponsorTier } from "@/lib/sponsors";
 import { uploadUrl } from "@/lib/uploads";
 
 // Grade e altura do logo por categoria: cota maior, logo maior
@@ -39,7 +39,7 @@ export async function SponsorsSection() {
   await connection();
   let sponsors: Sponsor[];
   try {
-    sponsors = await listSponsors();
+    sponsors = await listSponsorsCached();
   } catch (err) {
     console.error("[SponsorsSection]", err);
     return null;

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { sponsorCategories } from "@/content/site";
 import { ensureSchema, sql } from "@/lib/db";
 
@@ -36,7 +37,7 @@ const tierOrder = (t: string) => {
 // Sem alt informado no painel, o nome da marca é o melhor texto alternativo
 export const sponsorAlt = (s: Sponsor) => s.logoAlt || s.name;
 
-export const isSponsorTier =(t: string): t is SponsorTier => sponsorCategories.some((c) => c.id === t);
+export const isSponsorTier = (t: string): t is SponsorTier => sponsorCategories.some((c) => c.id === t);
 
 // Ordem do site: categoria (na ordem de sponsorCategories) e, dentro dela, position
 export async function listSponsors(): Promise<Sponsor[]> {
@@ -44,6 +45,9 @@ export async function listSponsors(): Promise<Sponsor[]> {
   const rows = await sql<Row[]>`select * from sponsors order by position, created_at`;
   return rows.map(toSponsor).sort((a, b) => tierOrder(a.tier) - tierOrder(b.tier) || a.position - b.position);
 }
+
+// Mesma lista pra faixa do mural e pra seção de patrocinadores: uma query por requisição
+export const listSponsorsCached = cache(listSponsors);
 
 export async function getSponsor(id: string): Promise<Sponsor | null> {
   await ensureSchema();
