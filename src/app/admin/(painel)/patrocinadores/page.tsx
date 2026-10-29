@@ -1,18 +1,23 @@
 import Image from "next/image";
 import Link from "next/link";
-import { removeSponsor, reorderSponsor } from "@/app/admin/actions";
+import { removeSponsor, reorderSponsor, restoreSponsor } from "@/app/admin/actions";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { Eyebrow } from "@/components/eyebrow";
+import { RemovedList, RemovedToggle } from "@/components/removed-list";
 import { SponsorForm } from "@/components/sponsor-form";
 import { sponsorCategories } from "@/content/site";
-import { listSponsors, sponsorAlt } from "@/lib/sponsors";
+import { showingRemoved } from "@/lib/removal-core";
+import { listRemovedSponsors, listSponsors, sponsorAlt } from "@/lib/sponsors";
 import { uploadUrl } from "@/lib/uploads";
 import { buttonClass } from "@/components/button";
 
 const btn = buttonClass("secondary", "sm");
 
-export default async function PatrocinadoresPage() {
-  const sponsors = await listSponsors();
+const tierLabel = (tier: string) => sponsorCategories.find((c) => c.id === tier)?.label ?? tier;
+
+export default async function PatrocinadoresPage({ searchParams }: PageProps<"/admin/patrocinadores">) {
+  const showing = showingRemoved((await searchParams).removidos);
+  const [sponsors, removed] = await Promise.all([listSponsors(), listRemovedSponsors()]);
   const groups = sponsorCategories
     .map((c) => ({ ...c, items: sponsors.filter((s) => s.tier === c.id) }))
     .filter((g) => g.items.length > 0);
@@ -28,10 +33,23 @@ export default async function PatrocinadoresPage() {
           Aparecem na home e em /patrocinio, agrupados por categoria e na ordem definida aqui. Sem nenhum cadastrado, a seção
           não aparece no site.
         </p>
+        <RemovedToggle path="/admin/patrocinadores" count={removed.length} showing={showing} />
         <SponsorForm />
       </div>
 
-      {groups.length === 0 ? (
+      {showing ? (
+        <RemovedList
+          className="self-start"
+          empty="Nenhum patrocinador removido."
+          restore={restoreSponsor}
+          items={removed.map((s) => ({
+            ...s,
+            title: s.name,
+            detail: tierLabel(s.tier),
+            restoreMessage: `Restaurar ${s.name}? Volta no fim da categoria ${tierLabel(s.tier)} e aparece de novo no site.`,
+          }))}
+        />
+      ) : groups.length === 0 ? (
         <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum patrocinador ainda.</p>
       ) : (
         <div className="flex flex-col gap-10 self-start">
@@ -75,8 +93,8 @@ export default async function PatrocinadoresPage() {
                       </Link>
                       <form action={removeSponsor}>
                         <input type="hidden" name="id" value={s.id} />
-                        <ConfirmSubmit message={`Excluir ${s.name}? O logo enviado também é apagado.`} className={btn}>
-                          Excluir
+                        <ConfirmSubmit message={`Remover ${s.name}? Sai da lista e do site; dá para restaurar em Removidos.`} className={btn}>
+                          Remover
                         </ConfirmSubmit>
                       </form>
                     </div>

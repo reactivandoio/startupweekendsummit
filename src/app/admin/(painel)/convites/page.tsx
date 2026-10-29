@@ -1,18 +1,24 @@
-import { removeInvite, resendInvite, toggleInvite } from "@/app/admin/actions";
-import { Button, ButtonLink } from "@/components/button";
+import { removeInvite, resendInvite, restoreInvite, toggleInvite } from "@/app/admin/actions";
+import { Button, ButtonLink, buttonClass } from "@/components/button";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
 import { InviteForm } from "@/components/invite-form";
+import { RemovedList, RemovedToggle } from "@/components/removed-list";
 import { describeDiscount } from "@/lib/discounts";
-import { listInvites, type Invite } from "@/lib/invites";
+import { listInvites, listRemovedInvites, type Invite } from "@/lib/invites";
+import { showingRemoved } from "@/lib/removal-core";
 import { appUrl } from "@/lib/stripe";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" });
 
 const statusOf = (i: Invite) => (i.revokedAt ? "Revogado" : i.uses >= i.maxUses ? "Esgotado" : "Ativo");
 
-export default async function ConvitesPage() {
-  const invites = await listInvites();
+const inviteTitle = (i: Invite) => i.name || i.email || "Convite aberto";
+
+export default async function ConvitesPage({ searchParams }: PageProps<"/admin/convites">) {
+  const showing = showingRemoved((await searchParams).removidos);
+  const [invites, removed] = await Promise.all([listInvites(), listRemovedInvites()]);
   const active = invites.filter((i) => statusOf(i) === "Ativo").length;
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(280px,420px)_1fr]">
@@ -25,10 +31,23 @@ export default async function ConvitesPage() {
           Cada convite gera um link /inscricao/&lt;código&gt;. Um checkout em andamento segura a vaga por 1 hora; só a inscrição paga
           consome a vaga de vez. O desconto vale sobre o lote à venda no momento da inscrição e não soma com cupom (vale o maior); cortesia vai sem Pix. Toda inscrição passa pela aprovação em Participantes.
         </p>
+        <RemovedToggle path="/admin/convites" count={removed.length} showing={showing} />
         <InviteForm />
       </div>
 
-      {invites.length === 0 ? (
+      {showing ? (
+        <RemovedList
+          className="self-start"
+          empty="Nenhum convite removido."
+          restore={restoreInvite}
+          items={removed.map((i) => ({
+            ...i,
+            title: inviteTitle(i),
+            detail: `/inscricao/${i.code} · criado em ${fmt.format(new Date(i.createdAt))}`,
+            restoreMessage: `Restaurar o convite ${inviteTitle(i)}? O link volta a funcionar${i.revokedAt ? " (continua revogado até reativar)" : ""}.`,
+          }))}
+        />
+      ) : invites.length === 0 ? (
         <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum convite ainda.</p>
       ) : (
         <ul className="self-start border-t border-ink">
@@ -38,7 +57,7 @@ export default async function ConvitesPage() {
             return (
               <li key={i.id} className="grid gap-4 border-b border-ash py-6 md:grid-cols-[1.4fr_1fr_auto]">
                 <div className="flex min-w-0 flex-col gap-1">
-                  <p className="text-body-md font-semibold">{i.name || i.email || "Convite aberto"}</p>
+                  <p className="text-body-md font-semibold">{inviteTitle(i)}</p>
                   {i.name && i.email && <p className="text-body">{i.email}</p>}
                   {i.note && <p className="text-caption">{i.note}</p>}
                   <code className="mt-1 break-all font-mono text-caption">{url}</code>
@@ -80,9 +99,12 @@ export default async function ConvitesPage() {
                   {i.uses === 0 && (
                     <form action={removeInvite} className="flex">
                       <input type="hidden" name="id" value={i.id} />
-                      <Button type="submit" size="sm">
-                        Excluir
-                      </Button>
+                      <ConfirmSubmit
+                        message={`Remover o convite ${inviteTitle(i)}? O link para de funcionar; dá para restaurar em Removidos.`}
+                        className={buttonClass("secondary", "sm")}
+                      >
+                        Remover
+                      </ConfirmSubmit>
                     </form>
                   )}
                 </div>

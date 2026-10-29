@@ -3,6 +3,8 @@ import { site } from "@/content/site";
 import { ensureSchema, sql } from "@/lib/db";
 import { bestDiscount, type DiscountSource, type InviteDiscount, type PriceBreakdown } from "@/lib/discounts";
 import { closedReason, lotOnSale, lotState, type LotState } from "@/lib/lots-core";
+import { removedByName } from "@/lib/removal";
+import { toRemoval, type Removal, type RemovalRow } from "@/lib/removal-core";
 import { getSetting } from "@/lib/settings";
 
 export type TicketLot = {
@@ -16,9 +18,9 @@ export type TicketLot = {
   endsAt: string | null; // fim das vendas; null = até esgotar
   sold: number; // pagas + checkouts abertos há menos de 1h
   state: LotState; // agora: inativo, agendado, à venda, encerrado por data ou esgotado
-};
+} & Removal;
 
-type Row = {
+type Row = RemovalRow & {
   id: string;
   name: string;
   price_cents: number;
@@ -42,7 +44,7 @@ const toLot = (r: Row): TicketLot => {
     endsAt: r.ends_at ? r.ends_at.toISOString() : null,
     sold: Number(r.sold),
   };
-  return { ...lot, state: lotState(lot) };
+  return { ...lot, state: lotState(lot), ...toRemoval(r) };
 };
 
 // Mesma regra de vaga dos convites: pendente segura o lugar até o fim da cobrança atual (1h; nova cobrança na mesma
@@ -54,9 +56,19 @@ const soldSubquery = () => sql`
       and r.approval is distinct from 'rejected' and r.removed_at is null
       and (r.status = 'paid' or (r.status = 'pending' and coalesce(r.opa_expires_at, r.created_at + interval '1 hour') > now())))`;
 
+// Removidos ficam fora da lista e da venda (currentOffer usa esta lista)
 export async function listLots(): Promise<TicketLot[]> {
   await ensureSchema();
-  const rows = await sql<Row[]>`select l.*, ${soldSubquery()} as sold from ticket_lots l order by l.position, l.created_at`;
+  const rows = await sql<Row[]>`
+    select l.*, ${soldSubquery()} as sold from ticket_lots l where l.removed_at is null order by l.position, l.created_at`;
+  return rows.map(toLot);
+}
+
+// Aba Removidos: mais recente primeiro
+export async function listRemovedLots(): Promise<TicketLot[]> {
+  await ensureSchema();
+  const rows = await sql<Row[]>`
+    select l.*, ${soldSubquery()} as sold, ${removedByName("l")} from ticket_lots l where l.removed_at is not null order by l.removed_at desc`;
   return rows.map(toLot);
 }
 
@@ -92,10 +104,24 @@ export async function moveLot(id: string, direction: "up" | "down") {
   });
 }
 
-// Lote com inscrição associada não some: desative em vez de apagar
-export async function deleteLot(id: string) {
+// Exclusão lógica, só sem venda (nenhuma paga nem pagamento aberto, como o botão do painel); lote vendido se desativa.
+// As inscrições antigas seguem mostrando de qual lote vieram.
+export async function removeLot(id: string, userId: string): Promise<boolean> {
   await ensureSchema();
-  await sql`delete from ticket_lots l where l.id = ${id} and not exists (select 1 from registrations r where r.lot_id = l.id)`;
+  const rows = await sql`
+    update ticket_lots l set removed_at = now(), removed_by = ${userId}
+    where l.id = ${id} and l.removed_at is null and ${soldSubquery()} = 0 returning l.id`;
+  return rows.length > 0;
+}
+
+// Volta no fim da fila de venda, ativo ou não como estava
+export async function restoreLot(id: string): Promise<boolean> {
+  await ensureSchema();
+  const rows = await sql`
+    update ticket_lots set removed_at = null, removed_by = null,
+      position = (select coalesce(max(position), 0) + 1 from ticket_lots where removed_at is null)
+    where id = ${id} and removed_at is not null returning id`;
+  return rows.length > 0;
 }
 
 export type PaymentProvider = "opapingou" | "stripe";

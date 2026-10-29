@@ -1,15 +1,19 @@
-import { deleteUser } from "@/app/admin/actions";
+import { deleteUser, restoreUserAction } from "@/app/admin/actions";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { Eyebrow } from "@/components/eyebrow";
+import { RemovedList, RemovedToggle } from "@/components/removed-list";
 import { ResendAccessButton } from "@/components/resend-access-button";
 import { UserForm } from "@/components/user-form";
-import { listUsers, requireUser } from "@/lib/auth";
+import { listRemovedUsers, listUsers, requireUser } from "@/lib/auth";
+import { showingRemoved } from "@/lib/removal-core";
 import { buttonClass } from "@/components/button";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" });
 
-export default async function UsuariosPage() {
+export default async function UsuariosPage({ searchParams }: PageProps<"/admin/usuarios">) {
+  const showing = showingRemoved((await searchParams).removidos);
   const me = await requireUser();
-  const users = await listUsers();
+  const [users, removed] = await Promise.all([listUsers(), listRemovedUsers()]);
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(280px,420px)_1fr]">
       <div className="flex flex-col gap-6">
@@ -19,32 +23,50 @@ export default async function UsuariosPage() {
           Ao ser adicionada, a pessoa recebe por e-mail um convite com link de entrada. O link vale 15 minutos;
           depois disso ela pede outro em /admin/login com o mesmo e-mail. Não há senha.
         </p>
+        <RemovedToggle path="/admin/usuarios" count={removed.length} showing={showing} />
         <UserForm />
       </div>
-      <ul className="border-t border-ink self-start">
-        {users.map((u) => (
-          <li key={u.id} className="flex items-center justify-between gap-4 border-b border-ash py-4">
-            <div className="flex flex-col gap-1">
-              <p className="text-body-md font-semibold">{u.name || u.email}</p>
-              {u.name && <p className="text-body">{u.email}</p>}
-              <p className="text-caption">desde {fmt.format(new Date(u.createdAt))}</p>
-            </div>
-            {u.id === me.id ? (
-              <span className="text-caption">você</span>
-            ) : (
-              <div className="flex items-center gap-2">
-                <ResendAccessButton id={u.id} />
-                <form action={deleteUser}>
-                  <input type="hidden" name="id" value={u.id} />
-                  <button type="submit" className={buttonClass("secondary", "sm")}>
-                    Remover
-                  </button>
-                </form>
+      {showing ? (
+        <RemovedList
+          className="self-start"
+          empty="Ninguém removido."
+          restore={restoreUserAction}
+          items={removed.map((u) => ({
+            ...u,
+            title: u.name || u.email,
+            detail: u.name ? u.email : undefined,
+            restoreMessage: `Devolver o acesso ao painel para ${u.name || u.email}? A pessoa entra pelo link de /admin/login.`,
+          }))}
+        />
+      ) : (
+        <ul className="border-t border-ink self-start">
+          {users.map((u) => (
+            <li key={u.id} className="flex items-center justify-between gap-4 border-b border-ash py-4">
+              <div className="flex flex-col gap-1">
+                <p className="text-body-md font-semibold">{u.name || u.email}</p>
+                {u.name && <p className="text-body">{u.email}</p>}
+                <p className="text-caption">desde {fmt.format(new Date(u.createdAt))}</p>
               </div>
-            )}
-          </li>
-        ))}
-      </ul>
+              {u.id === me.id ? (
+                <span className="text-caption">você</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <ResendAccessButton id={u.id} />
+                  <form action={deleteUser}>
+                    <input type="hidden" name="id" value={u.id} />
+                    <ConfirmSubmit
+                      message={`Remover o acesso de ${u.name || u.email} ao painel? Dá para restaurar em Removidos.`}
+                      className={buttonClass("secondary", "sm")}
+                    >
+                      Remover
+                    </ConfirmSubmit>
+                  </form>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

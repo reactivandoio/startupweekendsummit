@@ -226,6 +226,13 @@ export function ensureSchema() {
       // pra recortar de novo e photo_crop o estado do editor ({ x, y, zoom, rotation }); null = sem recorte salvo
       await sql`alter table organizers add column if not exists photo_source text not null default ''`;
       await sql`alter table organizers add column if not exists photo_crop jsonb`;
+      // STA-26: exclusão no painel é sempre lógica, como nas inscrições (STA-24). Removido some das listas, do site e
+      // das regras (cupom, convite e lote param de valer; usuário perde o acesso), fica no banco com quem e quando e
+      // volta com "Restaurar". Arquivos enviados (fotos, logos) ficam no volume.
+      for (const table of ["organizers", "sponsors", "invites", "coupons", "ticket_lots", "volunteers", "users"]) {
+        await sql`alter table ${sql(table)} add column if not exists removed_at timestamptz`;
+        await sql`alter table ${sql(table)} add column if not exists removed_by uuid references users(id) on delete set null`;
+      }
       const seed = process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase();
       if (seed) {
         await sql`insert into users (email, name) values (${seed}, ${process.env.ADMIN_SEED_NAME ?? ""}) on conflict (email) do nothing`;

@@ -1,15 +1,19 @@
-import { removeVolunteer } from "@/app/admin/actions";
+import { removeVolunteer, restoreVolunteer } from "@/app/admin/actions";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { Eyebrow } from "@/components/eyebrow";
+import { RemovedList, RemovedToggle } from "@/components/removed-list";
 import { availabilityOptions, volunteerAreas } from "@/content/site";
-import { listVolunteers } from "@/lib/volunteers";
+import { showingRemoved } from "@/lib/removal-core";
+import { listRemovedVolunteers, listVolunteers } from "@/lib/volunteers";
 import { buttonClass } from "@/components/button";
 
 const areaLabel = Object.fromEntries(volunteerAreas.map((a) => [a.value, a.label]));
 const availLabel = Object.fromEntries(availabilityOptions.map((a) => [a.value, a.label]));
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 
-export default async function InscricoesPage() {
-  const volunteers = await listVolunteers();
+export default async function InscricoesPage({ searchParams }: PageProps<"/admin">) {
+  const showing = showingRemoved((await searchParams).removidos);
+  const [volunteers, removed] = await Promise.all([listVolunteers(), listRemovedVolunteers()]);
   return (
     <div className="flex flex-col gap-10">
       <div className="flex flex-wrap items-end justify-between gap-6">
@@ -19,12 +23,26 @@ export default async function InscricoesPage() {
             {volunteers.length} {volunteers.length === 1 ? "inscrição" : "inscrições"}
           </h1>
         </div>
-        <a href="/admin/inscricoes.csv" className={buttonClass("secondary", "md")}>
-          Baixar CSV
-        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <RemovedToggle path="/admin" count={removed.length} showing={showing} />
+          <a href="/admin/inscricoes.csv" className={buttonClass("secondary", "md")}>
+            Baixar CSV
+          </a>
+        </div>
       </div>
 
-      {volunteers.length === 0 ? (
+      {showing ? (
+        <RemovedList
+          empty="Nenhuma inscrição removida."
+          restore={restoreVolunteer}
+          items={removed.map((v) => ({
+            ...v,
+            title: v.name,
+            detail: `${v.email} · ${areaLabel[v.area] ?? v.area}`,
+            restoreMessage: `Restaurar a inscrição de ${v.name}? Volta para a lista e o CSV.`,
+          }))}
+        />
+      ) : volunteers.length === 0 ? (
         <p className="border-t border-ink pt-6 text-body-md">Nenhuma inscrição ainda.</p>
       ) : (
         <ul className="border-t border-ink">
@@ -54,9 +72,9 @@ export default async function InscricoesPage() {
               </div>
               <form action={removeVolunteer} className="md:justify-self-end">
                 <input type="hidden" name="id" value={v.id} />
-                <button type="submit" className={buttonClass("secondary", "sm")}>
+                <ConfirmSubmit message={`Remover a inscrição de ${v.name}? Sai da lista e do CSV; dá para restaurar em Removidos.`} className={buttonClass("secondary", "sm")}>
                   Remover
-                </button>
+                </ConfirmSubmit>
               </form>
             </li>
           ))}
