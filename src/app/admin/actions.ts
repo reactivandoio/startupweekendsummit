@@ -22,6 +22,8 @@ import {
 import { duplicateWebhooks, isOpaApiKey, isOpaTestKey, OpaApiError, planWebhookSetup } from "@/lib/opapingou-core";
 import { deleteUnpaidRegistration, listPendingOpaRegistrations, reviewRegistration, setDuplicateChargeRefunded, setRefunded } from "@/lib/registrations";
 import { deleteSetting, getSetting, setSetting } from "@/lib/settings";
+import { createOrganizer, deleteOrganizer, getOrganizer, moveOrganizer, setOrganizerActive, updateOrganizer } from "@/lib/organizers";
+import { ALT_MAX, BIO_MAX, NAME_MAX, normalizeUrl, parseSocials, ROLE_MAX, type SocialKind } from "@/lib/organizers-core";
 import { createSponsor, deleteSponsor, getSponsor, isSponsorTier, moveSponsor, updateSponsor } from "@/lib/sponsors";
 import { appUrl } from "@/lib/stripe";
 import { parseTheme, themeLabel } from "@/lib/theme-core";
@@ -543,17 +545,6 @@ const revalidateSponsors = () => {
   revalidatePath("/patrocinio");
 };
 
-// "empresa.com.br" vira "https://empresa.com.br"; só http(s) passa
-function normalizeUrl(raw: string): string | null {
-  if (!raw) return "";
-  try {
-    const url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
 // Cria (sem id) ou edita (com id). Na edição o logo é opcional: sem arquivo novo, fica o atual.
 export async function saveSponsor(_prev: SponsorFormState, formData: FormData): Promise<SponsorFormState> {
   await requireUser();
@@ -612,4 +603,101 @@ export async function reorderSponsor(formData: FormData) {
   const direction = formData.get("direction") === "up" ? "up" : "down";
   if (id) await moveSponsor(id, direction);
   revalidateSponsors();
+}
+
+/* ---------- Organizadores ---------- */
+
+type OrganizerValues = {
+  name: string;
+  role: string;
+  bio: string;
+  photoAlt: string;
+  active: boolean;
+  socials: { kind: SocialKind | ""; url: string }[];
+};
+// values/at: como nos patrocinadores, repõem o que foi digitado quando a validação falha
+export type OrganizerFormState = { status: "idle" | "ok" | "error"; message?: string; values?: OrganizerValues; at?: number };
+
+const revalidateOrganizers = () => {
+  revalidatePath("/admin/organizadores");
+  revalidatePath("/");
+};
+
+// Cria (sem id) ou edita (com id). Foto opcional: sem arquivo novo fica a atual; "removePhoto" apaga a atual.
+export async function saveOrganizer(_prev: OrganizerFormState, formData: FormData): Promise<OrganizerFormState> {
+  await requireUser();
+  const text = (key: string) => String(formData.get(key) ?? "").trim();
+  const id = text("id");
+  const name = text("name").slice(0, NAME_MAX);
+  const role = text("role").slice(0, ROLE_MAX);
+  // o navegador manda quebra de linha como \r\n; o contador do formulário conta 1 caractere
+  const bio = text("bio").replace(/\r\n?/g, "\n").slice(0, BIO_MAX);
+  const photoAlt = text("photoAlt").slice(0, ALT_MAX);
+  const active = formData.get("active") === "on";
+  const removePhoto = formData.get("removePhoto") === "on";
+  const kinds = formData.getAll("socialKind").map(String);
+  const urls = formData.getAll("socialUrl").map(String);
+  const file = formData.get("photo");
+  const hasFile = file instanceof File && file.size > 0;
+  const fail = (message: string): OrganizerFormState => ({
+    status: "error",
+    message,
+    values: {
+      name,
+      role,
+      bio,
+      photoAlt,
+      active,
+      socials: urls.map((url, i) => ({ kind: (kinds[i] ?? "") as SocialKind | "", url })),
+    },
+    at: Date.now(),
+  });
+
+  if (!name) return fail("Informe o nome do organizador.");
+  const parsed = parseSocials(kinds, urls);
+  if (!parsed.ok) return fail(parsed.message);
+
+  const current = id ? await getOrganizer(id) : null;
+  if (id && !current) return fail("Organizador não encontrado. Ele pode ter sido removido.");
+
+  let photo = removePhoto ? "" : (current?.photo ?? "");
+  if (hasFile) {
+    const upload = await saveImageUpload(file, "photo");
+    if (!upload.ok) return fail(upload.message);
+    photo = upload.filename;
+  }
+
+  const data = { name, role, bio, photo, photoAlt, socials: parsed.socials, active };
+  if (current) {
+    await updateOrganizer(current.id, data);
+    if (current.photo && photo !== current.photo) await deleteImageUpload(current.photo);
+  } else {
+    await createOrganizer(data);
+  }
+  revalidateOrganizers();
+  if (current) redirect("/admin/organizadores");
+  return { status: "ok", message: `${name} adicionado.`, at: Date.now() };
+}
+
+export async function removeOrganizer(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const removed = id ? await deleteOrganizer(id) : null;
+  if (removed?.photo) await deleteImageUpload(removed.photo);
+  revalidateOrganizers();
+}
+
+export async function reorderOrganizer(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const direction = formData.get("direction") === "up" ? "up" : "down";
+  if (id) await moveOrganizer(id, direction);
+  revalidateOrganizers();
+}
+
+export async function toggleOrganizer(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await setOrganizerActive(id, formData.get("active") === "true");
+  revalidateOrganizers();
 }

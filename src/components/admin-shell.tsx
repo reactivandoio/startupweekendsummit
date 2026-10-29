@@ -76,6 +76,17 @@ const nav: NavItem[] = [
     ),
   },
   {
+    href: "/admin/organizadores",
+    label: "Organizadores",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+        <circle cx="7" cy="7" r="2.75" />
+        <circle cx="14" cy="8" r="2.25" />
+        <path d="M1.75 16.5c0-2.9 2.3-4.75 5.25-4.75s5.25 1.85 5.25 4.75M13.5 12.25c2.6 0 4.75 1.6 4.75 4.25" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/usuarios",
     label: "Usuários",
     icon: (

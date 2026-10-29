@@ -17,7 +17,8 @@ const Icon = ({ d }: { d: string }) => (
 
 const home: Item = { href: "/", label: "Início", icon: <Icon d="M3 10.5 11 3l8 7.5M5 9.5V19h12V9.5M9 19v-5h4v5" /> };
 const sections: Item[] = [
-  { href: "/#sobre", label: "O evento", sections: ["o-evento", "sobre", "after-movie"], icon: <Icon d="M3 5h16v11H8l-5 3V5ZM7 9h8M7 12h5" /> },
+  // "organizadores" só existe com organizador ativo no painel; fica no grupo do evento pra não virar link sem destino
+  { href: "/#sobre", label: "O evento", sections: ["o-evento", "sobre", "after-movie", "organizadores"], icon: <Icon d="M3 5h16v11H8l-5 3V5ZM7 9h8M7 12h5" /> },
   { href: "/#programacao", label: "Programação", short: "Agenda", sections: ["programacao"], icon: <Icon d="M3 5h16v14H3zM3 9h16M7 3v4M15 3v4M7 13h3v3H7z" /> },
 ];
 const pages: Item[] = [

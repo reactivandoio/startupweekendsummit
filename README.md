@@ -58,6 +58,7 @@ e-mail com link de entrada — o botão "Reenviar convite" manda outro, e diz na
 - `/admin/ingressos` — chave do Opa Pingou, webhook e lotes de ingresso
 - `/admin/convites` — cria os links de inscrição (e envia por e-mail, se informado)
 - `/admin/patrocinadores` — patrocinadores do site (ver abaixo)
+- `/admin/organizadores` — organizadores do site (ver abaixo)
 - `/admin/usuarios` — quem pode entrar
 - `/admin/configuracoes` — tema padrão do site (ver abaixo)
 
@@ -89,7 +90,17 @@ nome, se vazio) e, com URL, vira link em nova aba. Sem nenhum patrocinador, a se
 Os logos (SVG, PNG, WebP ou JPG, até 2 MB; o tipo é conferido pelos bytes) vão para o volume docker `uploads`,
 montado em `/uploads` nas duas cores do blue/green (`UPLOADS_DIR`), e são servidos por `/uploads/<arquivo>` com
 cache longo — cada envio gera um nome novo. Trocar ou excluir o logo apaga o arquivo antigo. Backup: o volume
-`startupweekendsummit_uploads` junto com o dump do Postgres (a tabela `sponsors` aponta para esses arquivos).
+`startupweekendsummit_uploads` junto com o dump do Postgres (as tabelas `sponsors` e `organizers` apontam para esses arquivos).
+
+## Organizadores
+
+Cadastrados em `/admin/organizadores`: nome, papel/cargo (opcional), biografia (até 280 caracteres, com contador),
+foto (JPG, PNG ou WebP até 2 MB, no mesmo volume de uploads; opcional — sem foto o card mostra as iniciais), texto
+alternativo, redes sociais (LinkedIn, Instagram, X, site ou outra; o domínio das redes conhecidas é conferido e
+`@usuario` vira o perfil no Instagram e no X) e ativo/inativo. A ordem é a das setas ↑ ↓ do painel. Na home, a seção
+Organização (`src/components/organizers-section.tsx`, `#organizadores`, entre o after movie e a programação) mostra
+só os ativos, com a foto recortada em quadrado; sem nenhum ativo, ela não aparece. No menu, a seção faz parte do
+grupo "O evento" do scroll spy.
 
 ## Inscrição no evento (por convite + Opa Pingou)
 

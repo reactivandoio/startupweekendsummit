@@ -34,12 +34,19 @@ export const OPAQUE_MESSAGE = "Este arquivo tem fundo opaco e ficaria um bloco p
 
 export type UploadResult = { ok: true; filename: string } | { ok: false; message: string };
 
-export async function saveImageUpload(file: File): Promise<UploadResult> {
-  if (file.size > MAX_UPLOAD_BYTES) return { ok: false, message: "O logo passa de 2 MB. Exporte uma versão menor." };
+/* "logo" (patrocinadores): SVG, PNG ou WebP com transparência, porque o site pinta o logo de tinta.
+   "photo" (organizadores): JPG, PNG ou WebP, sem SVG (foto não é vetor) e sem exigir transparência. */
+export async function saveImageUpload(file: File, kind: "logo" | "photo" = "logo"): Promise<UploadResult> {
+  const what = kind === "logo" ? "O logo" : "A foto";
+  if (file.size > MAX_UPLOAD_BYTES) return { ok: false, message: `${what} passa de 2 MB. Exporte uma versão menor.` };
   const buf = Buffer.from(await file.arrayBuffer());
   const ext = sniff(buf);
-  if (!ext) return { ok: false, message: "Formato não aceito. Use SVG, PNG ou WebP com fundo transparente." };
-  if (!hasTransparency(buf, ext)) return { ok: false, message: OPAQUE_MESSAGE };
+  if (kind === "photo") {
+    if (ext !== "jpg" && ext !== "png" && ext !== "webp") return { ok: false, message: "Formato não aceito. Use JPG, PNG ou WebP." };
+  } else {
+    if (!ext) return { ok: false, message: "Formato não aceito. Use SVG, PNG ou WebP com fundo transparente." };
+    if (!hasTransparency(buf, ext)) return { ok: false, message: OPAQUE_MESSAGE };
+  }
   const filename = `${randomUUID()}.${ext}`;
   // um volume recém-criado monta vazio
   await mkdir(/*turbopackIgnore: true*/ UPLOADS_DIR, { recursive: true });
