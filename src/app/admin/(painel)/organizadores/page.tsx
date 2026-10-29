@@ -1,19 +1,22 @@
 import Image from "next/image";
 import Link from "next/link";
-import { removeOrganizer, reorderOrganizer, toggleOrganizer } from "@/app/admin/actions";
+import { removeOrganizer, reorderOrganizer, restoreOrganizer, toggleOrganizer } from "@/app/admin/actions";
 import { buttonClass } from "@/components/button";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { Eyebrow } from "@/components/eyebrow";
 import { OrganizerForm } from "@/components/organizer-form";
+import { RemovedList, RemovedToggle } from "@/components/removed-list";
 import { SocialIcon } from "@/components/social-icon";
 import { initials, socialName } from "@/lib/organizers-core";
-import { listOrganizers, organizerAlt } from "@/lib/organizers";
+import { listOrganizers, listRemovedOrganizers, organizerAlt } from "@/lib/organizers";
+import { showingRemoved } from "@/lib/removal-core";
 import { uploadUrl } from "@/lib/uploads";
 
 const btn = buttonClass("secondary", "sm");
 
-export default async function OrganizadoresPage() {
-  const organizers = await listOrganizers();
+export default async function OrganizadoresPage({ searchParams }: PageProps<"/admin/organizadores">) {
+  const showing = showingRemoved((await searchParams).removidos);
+  const [organizers, removed] = await Promise.all([listOrganizers(), listRemovedOrganizers()]);
   const active = organizers.filter((o) => o.active).length;
 
   return (
@@ -27,10 +30,23 @@ export default async function OrganizadoresPage() {
           Os ativos aparecem na home, na seção Organização, na ordem definida aqui. Sem nenhum ativo, a seção não aparece no
           site.{organizers.length > 0 ? ` Hoje: ${active} ${active === 1 ? "ativo" : "ativos"}.` : ""}
         </p>
+        <RemovedToggle path="/admin/organizadores" count={removed.length} showing={showing} />
         <OrganizerForm />
       </div>
 
-      {organizers.length === 0 ? (
+      {showing ? (
+        <RemovedList
+          className="self-start"
+          empty="Nenhum organizador removido."
+          restore={restoreOrganizer}
+          items={removed.map((o) => ({
+            ...o,
+            title: o.name,
+            detail: o.role,
+            restoreMessage: `Restaurar ${o.name}? Volta no fim da lista${o.active ? " e aparece de novo no site" : ", inativo"}.`,
+          }))}
+        />
+      ) : organizers.length === 0 ? (
         <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum organizador ainda.</p>
       ) : (
         <ul className="self-start border-t border-ink">
@@ -98,8 +114,8 @@ export default async function OrganizadoresPage() {
                 </Link>
                 <form action={removeOrganizer}>
                   <input type="hidden" name="id" value={o.id} />
-                  <ConfirmSubmit message={`Excluir ${o.name}? A foto enviada também é apagada.`} className={btn}>
-                    Excluir
+                  <ConfirmSubmit message={`Remover ${o.name}? Sai da lista e do site; dá para restaurar em Removidos.`} className={btn}>
+                    Remover
                   </ConfirmSubmit>
                 </form>
               </div>

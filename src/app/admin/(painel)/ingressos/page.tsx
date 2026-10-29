@@ -1,15 +1,18 @@
-import { moveLotAction, removeLotAction, removeOpaKey, toggleCardPayment, toggleOpenRegistration } from "@/app/admin/actions";
+import { moveLotAction, removeLotAction, removeOpaKey, restoreLotAction, toggleCardPayment, toggleOpenRegistration } from "@/app/admin/actions";
 import { buttonClass } from "@/components/button";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
 import { CardAccountForm, LotForm, OpaDuplicateWebhookDelete, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
+import { RemovedList, RemovedToggle } from "@/components/removed-list";
 import { formatBRL } from "@/lib/cpf";
 import { brasiliaInputValue, describePeriod, lotStateLabel, type LotState } from "@/lib/lots-core";
 import { listWebhookEndpoints, opaApiUrl, opaWebhookUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
 import { duplicateWebhooks, isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
+import { showingRemoved } from "@/lib/removal-core";
 import { cardPaymentEnabled, getSetting, openRegistrationEnabled, secretsStatus, type SecretsStatus } from "@/lib/settings";
 import { appUrl } from "@/lib/stripe";
-import { currentOffer, listLots } from "@/lib/tickets";
+import { currentOffer, listLots, listRemovedLots } from "@/lib/tickets";
 
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 const btn = buttonClass("secondary", "sm");
@@ -25,7 +28,8 @@ const stateClass: Record<LotState, string> = {
   inactive: "border-ash text-ink/70",
 };
 
-export default async function IngressosPage() {
+export default async function IngressosPage({ searchParams }: PageProps<"/admin/ingressos">) {
+  const showing = showingRemoved((await searchParams).removidos);
   // secretsStatus antes: migra o que estiver em texto puro (passada a janela do deploy)
   const secrets = await secretsStatus();
   const [apiKey, webhookId, lots, offer, openEnabled, cardEnabled, cardAccount] = await Promise.all([
@@ -37,6 +41,7 @@ export default async function IngressosPage() {
     cardPaymentEnabled(),
     getSetting("opapingou_card_account"),
   ]);
+  const removedLots = await listRemovedLots();
   const openUrl = `${appUrl()}/inscricao/aberta`;
 
   // Endpoints da conta direto do Opa Pingou: estado do salvo (desativado depois de falhas, última entrega) e
@@ -192,7 +197,7 @@ export default async function IngressosPage() {
         </dl>
       </section>
 
-      <section className="grid gap-10 lg:grid-cols-[minmax(280px,420px)_1fr]">
+      <section id="lotes" className="grid scroll-mt-6 gap-10 lg:grid-cols-[minmax(280px,420px)_1fr]">
         <div className="flex flex-col gap-6">
           <Eyebrow>Lotes</Eyebrow>
           <p className="max-w-[40ch] text-body-md">
@@ -200,10 +205,23 @@ export default async function IngressosPage() {
             Início, fim e quantidade são opcionais (datas no horário de Brasília). Pagamento aberto (Pix ou cartão) segura a vaga por 1 hora.
             {lots.length === 0 && " Sem lotes, vale o valor único do .env (TICKET_PRICE_CENTS)."}
           </p>
+          <RemovedToggle path="/admin/ingressos" anchor="lotes" count={removedLots.length} showing={showing} />
           <LotForm />
         </div>
 
-        {lots.length === 0 ? (
+        {showing ? (
+          <RemovedList
+            className="self-start"
+            empty="Nenhum lote removido."
+            restore={restoreLotAction}
+            items={removedLots.map((l) => ({
+              ...l,
+              title: l.name,
+              detail: `${formatBRL(l.priceCents)}${l.quantity === null ? "" : ` · ${l.quantity} vagas`}${l.startsAt || l.endsAt ? ` · ${describePeriod(l.startsAt, l.endsAt)}` : ""}`,
+              restoreMessage: `Restaurar o lote ${l.name}? Volta no fim da fila de venda${l.active ? " e pode entrar à venda sozinho" : ", inativo"}.`,
+            }))}
+          />
+        ) : lots.length === 0 ? (
           <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum lote ainda.</p>
         ) : (
           <ul className="self-start border-t border-ink">
@@ -258,9 +276,9 @@ export default async function IngressosPage() {
                   {l.sold === 0 && (
                     <form action={removeLotAction}>
                       <input type="hidden" name="id" value={l.id} />
-                      <button type="submit" className={btn}>
+                      <ConfirmSubmit message={`Remover o lote ${l.name}? Sai da lista e da venda; dá para restaurar em Removidos.`} className={btn}>
                         Remover
-                      </button>
+                      </ConfirmSubmit>
                     </form>
                   )}
                 </div>

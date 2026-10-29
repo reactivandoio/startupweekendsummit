@@ -3,6 +3,8 @@ import { cache } from "react";
 import { ensureSchema, sql } from "@/lib/db";
 import { sanitizeSocials, type Social } from "@/lib/organizers-core";
 import { parseCrop, type Crop } from "@/lib/photo-crop-core";
+import { removedByName } from "@/lib/removal";
+import { toRemoval, type Removal, type RemovalRow } from "@/lib/removal-core";
 
 export type Organizer = {
   id: string;
@@ -16,11 +18,11 @@ export type Organizer = {
   socials: Social[];
   active: boolean;
   position: number;
-};
+} & Removal;
 
-export type OrganizerInput = Omit<Organizer, "id" | "position">;
+export type OrganizerInput = Omit<Organizer, "id" | "position" | keyof Removal>;
 
-type Row = {
+type Row = RemovalRow & {
   id: string;
   name: string;
   role: string;
@@ -46,6 +48,7 @@ const toOrganizer = (r: Row): Organizer => ({
   socials: sanitizeSocials(r.socials),
   active: r.active,
   position: r.position,
+  ...toRemoval(r),
 });
 
 // jsonb aceita null direto; o objeto vai serializado
@@ -54,18 +57,28 @@ const cropJson = (crop: Crop | null) => (crop ? sql.json(crop) : null);
 // Sem alt informado no painel, "Foto de <nome>" descreve a imagem
 export const organizerAlt = (o: Organizer) => o.photoAlt || `Foto de ${o.name}`;
 
+// Removidos ficam fora (aba Removidos: listRemovedOrganizers)
 export async function listOrganizers(): Promise<Organizer[]> {
   await ensureSchema();
-  const rows = await sql<Row[]>`select * from organizers order by position, created_at`;
+  const rows = await sql<Row[]>`select * from organizers where removed_at is null order by position, created_at`;
+  return rows.map(toOrganizer);
+}
+
+// Mais recente primeiro
+export async function listRemovedOrganizers(): Promise<Organizer[]> {
+  await ensureSchema();
+  const rows = await sql<Row[]>`
+    select o.*, ${removedByName("o")} from organizers o where o.removed_at is not null order by o.removed_at desc`;
   return rows.map(toOrganizer);
 }
 
 // Seção do site: só os ativos, na ordem do painel; uma query por requisição
 export const listActiveOrganizersCached = cache(async () => (await listOrganizers()).filter((o) => o.active));
 
+// Removido não abre pra edição
 export async function getOrganizer(id: string): Promise<Organizer | null> {
   await ensureSchema();
-  const [row] = await sql<Row[]>`select * from organizers where id = ${id}`;
+  const [row] = await sql<Row[]>`select * from organizers where id = ${id} and removed_at is null`;
   return row ? toOrganizer(row) : null;
 }
 
@@ -103,18 +116,30 @@ export async function setOrganizerActive(id: string, active: boolean) {
   await sql`update organizers set active = ${active}, updated_at = now() where id = ${id}`;
 }
 
-// Devolve o removido, pra quem chamou apagar o arquivo da foto
-export async function deleteOrganizer(id: string): Promise<Organizer | null> {
+// Exclusão lógica: some do painel e do site; a foto fica no volume pra restaurar
+export async function removeOrganizer(id: string, userId: string): Promise<boolean> {
   await ensureSchema();
-  const [row] = await sql<Row[]>`delete from organizers where id = ${id} returning *`;
-  return row ? toOrganizer(row) : null;
+  const rows = await sql`
+    update organizers set removed_at = now(), removed_by = ${userId}, updated_at = now()
+    where id = ${id} and removed_at is null returning id`;
+  return rows.length > 0;
+}
+
+// Volta no fim da lista, ativo ou inativo como estava
+export async function restoreOrganizer(id: string): Promise<boolean> {
+  await ensureSchema();
+  const rows = await sql`
+    update organizers set removed_at = null, removed_by = null, updated_at = now(),
+      position = (select coalesce(max(position), -1) + 1 from organizers where removed_at is null)
+    where id = ${id} and removed_at is not null returning id`;
+  return rows.length > 0;
 }
 
 // Sobe/desce uma posição. Renumera a lista inteira (0..n-1) na mesma transação, como nos patrocinadores.
 export async function moveOrganizer(id: string, direction: "up" | "down") {
   await ensureSchema();
   await sql.begin(async (tx) => {
-    const all = await tx<Row[]>`select * from organizers order by position, created_at for update`;
+    const all = await tx<Row[]>`select * from organizers where removed_at is null order by position, created_at for update`;
     const ids = all.map((o) => o.id);
     const from = ids.indexOf(id);
     if (from === -1) return;

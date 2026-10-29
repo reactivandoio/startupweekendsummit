@@ -1,14 +1,17 @@
 import Link from "next/link";
-import { removeCouponAction, toggleCouponAction } from "@/app/admin/actions";
-import { Button } from "@/components/button";
+import { removeCouponAction, restoreCouponAction, toggleCouponAction } from "@/app/admin/actions";
+import { Button, buttonClass } from "@/components/button";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { CopyButton } from "@/components/copy-button";
 import { CouponForm } from "@/components/coupon-form";
 import { Eyebrow } from "@/components/eyebrow";
-import { listCoupons, type Coupon } from "@/lib/coupons";
+import { RemovedList, RemovedToggle } from "@/components/removed-list";
+import { listCoupons, listRemovedCoupons, type Coupon } from "@/lib/coupons";
 import { couponProblem } from "@/lib/coupons-core";
 import { formatBRL } from "@/lib/cpf";
 import { describeDiscount, discountInputValue } from "@/lib/discounts";
 import { brasiliaInputValue, describePeriod } from "@/lib/lots-core";
+import { showingRemoved } from "@/lib/removal-core";
 import { appUrl } from "@/lib/stripe";
 import { listLots } from "@/lib/tickets";
 
@@ -21,8 +24,9 @@ function statusOf(c: Coupon): string {
 const discountLabel = (c: Coupon) =>
   c.discount.kind === "none" ? "Sem desconto (rastreamento)" : c.discount.kind === "courtesy" ? "100%: gratuita" : describeDiscount(c.discount);
 
-export default async function CuponsPage() {
-  const [coupons, lots] = await Promise.all([listCoupons(), listLots()]);
+export default async function CuponsPage({ searchParams }: PageProps<"/admin/cupons">) {
+  const showing = showingRemoved((await searchParams).removidos);
+  const [coupons, removed, lots] = await Promise.all([listCoupons(), listRemovedCoupons(), listLots()]);
   const lotName = new Map(lots.map((l) => [l.id, l.name]));
   const lotOptions = lots.map((l) => ({ id: l.id, name: l.name }));
   const active = coupons.filter((c) => statusOf(c) === "Ativo").length;
@@ -38,10 +42,23 @@ export default async function CuponsPage() {
           checkout (inscrição aberta e convite) e no link de cada cupom, que já abre com ele aplicado. Não soma com o desconto do convite: vale o maior.
           Os usos contam pagamentos abertos (por 1 hora) e inscrições pagas; reprovada devolve o uso.
         </p>
+        <RemovedToggle path="/admin/cupons" count={removed.length} showing={showing} />
         <CouponForm lots={lotOptions} />
       </div>
 
-      {coupons.length === 0 ? (
+      {showing ? (
+        <RemovedList
+          className="self-start"
+          empty="Nenhum cupom removido."
+          restore={restoreCouponAction}
+          items={removed.map((c) => ({
+            ...c,
+            title: c.code,
+            detail: [c.description, discountLabel(c)].filter(Boolean).join(" · "),
+            restoreMessage: `Restaurar o cupom ${c.code}? O código e o link voltam a valer${c.active ? "" : " quando for ativado"}.`,
+          }))}
+        />
+      ) : coupons.length === 0 ? (
         <p className="self-start border-t border-ink pt-6 text-body-md">Nenhum cupom ainda.</p>
       ) : (
         <ul className="self-start border-t border-ink">
@@ -87,9 +104,12 @@ export default async function CuponsPage() {
                     {uses === 0 && c.paid === 0 && (
                       <form action={removeCouponAction} className="flex">
                         <input type="hidden" name="id" value={c.id} />
-                        <Button type="submit" size="sm">
-                          Excluir
-                        </Button>
+                        <ConfirmSubmit
+                          message={`Remover o cupom ${c.code}? O código e o link param de valer; dá para restaurar em Removidos.`}
+                          className={buttonClass("secondary", "sm")}
+                        >
+                          Remover
+                        </ConfirmSubmit>
                       </form>
                     )}
                   </div>
