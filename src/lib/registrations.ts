@@ -1,12 +1,13 @@
 import "server-only";
 import { ensureSchema, sql } from "@/lib/db";
 import { methodFromKind, type ChargeKind, type PaymentMethod } from "@/lib/opapingou-core";
+import type { DiscountSource } from "@/lib/discounts";
 import type { ApprovalStatus, RegistrationSource, RegistrationStatus, ReviewReason } from "@/lib/registration-state";
 import type { PaymentProvider } from "@/lib/tickets";
 
 export type { ApprovalStatus, RegistrationSource, RegistrationStatus, ReviewReason } from "@/lib/registration-state";
 
-// "courtesy": convite com 100% de desconto, confirmado sem cobrança
+// "courtesy": desconto de 100% (convite ou cupom), sem cobrança; entra direto em aprovação
 export type RegistrationProvider = PaymentProvider | "courtesy";
 
 export type Registration = {
@@ -15,7 +16,7 @@ export type Registration = {
   inviteName: string;
   inviteCode: string;
   source: RegistrationSource;
-  approval: ApprovalStatus | null; // null = convite (não passa por aprovação)
+  approval: ApprovalStatus | null; // null = convite de antes da aprovação para todas (confirmada ao pagar)
   reviewedAt: string | null;
   refundedAt: string | null; // reprovada paga: quando o reembolso foi feito no meio de pagamento
   name: string;
@@ -26,7 +27,11 @@ export type Registration = {
   status: RegistrationStatus;
   amountCents: number; // valor pago (ou a pagar)
   listPriceCents: number; // preço do lote no momento da inscrição
-  discountCents: number; // desconto do convite
+  discountCents: number; // desconto aplicado (o maior entre convite e cupom)
+  discountSource: DiscountSource | null; // de onde veio o desconto; null = sem desconto
+  couponId: string | null;
+  couponCode: string | null; // código usado, guardado mesmo se o cupom for apagado
+  couponViaLink: boolean; // chegou pelo link com o cupom aplicado (?cupom=…)
   stripeSessionId: string | null;
   stripePaymentIntent: string | null;
   provider: RegistrationProvider;
@@ -65,6 +70,10 @@ type Row = {
   amount_cents: number;
   list_price_cents: number | null;
   discount_cents: number;
+  discount_source: DiscountSource | null;
+  coupon_id: string | null;
+  coupon_code: string | null;
+  coupon_via_link: boolean;
   stripe_session_id: string | null;
   stripe_payment_intent: string | null;
   provider: RegistrationProvider;
@@ -100,6 +109,10 @@ const toRegistration = (r: Row): Registration => ({
   amountCents: r.amount_cents,
   listPriceCents: r.list_price_cents ?? r.amount_cents, // inscrições de antes do desconto: sem desconto
   discountCents: r.discount_cents,
+  discountSource: r.discount_source,
+  couponId: r.coupon_id,
+  couponCode: r.coupon_code,
+  couponViaLink: r.coupon_via_link,
   stripeSessionId: r.stripe_session_id,
   stripePaymentIntent: r.stripe_payment_intent,
   provider: r.provider,
@@ -198,7 +211,7 @@ export async function findResumableRegistration(f: { source: RegistrationSource;
 // Retomada: os dados do formulário valem (podem ter mudado); preço e lote só mudam quando a vaga não estava mais segura
 export async function updateRegistrationData(
   id: string,
-  data: { name: string; email: string; phone: string; cpf: string; birthDate: string; sponsorConsent: boolean; price?: { amountCents: number; listPriceCents: number; discountCents: number; lotId: string | null } },
+  data: { name: string; email: string; phone: string; cpf: string; birthDate: string; sponsorConsent: boolean; price?: Pricing },
 ) {
   await ensureSchema();
   const p = data.price;
@@ -209,9 +222,27 @@ export async function updateRegistrationData(
         amount_cents = coalesce(${p?.amountCents ?? null}::int, amount_cents),
         list_price_cents = coalesce(${p?.listPriceCents ?? null}::int, list_price_cents),
         discount_cents = coalesce(${p?.discountCents ?? null}::int, discount_cents),
-        lot_id = case when ${p ? true : false} then ${p?.lotId ?? null}::uuid else lot_id end
+        lot_id = case when ${p ? true : false} then ${p?.lotId ?? null}::uuid else lot_id end,
+        discount_source = case when ${p ? true : false} then ${p?.discountSource ?? null} else discount_source end,
+        coupon_id = case when ${p ? true : false} then ${p?.couponId ?? null}::uuid else coupon_id end,
+        coupon_code = case when ${p ? true : false} then ${p?.couponCode ?? null} else coupon_code end,
+        coupon_via_link = case when ${p ? true : false} then ${p?.couponViaLink ?? false} else coupon_via_link end,
+        provider = case when ${p?.provider ?? null}::text is null then provider else ${p?.provider ?? null} end
     where id = ${id} and status <> 'paid'`;
 }
+
+// Preço e desconto gravados na inscrição (na criação e quando a retomada recalcula)
+export type Pricing = {
+  amountCents: number;
+  listPriceCents: number;
+  discountCents: number;
+  discountSource: DiscountSource | null;
+  lotId: string | null;
+  couponId: string | null;
+  couponCode: string | null;
+  couponViaLink: boolean;
+  provider?: RegistrationProvider; // só quando muda (desconto de 100% na retomada vira "courtesy")
+};
 
 // Pendentes do Opa Pingou com cobrança (o painel confere uma a uma na API)
 export async function listPendingOpaRegistrations(): Promise<Registration[]> {
@@ -228,25 +259,28 @@ export async function findPaidRegistration(email: string, cpf: string): Promise<
   return row ? toRegistration(row) : null;
 }
 
-export async function createRegistration(data: {
-  inviteId: string | null;
-  source: RegistrationSource;
-  name: string;
-  email: string;
-  phone: string;
-  cpf: string;
-  birthDate: string;
-  amountCents: number;
-  listPriceCents: number;
-  discountCents: number;
-  provider: RegistrationProvider;
-  lotId: string | null;
-  sponsorConsent: boolean;
-}): Promise<Registration> {
+// Toda inscrição nova nasce "pending" na aprovação, paga ou gratuita, por convite ou aberta: só vira confirmada
+// quando aprovada no painel
+export async function createRegistration(
+  data: {
+    inviteId: string | null;
+    source: RegistrationSource;
+    name: string;
+    email: string;
+    phone: string;
+    cpf: string;
+    birthDate: string;
+    provider: RegistrationProvider;
+    sponsorConsent: boolean;
+  } & Omit<Pricing, "provider">,
+): Promise<Registration> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
-    insert into registrations (invite_id, source, approval, name, email, phone, cpf, birth_date, amount_cents, list_price_cents, discount_cents, provider, lot_id, sponsor_consent_at)
-    values (${data.inviteId}, ${data.source}, ${data.source === "open" ? "pending" : null}, ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents}, ${data.listPriceCents}, ${data.discountCents}, ${data.provider}, ${data.lotId}, ${data.sponsorConsent ? new Date() : null})
+    insert into registrations (invite_id, source, approval, name, email, phone, cpf, birth_date, amount_cents, list_price_cents, discount_cents,
+      discount_source, provider, lot_id, coupon_id, coupon_code, coupon_via_link, sponsor_consent_at)
+    values (${data.inviteId}, ${data.source}, 'pending', ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents},
+      ${data.listPriceCents}, ${data.discountCents}, ${data.discountSource}, ${data.provider}, ${data.lotId}, ${data.couponId}, ${data.couponCode},
+      ${data.couponViaLink}, ${data.sponsorConsent ? new Date() : null})
     returning *`;
   return toRegistration(row);
 }
@@ -322,7 +356,7 @@ export async function lateSeatProblem(reg: Pick<Registration, "id" | "lotId" | "
   }
   if (reg.inviteId) {
     const [inv] = await sql<{ full: boolean }[]>`
-      select (select count(*) from registrations where invite_id = i.id and ${holds()}) >= i.max_uses as full
+      select (select count(*) from registrations where invite_id = i.id and approval is distinct from 'rejected' and ${holds()}) >= i.max_uses as full
       from invites i where i.id = ${reg.inviteId}`;
     if (inv?.full) return "sold_out";
   }
@@ -338,7 +372,7 @@ export async function markUnpaid(id: string, status: "expired" | "canceled", cha
     where id = ${id} and status = 'pending' and (${chargeId}::text is null or opa_charge_id = ${chargeId})`;
 }
 
-// Aprovar/reprovar: só cadastro aberto já pago e ainda em análise. Idempotente: só quem muda recebe a inscrição (e envia o e-mail).
+// Aprovar/reprovar: inscrição já paga (ou gratuita) e ainda em análise. Idempotente: só quem muda recebe a inscrição (e envia o e-mail).
 export async function reviewRegistration(id: string, decision: "approved" | "rejected", userId: string): Promise<Registration | null> {
   await ensureSchema();
   const [row] = await sql<{ id: string }[]>`

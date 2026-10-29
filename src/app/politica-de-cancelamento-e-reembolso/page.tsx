@@ -50,7 +50,7 @@ A participação retirada pela organização por descumprimento das regras de co
   {
     id: "nao-aprovadas",
     title: "Inscrições não aprovadas",
-    content: `As inscrições feitas pelo cadastro aberto (sem convite) passam pela aprovação da organização depois do pagamento. Se a sua **não for aprovada**, o valor pago é **devolvido integralmente**, pelo mesmo meio de pagamento, sem que você precise pedir. Você recebe um e-mail avisando da decisão, e a devolução é feita em até 10 dias úteis a partir dele.`,
+    content: `Todas as inscrições, por convite ou pela página de inscrição, passam pela aprovação da organização depois do pagamento. Se a sua **não for aprovada**, o valor pago é **devolvido integralmente**, pelo mesmo meio de pagamento, sem que você precise pedir. Você recebe um e-mail avisando da decisão, e a devolução é feita em até 10 dias úteis a partir dele.`,
   },
   {
     id: "cancelamento-pela-organizacao",

@@ -49,6 +49,8 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
   const first = reg ? firstName(reg.name) : "";
   // Cadastro aberto não tem convite: volta pra página aberta, sem vaga reservada, e o ingresso depende da aprovação
   const open = reg?.source === "open";
+  // Inscrição que passa por aprovação (todas as novas; approval null só nas de convite de antes dessa regra)
+  const review = reg?.approval !== null;
   const retry = open
     ? "Gere um novo Pix pela página de inscrição e pague em seguida."
     : "Sua vaga continua reservada pelo convite: gere um novo Pix e pague em seguida.";
@@ -60,7 +62,7 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
   }[state];
   const sideText = {
     missing: "Confira se o link chegou completo ou volte ao seu convite para gerar o pagamento de novo.",
-    pending: open
+    pending: review
       ? "Pague pelo app do seu banco. Assim que o Pix cair, esta página atualiza sozinha; o ingresso chega por e-mail depois da aprovação da organização."
       : "Pague pelo app do seu banco. Assim que o Pix cair, esta página confirma sozinha e você recebe o ingresso por e-mail.",
     expired: `Cada Pix vale por 1 hora. ${retry}`,

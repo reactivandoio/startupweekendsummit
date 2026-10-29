@@ -1,7 +1,8 @@
 import "server-only";
 import { site } from "@/content/site";
 import { ensureSchema, sql } from "@/lib/db";
-import { applyDiscount, type InviteDiscount, type PriceBreakdown } from "@/lib/discounts";
+import { bestDiscount, type DiscountSource, type InviteDiscount, type PriceBreakdown } from "@/lib/discounts";
+import { closedReason, lotOnSale, lotState, type LotState } from "@/lib/lots-core";
 import { getSetting } from "@/lib/settings";
 
 export type TicketLot = {
@@ -11,24 +12,42 @@ export type TicketLot = {
   quantity: number | null; // null = sem limite
   active: boolean;
   position: number;
+  startsAt: string | null; // início das vendas; null = desde já
+  endsAt: string | null; // fim das vendas; null = até esgotar
   sold: number; // pagas + checkouts abertos há menos de 1h
+  state: LotState; // agora: inativo, agendado, à venda, encerrado por data ou esgotado
 };
 
-type Row = { id: string; name: string; price_cents: number; quantity: number | null; active: boolean; position: number; sold: number | string };
+type Row = {
+  id: string;
+  name: string;
+  price_cents: number;
+  quantity: number | null;
+  active: boolean;
+  position: number;
+  starts_at: Date | null;
+  ends_at: Date | null;
+  sold: number | string;
+};
 
-const toLot = (r: Row): TicketLot => ({
-  id: r.id,
-  name: r.name,
-  priceCents: r.price_cents,
-  quantity: r.quantity,
-  active: r.active,
-  position: r.position,
-  sold: Number(r.sold),
-});
+const toLot = (r: Row): TicketLot => {
+  const lot = {
+    id: r.id,
+    name: r.name,
+    priceCents: r.price_cents,
+    quantity: r.quantity,
+    active: r.active,
+    position: r.position,
+    startsAt: r.starts_at ? r.starts_at.toISOString() : null,
+    endsAt: r.ends_at ? r.ends_at.toISOString() : null,
+    sold: Number(r.sold),
+  };
+  return { ...lot, state: lotState(lot) };
+};
 
 // Mesma regra de vaga dos convites: pendente segura o lugar até o fim da cobrança atual (1h; nova cobrança na mesma
 // inscrição renova) ou 1h da criação sem cobrança (Stripe). Igual a holdsSeat em payment-flow.ts.
-// Cadastro aberto conta desde o pagamento (mesmo em análise); reprovada devolve a vaga.
+// Conta desde o pagamento (mesmo em análise); reprovada devolve a vaga.
 const soldSubquery = () => sql`
   (select count(*) from registrations r
     where r.lot_id = l.id
@@ -41,19 +60,21 @@ export async function listLots(): Promise<TicketLot[]> {
   return rows.map(toLot);
 }
 
-export const lotAvailable = (l: TicketLot) => l.active && (l.quantity === null || l.sold < l.quantity);
+export type LotData = { name: string; priceCents: number; quantity: number | null; startsAt: string | null; endsAt: string | null };
 
-export async function createLot(data: { name: string; priceCents: number; quantity: number | null }) {
+export async function createLot(data: LotData) {
   await ensureSchema();
   await sql`
-    insert into ticket_lots (name, price_cents, quantity, position)
-    values (${data.name}, ${data.priceCents}, ${data.quantity}, (select coalesce(max(position), 0) + 1 from ticket_lots))`;
+    insert into ticket_lots (name, price_cents, quantity, starts_at, ends_at, position)
+    values (${data.name}, ${data.priceCents}, ${data.quantity}, ${data.startsAt}, ${data.endsAt}, (select coalesce(max(position), 0) + 1 from ticket_lots))`;
 }
 
-export async function updateLot(id: string, data: { name: string; priceCents: number; quantity: number | null; active: boolean }) {
+export async function updateLot(id: string, data: LotData & { active: boolean }) {
   await ensureSchema();
   await sql`
-    update ticket_lots set name = ${data.name}, price_cents = ${data.priceCents}, quantity = ${data.quantity}, active = ${data.active}
+    update ticket_lots
+    set name = ${data.name}, price_cents = ${data.priceCents}, quantity = ${data.quantity}, active = ${data.active},
+        starts_at = ${data.startsAt}, ends_at = ${data.endsAt}
     where id = ${id}`;
 }
 
@@ -87,7 +108,7 @@ export type TicketOffer =
   | { enabled: true; provider: PaymentProvider; priceCents: number; lotId: string | null; lotName: string | null; name: string };
 
 // O que está à venda agora. Opa Pingou (chave no painel) tem prioridade; sem ela, Stripe pelo .env.
-// Preço: lote atual; sem lotes cadastrados, TICKET_PRICE_CENTS do .env (ingresso único, como antes).
+// Preço: primeiro lote ativo, dentro do período e com vaga; sem lotes cadastrados, TICKET_PRICE_CENTS do .env.
 export async function currentOffer(): Promise<TicketOffer> {
   const name = `Ingresso — ${site.name}`;
   const provider: PaymentProvider | null = (await getSetting("opapingou_api_key")) ? "opapingou" : process.env.STRIPE_SECRET_KEY ? "stripe" : null;
@@ -96,8 +117,8 @@ export async function currentOffer(): Promise<TicketOffer> {
 
   const lots = await listLots();
   if (lots.length > 0) {
-    const lot = lots.find((l) => lotAvailable(l) && l.priceCents >= minCents);
-    if (!lot) return { enabled: false, reason: lots.some((l) => l.active) ? "sold_out" : "closed", name };
+    const lot = lotOnSale(lots, minCents);
+    if (!lot) return { enabled: false, reason: closedReason(lots), name };
     return { enabled: true, provider, priceCents: lot.priceCents, lotId: lot.id, lotName: lot.name, name: `${name} (${lot.name})` };
   }
   const priceCents = Number(process.env.TICKET_PRICE_CENTS ?? 0);
@@ -105,6 +126,9 @@ export async function currentOffer(): Promise<TicketOffer> {
   return { enabled: true, provider, priceCents, lotId: null, lotName: null, name };
 }
 
-// Preço para um convite: lote à venda agora − desconto do convite
-export const offerPrice = (offer: Extract<TicketOffer, { enabled: true }>, discount: InviteDiscount): PriceBreakdown =>
-  applyDiscount(offer.priceCents, discount, minChargeCents(offer.provider));
+// Preço da inscrição: lote à venda agora − o maior entre o desconto do convite e o do cupom (não acumulam)
+export const offerPrice = (
+  offer: Extract<TicketOffer, { enabled: true }>,
+  invite: InviteDiscount,
+  coupon: InviteDiscount | null = null,
+): PriceBreakdown & { source: DiscountSource | null } => bestDiscount(offer.priceCents, invite, coupon, minChargeCents(offer.provider));

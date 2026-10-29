@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
-import { registerParticipant, type RegistrationFieldErrors, type RegistrationFormState } from "@/app/inscricao/actions";
-import { Button } from "@/components/button";
-import { dateBrToIso, isValidCpf, isValidEmail, isValidIsoDate, isValidPhone, isoToDateBr, maskCpf, maskDateBr, maskPhone, normalizeEmail } from "@/lib/cpf";
+import { useActionState, useState, useTransition } from "react";
+import { previewCoupon, registerParticipant, type RegistrationFieldErrors, type RegistrationFormState } from "@/app/inscricao/actions";
+import { Button, buttonClass } from "@/components/button";
+import { normalizeCouponCode, type PriceQuote } from "@/lib/coupons-core";
+import { dateBrToIso, formatBRL, isValidCpf, isValidEmail, isValidIsoDate, isValidPhone, isoToDateBr, maskCpf, maskDateBr, maskPhone, normalizeEmail } from "@/lib/cpf";
 
 const initialState: RegistrationFormState = { status: "idle" };
 
@@ -37,28 +38,70 @@ function Field({
   );
 }
 
-const submitLabel = { pix: "Gerar Pix", card: "Pagar com cartão", checkout: "Ir para o pagamento", courtesy: "Confirmar inscrição" };
-const pendingLabel = { pix: "Gerando o Pix…", card: "Abrindo o pagamento…", checkout: "Abrindo o pagamento…", courtesy: "Confirmando…" };
+const submitLabel = { pix: "Gerar Pix", card: "Pagar com cartão", checkout: "Ir para o pagamento", free: "Enviar inscrição" };
+const pendingLabel = { pix: "Gerando o Pix…", card: "Abrindo o pagamento…", checkout: "Abrindo o pagamento…", free: "Enviando…" };
 const footnote = {
   pix: "Na próxima tela aparecem o QR Code e o Pix copia e cola, válidos por 1 hora.",
   card: "Na próxima tela, o pagamento com cartão de crédito (à vista, mesmo valor do Pix) abre numa nova aba e fica aberto por 1 hora.",
   checkout: "Pagamento seguro pelo Stripe. Você volta pra cá assim que concluir.",
-  courtesy: "Ingresso cortesia: sem pagamento. A confirmação chega no seu e-mail.",
+  free: "Ingresso gratuito: sem pagamento.",
+};
+const approvalNote = {
+  paid: " Toda inscrição passa pela aprovação da organização: o ingresso chega por e-mail depois dela; se não for aprovada, o valor pago é devolvido.",
+  free: " Toda inscrição passa pela aprovação da organização: o ingresso chega por e-mail depois dela.",
 };
 
 const linkClass = "underline decoration-grass decoration-2 underline-offset-4 hover:text-grass-deep";
 
-// Formulário do convite: dados do participante → Pix ou cartão do Opa Pingou, Checkout do Stripe ou cortesia (redireciona ao enviar).
+// Formulário de inscrição: dados do participante → Pix ou cartão do Opa Pingou, Checkout do Stripe ou, com valor zero
+// (cortesia do convite ou cupom de 100%), direto para a aprovação (redireciona ao enviar).
 // card: no Opa Pingou, oferece "Cartão de crédito" (link de pagamento) ao lado do Pix.
+// Cupom: "Aplicar" valida na hora e recalcula o valor (quote); o envio confere de novo. linkCoupon: cupom que veio no
+// link (?cupom=…); enquanto for ele no campo, a inscrição fica com a origem "link de cupom".
 // Máscaras no cliente (CPF, WhatsApp, data); o servidor recebe CPF/telefone como estão e guarda só dígitos,
 // e a data já em YYYY-MM-DD (campo escondido). Validação no cliente antes do envio, com as mesmas regras do servidor.
-// code null: cadastro aberto (sem convite), cuja inscrição paga passa pela aprovação da organização.
-export function RegistrationForm({ code, priceLabel, method, card = false }: { code: string | null; priceLabel: string; method: "pix" | "checkout" | "courtesy"; card?: boolean }) {
+// code null: inscrição aberta (sem convite). Toda inscrição passa pela aprovação da organização.
+export function RegistrationForm({
+  code,
+  method,
+  card = false,
+  quote: initialQuote,
+  linkCoupon = null,
+  linkCouponError = null,
+}: {
+  code: string | null;
+  method: "pix" | "checkout";
+  card?: boolean;
+  quote: PriceQuote;
+  linkCoupon?: string | null;
+  linkCouponError?: string | null;
+}) {
   const [state, formAction, pending] = useActionState(registerParticipant, initialState);
   const v = state.values ?? {};
-  const choice = method === "pix" && card;
+  const [quote, setQuote] = useState(initialQuote);
+  const [coupon, setCoupon] = useState(() => v.coupon ?? linkCoupon ?? "");
+  const [couponMsg, setCouponMsg] = useState<{ error: boolean; text: string } | null>(() =>
+    linkCouponError ? { error: true, text: linkCouponError } : initialQuote.note ? { error: false, text: initialQuote.note } : null,
+  );
+  const [checking, startCheck] = useTransition();
+  // resposta do servidor a que o último "Aplicar" já respondeu: o erro de cupom dela não aparece mais
+  const [appliedOn, setAppliedOn] = useState<RegistrationFormState | null>(null);
+  const free = quote.courtesy;
+  const choice = method === "pix" && card && !free;
   const [payWith, setPayWith] = useState<"pix" | "card">(() => (v.paymentMethod === "card" ? "card" : "pix"));
-  const shown = choice ? payWith : method;
+  const shown = free ? "free" : choice ? payWith : method;
+  const viaLink = Boolean(linkCoupon) && normalizeCouponCode(coupon) === linkCoupon;
+
+  const applyCoupon = () =>
+    startCheck(async () => {
+      const res = await previewCoupon(code ?? "", coupon);
+      setAppliedOn(state);
+      if (res.status === "ok") {
+        setQuote(res.quote);
+        setCouponMsg(res.quote.note ? { error: false, text: res.quote.note } : null);
+        setCoupon(res.quote.couponCode ?? "");
+      } else if (res.status === "error") setCouponMsg({ error: true, text: res.message });
+    });
   const [cpf, setCpf] = useState(() => maskCpf(v.cpf ?? ""));
   const [phone, setPhone] = useState(() => maskPhone(v.phone ?? ""));
   const [email, setEmail] = useState(v.email ?? "");
@@ -67,6 +110,7 @@ export function RegistrationForm({ code, priceLabel, method, card = false }: { c
   const [sponsorConsent, setSponsorConsent] = useState(false);
   const [local, setLocal] = useState<RegistrationFieldErrors>({});
   const e = { ...(state.errors ?? {}), ...local };
+  const couponLine = e.coupon && appliedOn !== state ? { error: true, text: e.coupon } : couponMsg;
 
   const validate = (form: HTMLFormElement): RegistrationFieldErrors => {
     const errors: RegistrationFieldErrors = {};
@@ -243,6 +287,42 @@ export function RegistrationForm({ code, priceLabel, method, card = false }: { c
         </span>
       </label>
 
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="coupon" className="text-body font-semibold">
+          Cupom <span className="font-normal text-ink/60">(opcional)</span>
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="coupon"
+            name="coupon"
+            type="text"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            maxLength={40}
+            value={coupon}
+            onChange={(ev) => setCoupon(ev.target.value.toUpperCase().replace(/\s+/g, ""))}
+            onKeyDown={(ev) => {
+              if (ev.key === "Enter") {
+                ev.preventDefault();
+                applyCoupon();
+              }
+            }}
+            aria-invalid={!!couponLine?.error}
+            aria-describedby="coupon-msg"
+            className="field min-w-0 flex-1 font-mono uppercase"
+            placeholder="Se tiver, digite aqui"
+          />
+          <button type="button" onClick={applyCoupon} disabled={checking} className={buttonClass("secondary", "md")}>
+            {checking ? "Conferindo…" : "Aplicar"}
+          </button>
+        </div>
+        <input type="hidden" name="couponViaLink" value={viaLink ? "1" : ""} />
+        <p id="coupon-msg" className={`text-caption ${couponLine?.error ? "font-semibold" : "text-grass-deep"}`} role={couponLine?.error ? "alert" : "status"}>
+          {couponLine ? `${couponLine.error ? "— " : "✓ "}${couponLine.text}` : ""}
+        </p>
+      </div>
+
       {choice && (
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-3 text-body font-semibold">Forma de pagamento</legend>
@@ -278,11 +358,16 @@ export function RegistrationForm({ code, priceLabel, method, card = false }: { c
       )}
 
       <Button type="submit" variant="primary" size="lg" disabled={pending} className="w-full">
-        {pending ? pendingLabel[shown] : `${submitLabel[shown]} · ${method === "courtesy" ? "Cortesia" : priceLabel}`}
+        {pending ? pendingLabel[shown] : `${submitLabel[shown]} · ${free ? "Gratuita" : formatBRL(quote.finalCents)}`}
       </Button>
+      {quote.discountCents > 0 && !free && (
+        <p className="-mt-6 text-caption text-ink/60">
+          De <s>{formatBRL(quote.listCents)}</s> por {formatBRL(quote.finalCents)} (− {formatBRL(quote.discountCents)}).
+        </p>
+      )}
       <p className="text-caption text-ink/60">
         {footnote[shown]}
-        {code === null && " A inscrição passa pela aprovação da organização: o ingresso chega por e-mail depois dela; se não for aprovada, o valor é devolvido."}
+        {approvalNote[free ? "free" : "paid"]}
       </p>
     </form>
   );

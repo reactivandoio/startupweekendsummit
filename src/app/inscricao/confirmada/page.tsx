@@ -20,11 +20,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Outcome = "paid" | "review" | "late" | "rejected" | "processing" | "open" | "unknown";
 type Resolved = { outcome: Outcome; firstName: string; back: string; amount: string; ticket: string };
 
+const FREE = "Gratuita";
+
 const empty: Resolved = { outcome: "unknown", firstName: "", back: "", amount: "", ticket: "" };
 
-const base = (r: Registration) => ({ firstName: firstName(r.name), back: formPath(r), amount: r.provider === "courtesy" ? "Cortesia" : formatBRL(r.amountCents), ticket: ticketNumber(r.id) });
+const base = (r: Registration) => ({ firstName: firstName(r.name), back: formPath(r), amount: r.provider === "courtesy" ? FREE : formatBRL(r.amountCents), ticket: ticketNumber(r.id) });
 
-// Paga: confirmada, ou (cadastro aberto ou pagamento tardio sem vaga) em análise/reprovada
+// Paga (ou gratuita): em análise (toda inscrição nova passa por aprovação), confirmada ou reprovada
 function paidOutcome(r: Registration): Outcome {
   const s = situation({ ...r, status: "paid" });
   return s === "awaiting_approval" ? (r.reviewReason ? "late" : "review") : s === "rejected" ? "rejected" : "paid";
@@ -53,7 +55,7 @@ async function resolveStripe(sessionId: string): Promise<Resolved> {
 
 // Opa Pingou: a página do QR (Pix) ou a de "aguardando pagamento" (cartão) manda pra cá quando a cobrança é paga;
 // se ainda não foi, volta pra ela.
-// Cortesia chega aqui direto do formulário, já confirmada.
+// Gratuita (cortesia do convite ou cupom de 100%) chega aqui direto do formulário, já em análise.
 async function resolveOpa(id: string): Promise<Resolved> {
   const registration = await getRegistration(id).catch(() => null);
   if (!registration || (registration.provider !== "opapingou" && registration.provider !== "courtesy")) return empty;
@@ -73,7 +75,7 @@ const copy: Record<Outcome, { tag: string; title: string; box: string; text: str
     tag: "Em análise",
     title: "Pagamento recebido.",
     box: "Sua inscrição está em análise.",
-    text: "As inscrições por esta página passam pela aprovação da organização. Assim que a sua for analisada, você recebe um e-mail: com o ingresso, se aprovada; se não for, o valor pago é devolvido integralmente.",
+    text: "Toda inscrição passa pela aprovação da organização. Assim que a sua for analisada, você recebe um e-mail: com o ingresso, se aprovada; se não for, o valor pago é devolvido integralmente.",
   },
   late: {
     tag: "Em análise",
@@ -107,11 +109,21 @@ const copy: Record<Outcome, { tag: string; title: string; box: string; text: str
   },
 };
 
+// Inscrição gratuita: sem pagamento a receber nem a devolver
+const freeCopy: Partial<Record<Outcome, Partial<(typeof copy)[Outcome]>>> = {
+  review: {
+    title: "Inscrição recebida.",
+    text: "Seu ingresso é gratuito. Toda inscrição passa pela aprovação da organização: assim que a sua for analisada, você recebe um e-mail, com o ingresso se ela for aprovada.",
+  },
+  rejected: { box: "Agradecemos o interesse.", text: "A organização analisou sua inscrição e, desta vez, ela não foi aprovada." },
+};
+
 export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscricao/confirmada">) {
   const { s, r } = await searchParams;
   const { outcome, firstName, back, amount, ticket } =
     typeof r === "string" && UUID.test(r) ? await resolveOpa(r) : typeof s === "string" && s ? await resolveStripe(s) : empty;
-  const c = copy[outcome];
+  const free = amount === FREE;
+  const c = free ? { ...copy[outcome], ...freeCopy[outcome] } : copy[outcome];
 
   return (
     <>
@@ -131,7 +143,7 @@ export default async function ConfirmadaPage({ searchParams }: PageProps<"/inscr
           </div>
           <div className={`flex flex-col gap-4 border-2 border-ink p-6 shadow-hard ${outcome === "paid" ? "bg-grass-wash" : "bg-marigold-wash"}`} role="status">
             {outcome === "paid" && ticket && <p className="text-body font-semibold">Ingresso nº {ticket}</p>}
-            <h3 className="font-display text-heading-sm">{outcome === "paid" && amount === "Cortesia" ? "Seu ingresso de cortesia está no e-mail." : c.box}</h3>
+            <h3 className="font-display text-heading-sm">{outcome === "paid" && free ? "Seu ingresso gratuito está no e-mail." : c.box}</h3>
             <p className="text-body-md">{c.text}</p>
             {outcome === "open" && back && (
               <ButtonLink href={back} variant="primary" size="md" className="mt-2 self-start">

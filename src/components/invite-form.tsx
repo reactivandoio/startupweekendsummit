@@ -16,7 +16,7 @@ const kinds = [
 
 type Editing = { id: string; name: string; email: string; note: string; maxUses: number; discount: InviteDiscount };
 
-// Tipo + valor do desconto. O valor só vale para % e R$; cortesia confirma a inscrição sem Pix.
+// Tipo + valor do desconto. O valor só vale para % e R$; cortesia vai sem Pix direto para a aprovação.
 function DiscountFields({ initialKind, initialValue }: { initialKind: DiscountKind; initialValue: string }) {
   const [kind, setKind] = useState<DiscountKind>(initialKind);
   const needsValue = kind === "percent" || kind === "fixed";

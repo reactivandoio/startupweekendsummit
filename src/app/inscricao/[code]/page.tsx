@@ -5,28 +5,29 @@ import { RegistrationForm } from "@/components/registration-form";
 import { SiteFooter } from "@/components/site-footer";
 import { illustrations } from "@/content/illustrations";
 import { site } from "@/content/site";
+import { pageQuote } from "@/lib/checkout";
 import { formatBRL } from "@/lib/cpf";
-import { describeDiscount } from "@/lib/discounts";
 import { getInviteByCode, inviteAvailable } from "@/lib/invites";
 import { firstName } from "@/lib/names";
 import { cardPaymentEnabled } from "@/lib/settings";
-import { currentOffer, offerPrice } from "@/lib/tickets";
+import { currentOffer, minChargeCents } from "@/lib/tickets";
 
-// Página de convite: não indexa e não entra no sitemap
+// Página de convite: não indexa e não entra no sitemap. Aceita ?cupom=CODIGO (o maior desconto vale: convite ou cupom).
 export const metadata: Metadata = { title: "Inscrição", robots: { index: false, follow: false } };
 
 const included = ["Três dias de programação", "Welcome dinner de sexta", "Alimentação durante o evento", "Kit do participante"];
 
 export default async function InscricaoPage({ params, searchParams }: PageProps<"/inscricao/[code]">) {
   const { code } = await params;
-  const { cancelado } = await searchParams;
+  const { cancelado, cupom } = await searchParams;
   const invite = await getInviteByCode(code);
   const [ticket, cardOn] = await Promise.all([currentOffer(), cardPaymentEnabled()]);
   const card = ticket.enabled && ticket.provider === "opapingou" && cardOn;
   const payVia = card ? "Pagamento via Pix ou cartão de crédito" : "Pagamento via Pix";
   const available = invite ? inviteAvailable(invite) : false;
-  // Preço deste convite: lote à venda − desconto (cortesia quando zera)
-  const price = ticket.enabled && invite ? offerPrice(ticket, invite.discount) : null;
+  // Preço deste convite: lote à venda − o maior entre o desconto do convite e o do cupom do link (gratuita quando zera)
+  const priced = ticket.enabled && invite ? await pageQuote({ ...ticket, minChargeCents: minChargeCents(ticket.provider) }, invite.discount, cupom) : null;
+  const price = priced?.quote ?? null;
 
   return (
     <>
@@ -36,8 +37,8 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
         title={invite?.name ? `Chega mais, ${firstName(invite.name)}. Sua vaga no Summit está reservada.` : "Chega mais. Sua vaga no Summit está reservada."}
         lead={
           price?.courtesy
-            ? "Confirme seus dados: seu ingresso é cortesia. A inscrição é individual e vale para os três dias."
-            : "Confirme seus dados e faça o pagamento. A inscrição é individual e vale para os três dias."
+            ? "Confirme seus dados: seu ingresso é gratuito. A inscrição é individual, vale para os três dias e passa pela aprovação da organização."
+            : "Confirme seus dados e faça o pagamento. A inscrição é individual, vale para os três dias e passa pela aprovação da organização."
         }
         illustration={illustrations.estacao}
       >
@@ -54,22 +55,22 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
                   {formatBRL(price.listCents)}
                 </s>
                 <span className="border-2 border-grass bg-grass-wash px-2 py-0.5 text-body font-semibold text-grass-deep">
-                  {invite && invite.discount.kind !== "courtesy" ? `− ${formatBRL(price.discountCents)} · ${describeDiscount(invite.discount)}` : "Cortesia"}
+                  {price.courtesy ? price.note : `− ${formatBRL(price.discountCents)} · ${price.note}`}
                 </span>
               </p>
             )}
             <h2 className="font-display text-heading">
-              {price ? (price.courtesy ? "Cortesia" : formatBRL(price.finalCents)) : ticket.enabled ? formatBRL(ticket.priceCents) : ticket.reason === "sold_out" ? "Esgotado" : "Em breve"}
+              {price ? (price.courtesy ? "Gratuita" : formatBRL(price.finalCents)) : ticket.enabled ? formatBRL(ticket.priceCents) : ticket.reason === "sold_out" ? "Esgotado" : "Em breve"}
             </h2>
             {ticket.enabled && ticket.lotName && <p className="text-body-md font-semibold">{ticket.lotName}</p>}
             <p className="max-w-[40ch] text-body-md">
               {price?.courtesy
-                ? "Ingresso cortesia da organização: sem pagamento. Preencha seus dados e a inscrição é confirmada na hora, com o ingresso por e-mail."
+                ? "Ingresso gratuito: sem pagamento. Preencha seus dados; o ingresso chega por e-mail depois da aprovação da organização."
                 : price && price.discountCents > 0
-                  ? `Valor com o desconto do seu convite. ${ticket.enabled && ticket.provider === "opapingou" ? `${payVia}, com confirmação na hora e ingresso por e-mail.` : "Pagamento pelo Stripe, com confirmação por e-mail."}`
+                  ? `Valor com desconto. ${ticket.enabled && ticket.provider === "opapingou" ? `${payVia}; o ingresso chega por e-mail depois da aprovação da organização.` : "Pagamento pelo Stripe; o ingresso chega por e-mail depois da aprovação da organização."}`
                   : ticket.enabled && ticket.provider === "opapingou"
-                ? `Valor por participante. ${payVia}, com confirmação na hora e ingresso por e-mail.`
-                : "Valor único por participante. Pagamento pelo Stripe, com confirmação por e-mail."}
+                    ? `Valor por participante. ${payVia}; o ingresso chega por e-mail depois da aprovação da organização.`
+                    : "Valor único por participante. Pagamento pelo Stripe; o ingresso chega por e-mail depois da aprovação da organização."}
             </p>
             <ul className="border-t border-ink">
               {included.map((item) => (
@@ -119,12 +120,16 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
                     — O pagamento não foi concluído. Preencha os dados de novo para tentar outra vez.
                   </p>
                 )}
-                <RegistrationForm
-                  code={invite.code}
-                  priceLabel={price ? formatBRL(price.finalCents) : formatBRL(ticket.priceCents)}
-                  method={price?.courtesy ? "courtesy" : ticket.provider === "opapingou" ? "pix" : "checkout"}
-                  card={card}
-                />
+                {priced && (
+                  <RegistrationForm
+                    code={invite.code}
+                    quote={priced.quote}
+                    linkCoupon={priced.linkCoupon}
+                    linkCouponError={priced.linkCouponError}
+                    method={ticket.provider === "opapingou" ? "pix" : "checkout"}
+                    card={card}
+                  />
+                )}
               </>
             )}
           </div>
