@@ -43,10 +43,12 @@ const toInvite = (r: Row): Invite => ({
   discount: isDiscountKind(r.discount_kind) ? { kind: r.discount_kind, value: r.discount_value } : NO_DISCOUNT,
 });
 
-// Um checkout pendente segura a vaga até o fim da cobrança atual (1h), ou 1h da criação no Stripe (holdsSeat)
+// Um checkout pendente segura a vaga até o fim da cobrança atual (1h), ou 1h da criação no Stripe (holdsSeat).
+// Inscrição reprovada devolve o uso ao convite (toda inscrição passa por aprovação).
 const usesSubquery = () => sql`
   (select count(*) from registrations r
     where r.invite_id = i.id
+      and r.approval is distinct from 'rejected'
       and (r.status = 'paid' or (r.status = 'pending' and coalesce(r.opa_expires_at, r.created_at + interval '1 hour') > now())))`;
 
 export async function listInvites(): Promise<Invite[]> {

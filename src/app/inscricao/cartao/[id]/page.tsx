@@ -43,6 +43,8 @@ export default async function CartaoPage({ params, searchParams }: PageProps<"/i
   const state = !reg ? "missing" : reg.status === "pending" && reg.opaPaymentLink ? "pending" : reg.status === "canceled" ? "canceled" : "expired";
   const first = reg ? firstName(reg.name) : "";
   const open = reg?.source === "open";
+  // Inscrição que passa por aprovação (todas as novas; approval null só nas de convite de antes dessa regra)
+  const review = reg?.approval !== null;
   const retry = open ? "Faça uma nova inscrição pela página de inscrição." : "Sua vaga continua reservada pelo convite: volte a ele e pague de novo.";
   const heroTitle = {
     missing: "Pagamento não encontrado.",
@@ -52,7 +54,7 @@ export default async function CartaoPage({ params, searchParams }: PageProps<"/i
   }[state];
   const sideText = {
     missing: "Confira se o link chegou completo ou volte ao seu convite para gerar o pagamento de novo.",
-    pending: open
+    pending: review
       ? "Pague no cartão de crédito, à vista, na página de pagamento. Esta página atualiza sozinha; o ingresso chega por e-mail depois da aprovação da organização."
       : "Pague no cartão de crédito, à vista, na página de pagamento. Esta página confirma sozinha e você recebe o ingresso por e-mail.",
     expired: `O pagamento fica aberto por 1 hora. ${retry}`,
@@ -107,7 +109,7 @@ export default async function CartaoPage({ params, searchParams }: PageProps<"/i
                   Fechou a aba ou o cartão foi recusado? Clique de novo em <strong>Pagar com cartão</strong> para reabrir o pagamento e tentar outra vez.
                 </p>
                 <div className="border-2 border-ink bg-marigold-wash p-4 text-body">
-                  A confirmação também chega por e-mail{open ? ", e o ingresso vem depois da aprovação da organização" : ", com o ingresso"}. Pode fechar esta página depois de pagar.
+                  A confirmação também chega por e-mail{review ? ", e o ingresso vem depois da aprovação da organização" : ", com o ingresso"}. Pode fechar esta página depois de pagar.
                 </div>
                 {reg.opaExpiresAt && (
                   <p className="text-body">

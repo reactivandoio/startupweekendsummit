@@ -3,7 +3,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
+import { deleteCoupon, saveCoupon, setCouponActive } from "@/lib/coupons";
+import { isValidCouponCode, normalizeCouponCode } from "@/lib/coupons-core";
 import { parseBRLCents, parseDiscount } from "@/lib/discounts";
+import { parseBrasiliaInput } from "@/lib/lots-core";
 import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite, updateInvite } from "@/lib/invites";
 import { sendAccessInvite, sendInvite, sendRegistrationApproved, sendRegistrationRejected } from "@/lib/mail";
 import {
@@ -200,7 +203,7 @@ export async function removeRegistration(formData: FormData) {
   revalidatePath("/admin/convites");
 }
 
-/* ---------- Cadastro aberto: aprovação ---------- */
+/* ---------- Aprovação de todas as inscrições ---------- */
 
 // Aprovada: manda o ingresso. A aprovação vale mesmo se o e-mail falhar (o erro fica no log, como nos pagamentos).
 export async function approveRegistration(formData: FormData) {
@@ -211,7 +214,8 @@ export async function approveRegistration(formData: FormData) {
   revalidatePath("/admin/participantes");
 }
 
-// Reprovada: fica marcada e libera a vaga do lote; o reembolso é manual no Opa Pingou. O aviso por e-mail é opcional.
+// Reprovada: fica marcada e libera a vaga do lote, do convite e do cupom; se paga, o reembolso é manual no meio de
+// pagamento (marcação no painel). O aviso por e-mail é opcional.
 export async function rejectRegistration(formData: FormData) {
   const me = await requireUser();
   const id = String(formData.get("id") ?? "");
@@ -219,6 +223,7 @@ export async function rejectRegistration(formData: FormData) {
   if (reg && formData.get("notify") === "on") await sendRegistrationRejected(reg).catch((err) => console.error("[rejectRegistration] mail", err));
   revalidatePath("/admin/participantes");
   revalidatePath("/admin/ingressos");
+  revalidatePath("/admin/cupons");
 }
 
 export async function toggleRefunded(formData: FormData) {
@@ -404,31 +409,47 @@ function parseCents(raw: string): number | null {
   return cents !== null && cents >= 1 && cents <= 2_500_000 ? cents : null; // limite do Opa Pingou: R$ 25.000,00
 }
 
+// Período opcional (início e fim, horário de Brasília) para lotes e cupons. error: mensagem para o painel.
+function periodFields(formData: FormData): { startsAt: string | null; endsAt: string | null; error?: string } {
+  const startsAt = parseBrasiliaInput(String(formData.get("startsAt") ?? ""));
+  const endsAt = parseBrasiliaInput(String(formData.get("endsAt") ?? ""));
+  if (startsAt === undefined || endsAt === undefined) return { startsAt: null, endsAt: null, error: "Data inválida: use dia e hora (horário de Brasília)." };
+  if (startsAt && endsAt && endsAt <= startsAt) return { startsAt, endsAt, error: "O fim precisa ser depois do início." };
+  return { startsAt, endsAt };
+}
+
 function lotFields(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim().slice(0, 80);
   const priceCents = parseCents(String(formData.get("price") ?? ""));
   const q = String(formData.get("quantity") ?? "").trim();
   const quantity = q === "" ? null : Math.max(0, Math.floor(Number(q)) || 0);
-  return { name, priceCents, quantity };
+  const period = periodFields(formData);
+  const error = !name
+    ? "Dê um nome ao lote (ex.: 1º lote)."
+    : priceCents === null
+      ? "Informe o valor em reais, entre R$ 0,01 e R$ 25.000,00."
+      : period.error;
+  return { data: { name, priceCents: priceCents ?? 0, quantity, startsAt: period.startsAt, endsAt: period.endsAt }, error };
 }
 
 export async function createLotAction(_prev: OpaFormState, formData: FormData): Promise<OpaFormState> {
   await requireUser();
-  const { name, priceCents, quantity } = lotFields(formData);
-  if (!name) return { status: "error", message: "Dê um nome ao lote (ex.: 1º lote)." };
-  if (priceCents === null) return { status: "error", message: "Informe o valor em reais, entre R$ 0,01 e R$ 25.000,00." };
-  await createLot({ name, priceCents, quantity });
+  const { data, error } = lotFields(formData);
+  if (error) return { status: "error", message: error };
+  await createLot(data);
   revalidatePath("/admin/ingressos");
-  return { status: "ok", message: `Lote "${name}" criado.` };
+  return { status: "ok", message: `Lote "${data.name}" criado.` };
 }
 
-export async function updateLotAction(formData: FormData) {
+export async function updateLotAction(_prev: OpaFormState, formData: FormData): Promise<OpaFormState> {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  const { name, priceCents, quantity } = lotFields(formData);
-  if (!id || !name || priceCents === null) return;
-  await updateLot(id, { name, priceCents, quantity, active: formData.get("active") === "on" });
+  const { data, error } = lotFields(formData);
+  if (!id) return { status: "error", message: "Lote não encontrado." };
+  if (error) return { status: "error", message: error };
+  await updateLot(id, { ...data, active: formData.get("active") === "on" });
   revalidatePath("/admin/ingressos");
+  return { status: "ok", message: "Lote salvo." };
 }
 
 export async function moveLotAction(formData: FormData) {
@@ -452,6 +473,63 @@ export async function reconcileOpaCharges() {
   for (const reg of await listPendingOpaRegistrations()) await syncCharge(reg);
   revalidatePath("/admin/participantes");
   revalidatePath("/admin/convites");
+}
+
+/* ---------- Cupons ---------- */
+
+type CouponValues = Record<"code" | "description" | "discountKind" | "discountValue" | "maxUses" | "startsAt" | "endsAt", string> & { lotIds: string[]; active: boolean };
+
+// values/at: no erro, o formulário volta com o que foi digitado (o React limpa o form depois da action)
+export type CouponFormState = { status: "idle" | "ok" | "error"; message?: string; values?: CouponValues; at?: number };
+
+// Cria (sem id) ou edita (com id). Desconto: nenhum (só rastreia a origem), % (100% = gratuito) ou valor fixo.
+export async function saveCouponAction(_prev: CouponFormState, formData: FormData): Promise<CouponFormState> {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "") || null;
+  const str = (k: string) => String(formData.get(k) ?? "").trim();
+  const values: CouponValues = {
+    code: str("code").slice(0, 60),
+    description: str("description").slice(0, 200),
+    discountKind: str("discountKind") || "none",
+    discountValue: str("discountValue").slice(0, 20),
+    maxUses: str("maxUses").slice(0, 10),
+    startsAt: str("startsAt"),
+    endsAt: str("endsAt"),
+    lotIds: formData.getAll("lotIds").map(String).filter((v) => /^[0-9a-f-]{36}$/i.test(v)),
+    active: id ? formData.get("active") === "on" : true,
+  };
+  const fail = (message: string): CouponFormState => ({ status: "error", message, values, at: Date.now() });
+
+  const code = normalizeCouponCode(values.code);
+  if (!isValidCouponCode(code)) return fail("Código de 3 a 40 caracteres: letras, números, - e _ (ex.: TRACK-GOIANIA).");
+  const discount = values.discountKind === "courtesy" ? null : parseDiscount(values.discountKind, values.discountValue);
+  if (!discount) return fail(DISCOUNT_ERROR);
+  const maxUses = values.maxUses === "" ? null : Number(values.maxUses);
+  if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1 || maxUses > 100_000)) return fail("Limite de usos: um número inteiro a partir de 1, ou vazio para sem limite.");
+  const period = periodFields(formData);
+  if (period.error) return fail(period.error);
+  const lotIds = formData.get("lotScope") === "some" ? values.lotIds : [];
+  if (formData.get("lotScope") === "some" && lotIds.length === 0) return fail("Escolha pelo menos um lote, ou marque Todos os lotes.");
+
+  const saved = await saveCoupon(id, { code, description: values.description, discount, lotIds, maxUses, startsAt: period.startsAt, endsAt: period.endsAt, active: values.active }, me.id);
+  if (!saved) return fail(`Já existe um cupom ${code}.`);
+  revalidatePath("/admin/cupons");
+  if (id) redirect("/admin/cupons");
+  return { status: "ok", message: `Cupom ${code} criado.`, at: Date.now() };
+}
+
+export async function toggleCouponAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await setCouponActive(id, formData.get("active") === "1");
+  revalidatePath("/admin/cupons");
+}
+
+export async function removeCouponAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await deleteCoupon(id);
+  revalidatePath("/admin/cupons");
 }
 
 /* ---------- Patrocinadores ---------- */

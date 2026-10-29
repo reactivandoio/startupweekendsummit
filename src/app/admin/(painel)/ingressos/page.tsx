@@ -1,9 +1,10 @@
-import { moveLotAction, removeLotAction, removeOpaKey, toggleCardPayment, toggleOpenRegistration, updateLotAction } from "@/app/admin/actions";
+import { moveLotAction, removeLotAction, removeOpaKey, toggleCardPayment, toggleOpenRegistration } from "@/app/admin/actions";
 import { buttonClass } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
 import { CardAccountForm, LotForm, OpaDuplicateWebhookDelete, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
 import { formatBRL } from "@/lib/cpf";
+import { brasiliaInputValue, describePeriod, lotStateLabel, type LotState } from "@/lib/lots-core";
 import { listWebhookEndpoints, opaApiUrl, opaWebhookUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
 import { duplicateWebhooks, isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
 import { cardPaymentEnabled, getSetting, openRegistrationEnabled } from "@/lib/settings";
@@ -14,6 +15,15 @@ const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "s
 const btn = buttonClass("secondary", "sm");
 
 const centsToInput = (c: number) => (c / 100).toFixed(2).replace(".", ",");
+
+// Selo do estado do lote: à venda em verde, agendado em amarelo, encerrado/esgotado/inativo neutro
+const stateClass: Record<LotState, string> = {
+  on_sale: "border-grass bg-grass-wash text-grass-deep",
+  scheduled: "border-ink bg-marigold-wash text-ink",
+  ended: "border-ash text-ink/70",
+  sold_out: "border-ash text-ink/70",
+  inactive: "border-ash text-ink/70",
+};
 
 export default async function IngressosPage() {
   const [apiKey, webhookId, lots, offer, openEnabled, cardEnabled, cardAccount] = await Promise.all([
@@ -54,7 +64,7 @@ export default async function IngressosPage() {
         <p className="max-w-[60ch] text-body-md">
           {offer.enabled
             ? `Pagamento por ${offer.provider === "opapingou" ? `Pix${cardEnabled ? " e cartão de crédito" : ""}, via Opa Pingou` : "Stripe (sem chave do Opa Pingou)"}.`
-            : "Configure o Opa Pingou e crie pelo menos um lote ativo para abrir as vendas nos convites."}
+            : "Configure o Opa Pingou e tenha pelo menos um lote ativo, dentro do período de vendas e com vaga, para abrir as inscrições."}
         </p>
       </div>
 
@@ -62,8 +72,9 @@ export default async function IngressosPage() {
         <div className="flex flex-col gap-6">
           <Eyebrow>Inscrição aberta</Eyebrow>
           <p className="max-w-[40ch] text-body-md">
-            Página de inscrição sem convite, para enviar a quem você quiser. Paga pelo mesmo lote à venda e entra como &quot;aguardando aprovação&quot; em
-            Participantes; o ingresso só sai quando você aprova. Não aparece no site nem nos buscadores.
+            Página de inscrição sem convite, para enviar a quem você quiser. Paga pelo mesmo lote à venda e, como toda inscrição (inclusive por
+            convite), entra como &quot;aguardando aprovação&quot; em Participantes; o ingresso só sai quando você aprova. Não aparece no site nem nos
+            buscadores. Para divulgar uma track, use o link de cada cupom em Cupons.
           </p>
         </div>
 
@@ -180,7 +191,8 @@ export default async function IngressosPage() {
         <div className="flex flex-col gap-6">
           <Eyebrow>Lotes</Eyebrow>
           <p className="max-w-[40ch] text-body-md">
-            O primeiro lote ativo com vaga é o que está à venda; quando esgota, o próximo entra sozinho. Pagamento aberto (Pix ou cartão) segura a vaga por 1 hora.
+            Fica à venda o primeiro lote ativo, dentro do período de vendas e com vaga; ao passar a data de fim ou esgotar, o próximo entra sozinho.
+            Início, fim e quantidade são opcionais (datas no horário de Brasília). Pagamento aberto (Pix ou cartão) segura a vaga por 1 hora.
             {lots.length === 0 && " Sem lotes, vale o valor único do .env (TICKET_PRICE_CENTS)."}
           </p>
           <LotForm />
@@ -193,35 +205,32 @@ export default async function IngressosPage() {
             {lots.map((l, i) => (
               <li key={l.id} className="flex flex-col gap-4 border-b border-ash py-6">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-body-md font-semibold">
-                    {l.name} {offer.enabled && offer.lotId === l.id && <span className="font-mono text-caption">· À VENDA</span>}
+                  <p className="flex flex-wrap items-center gap-2 text-body-md font-semibold">
+                    {l.name}
+                    <span className={`border-2 px-2 py-0.5 font-mono text-caption uppercase ${stateClass[l.state]}`}>{lotStateLabel[l.state]}</span>
+                    {offer.enabled && offer.lotId === l.id && <span className="font-mono text-caption">· vendendo agora</span>}
                   </p>
                   <p className="text-caption">
-                    {l.sold} {l.quantity === null ? "vendidos (sem limite)" : `de ${l.quantity} vendidos`} · {l.active ? "ativo" : "inativo"}
+                    {formatBRL(l.priceCents)} · {l.sold} {l.quantity === null ? "vendidos (sem limite)" : `de ${l.quantity} vendidos`}
+                    {(l.startsAt || l.endsAt) && ` · ${describePeriod(l.startsAt, l.endsAt)}`}
                   </p>
                 </div>
-                <form action={updateLotAction} className="grid items-end gap-3 sm:grid-cols-[1.4fr_1fr_1fr_auto_auto]">
-                  <input type="hidden" name="id" value={l.id} />
-                  <label className="flex flex-col gap-1 text-caption">
-                    Nome
-                    <input name="name" defaultValue={l.name} className="field" required />
-                  </label>
-                  <label className="flex flex-col gap-1 text-caption">
-                    Valor (R$)
-                    <input name="price" defaultValue={centsToInput(l.priceCents)} inputMode="decimal" className="field" required />
-                  </label>
-                  <label className="flex flex-col gap-1 text-caption">
-                    Quantidade
-                    <input name="quantity" type="number" min={0} defaultValue={l.quantity ?? ""} placeholder="Sem limite" className="field" />
-                  </label>
-                  <label className="flex items-center gap-2 pb-3 text-caption">
-                    <input type="checkbox" name="active" defaultChecked={l.active} className="h-4 w-4 accent-ink" />
-                    Ativo
-                  </label>
-                  <button type="submit" className={btn}>
-                    Salvar
-                  </button>
-                </form>
+                <details className="group">
+                  <summary className="cursor-pointer text-caption font-semibold underline underline-offset-4">Editar</summary>
+                  <div className="pt-4">
+                    <LotForm
+                      lot={{
+                        id: l.id,
+                        name: l.name,
+                        price: centsToInput(l.priceCents),
+                        quantity: l.quantity,
+                        startsAt: brasiliaInputValue(l.startsAt),
+                        endsAt: brasiliaInputValue(l.endsAt),
+                        active: l.active,
+                      }}
+                    />
+                  </div>
+                </details>
                 <div className="flex flex-wrap gap-2">
                   {i > 0 && (
                     <form action={moveLotAction}>

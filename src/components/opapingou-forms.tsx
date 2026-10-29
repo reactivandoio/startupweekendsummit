@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createLotAction, deleteDuplicateOpaWebhook, saveCardAccount, saveOpaKey, setupOpaWebhook, testOpaWebhook, type OpaFormState } from "@/app/admin/actions";
+import { createLotAction, deleteDuplicateOpaWebhook, saveCardAccount, saveOpaKey, setupOpaWebhook, testOpaWebhook, updateLotAction, type OpaFormState } from "@/app/admin/actions";
 import { buttonClass } from "@/components/button";
 
 const idle: OpaFormState = { status: "idle" };
@@ -80,33 +80,59 @@ export function OpaDuplicateWebhookDelete({ id }: { id: string }) {
   );
 }
 
-export function LotForm() {
-  const [state, action, pending] = useActionState(createLotAction, idle);
+// Lote: nome, valor, quantidade (opcional) e período de vendas (opcional, horário de Brasília).
+// Sem lot: cria (e limpa o formulário depois); com lot: edita, com o liga/desliga.
+export function LotForm({ lot }: { lot?: { id: string; name: string; price: string; quantity: number | null; startsAt: string; endsAt: string; active: boolean } }) {
+  const [state, action, pending] = useActionState(lot ? updateLotAction : createLotAction, idle);
+  const id = (k: string) => `lot-${lot?.id ?? "new"}-${k}`;
   return (
     <form action={action} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="lot-name" className="text-body font-semibold">
-          Nome do lote
-        </label>
-        <input id="lot-name" name="name" type="text" className="field" placeholder="Ex.: 1º lote" required />
+      {lot && <input type="hidden" name="id" value={lot.id} />}
+      <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr_1fr]">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={id("name")} className="text-body font-semibold">
+            Nome do lote
+          </label>
+          <input id={id("name")} name="name" type="text" defaultValue={lot?.name} className="field" placeholder="Ex.: 1º lote" required />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={id("price")} className="text-body font-semibold">
+            Valor (R$)
+          </label>
+          <input id={id("price")} name="price" type="text" inputMode="decimal" defaultValue={lot?.price} className="field" placeholder="350,00" required />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={id("qty")} className="text-body font-semibold">
+            Quantidade
+          </label>
+          <input id={id("qty")} name="quantity" type="number" min={0} defaultValue={lot?.quantity ?? ""} className="field" placeholder="Sem limite" />
+        </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="lot-price" className="text-body font-semibold">
-            Valor (R$)
+          <label htmlFor={id("start")} className="text-body font-semibold">
+            Início das vendas
           </label>
-          <input id="lot-price" name="price" type="text" inputMode="decimal" className="field" placeholder="350,00" required />
+          <input id={id("start")} name="startsAt" type="datetime-local" defaultValue={lot?.startsAt} className="field" />
+          <p className="text-caption text-ink/60">Horário de Brasília. Vazio: já começa.</p>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="lot-qty" className="text-body font-semibold">
-            Quantidade
+          <label htmlFor={id("end")} className="text-body font-semibold">
+            Fim das vendas
           </label>
-          <input id="lot-qty" name="quantity" type="number" min={0} className="field" placeholder="Sem limite" />
+          <input id={id("end")} name="endsAt" type="datetime-local" defaultValue={lot?.endsAt} className="field" />
+          <p className="text-caption text-ink/60">Horário de Brasília. Vazio: até esgotar.</p>
         </div>
       </div>
+      {lot && (
+        <label className="flex items-center gap-2 text-body">
+          <input type="checkbox" name="active" defaultChecked={lot.active} className="h-4 w-4 accent-ink" />
+          Ativo
+        </label>
+      )}
       <Message state={state} />
-      <button type="submit" disabled={pending} className={primary}>
-        {pending ? "Criando…" : "Criar lote"}
+      <button type="submit" disabled={pending} className={lot ? `${secondary} self-start` : primary}>
+        {pending ? (lot ? "Salvando…" : "Criando…") : lot ? "Salvar lote" : "Criar lote"}
       </button>
     </form>
   );

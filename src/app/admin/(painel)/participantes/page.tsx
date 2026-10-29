@@ -2,20 +2,19 @@ import Link from "next/link";
 import { approveRegistration, reconcileOpaCharges, rejectRegistration, removeRegistration, toggleDuplicateRefunded, toggleRefunded } from "@/app/admin/actions";
 import { Eyebrow } from "@/components/eyebrow";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { entryFilters, entryLabel, parseEntry, registrationEntry } from "@/lib/coupons-core";
 import { formatBRL, formatCpf, formatPhone } from "@/lib/cpf";
 import { ticketNumber } from "@/lib/mail";
 import {
   matchesFilters,
+  parseCouponFilter,
   parseSituation,
-  parseSource,
   paymentMethodName,
   reviewReasonLabel,
   situation,
   situationFilters,
   situationLabel,
-  sourceFilters,
-  sourceLabel,
-  type RegistrationSource,
+  type Filters,
   type Situation,
 } from "@/lib/registration-state";
 import { listRegistrations, type Registration } from "@/lib/registrations";
@@ -24,21 +23,22 @@ import { buttonClass } from "@/components/button";
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 const fmtDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" });
 
-type Filters = { situation: Situation | null; source: RegistrationSource | null };
-
-// Filtros na URL (?situacao=…&origem=…), pra o link da lista filtrada poder ser compartilhado
+// Filtros na URL (?situacao=…&origem=…&cupom=…), pra o link da lista filtrada poder ser compartilhado
 const filterHref = (f: Filters) => {
   const q = new URLSearchParams();
   if (f.situation) q.set("situacao", f.situation);
-  if (f.source) q.set("origem", f.source);
+  if (f.entry) q.set("origem", f.entry);
+  if (f.coupon) q.set("cupom", f.coupon);
   const s = q.toString();
   return s ? `/admin/participantes?${s}` : "/admin/participantes";
 };
 
 export default async function ParticipantesPage({ searchParams }: PageProps<"/admin/participantes">) {
-  const { situacao, origem } = await searchParams;
-  const filters: Filters = { situation: parseSituation(situacao), source: parseSource(origem) };
+  const { situacao, origem, cupom } = await searchParams;
+  const filters: Filters = { situation: parseSituation(situacao), entry: parseEntry(origem), coupon: parseCouponFilter(cupom) };
   const all = await listRegistrations();
+  const couponCodes = [...new Set(all.map((r) => r.couponCode).filter((c): c is string => Boolean(c)))].sort();
+  if (filters.coupon && filters.coupon !== "-" && !couponCodes.includes(filters.coupon)) couponCodes.push(filters.coupon);
   const shown = all.filter((r) => matchesFilters(r, filters));
 
   const count = (s: Situation) => all.filter((r) => situation(r) === s).length;
@@ -85,7 +85,7 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/ad
           options={[
             { label: "Todas", href: filterHref({ ...filters, situation: null }), active: !filters.situation },
             ...situationFilters.map((s) => ({
-              label: `${situationLabel[s]} (${all.filter((r) => matchesFilters(r, { situation: s, source: filters.source })).length})`,
+              label: `${situationLabel[s]} (${all.filter((r) => matchesFilters(r, { ...filters, situation: s })).length})`,
               href: filterHref({ ...filters, situation: s }),
               active: filters.situation === s,
             })),
@@ -94,10 +94,20 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/ad
         <FilterRow
           label="Origem"
           options={[
-            { label: "Todas", href: filterHref({ ...filters, source: null }), active: !filters.source },
-            ...sourceFilters.map((s) => ({ label: sourceLabel[s], href: filterHref({ ...filters, source: s }), active: filters.source === s })),
+            { label: "Todas", href: filterHref({ ...filters, entry: null }), active: !filters.entry },
+            ...entryFilters.map((s) => ({ label: entryLabel[s], href: filterHref({ ...filters, entry: s }), active: filters.entry === s })),
           ]}
         />
+        {(couponCodes.length > 0 || filters.coupon) && (
+          <FilterRow
+            label="Cupom"
+            options={[
+              { label: "Todos", href: filterHref({ ...filters, coupon: null }), active: !filters.coupon },
+              { label: "Sem cupom", href: filterHref({ ...filters, coupon: "-" }), active: filters.coupon === "-" },
+              ...couponCodes.map((c) => ({ label: c, href: filterHref({ ...filters, coupon: c }), active: filters.coupon === c })),
+            ]}
+          />
+        )}
       </nav>
 
       {shown.length === 0 ? (
@@ -149,7 +159,11 @@ function RegistrationRow({ r }: { r: Registration }) {
       <div className="flex flex-col gap-1 text-body">
         <p>CPF {formatCpf(r.cpf)}</p>
         <p>Nascimento {fmtDate.format(new Date(`${r.birthDate}T00:00:00Z`))}</p>
-        <p className="text-caption">{r.source === "open" ? "Origem: cadastro aberto" : `Convite: ${r.inviteName || r.inviteCode || "sem nome"}`}</p>
+        <p className="text-caption">
+          Origem: {entryLabel[registrationEntry(r)]}
+          {r.source === "invite" && ` · ${r.inviteName || r.inviteCode || "sem nome"}`}
+        </p>
+        {r.couponCode && <p className="font-mono text-caption">Cupom: {r.couponCode}</p>}
         {r.lotName && <p className="text-caption">Lote: {r.lotName}</p>}
         <p className="text-caption" title="Consentimento para compartilhar nome, e-mail e WhatsApp com patrocinadores">
           {r.sponsorConsentAt ? `Patrocinadores: autorizou em ${fmt.format(new Date(r.sponsorConsentAt))}` : "Patrocinadores: não autorizou"}
@@ -163,7 +177,7 @@ function RegistrationRow({ r }: { r: Registration }) {
         {s === "confirmed" && <p className="font-mono text-caption">Ingresso nº {ticketNumber(r.id)}</p>}
         <p className="text-caption">
           {r.status === "paid" && r.paidAt
-            ? `${r.provider === "courtesy" ? "Cortesia" : `${formatBRL(r.amountCents)} · ${paymentMethodName(r)}`} em ${fmt.format(new Date(r.paidAt))}`
+            ? `${r.provider === "courtesy" ? paymentMethodName(r) : `${formatBRL(r.amountCents)} · ${paymentMethodName(r)}`} em ${fmt.format(new Date(r.paidAt))}`
             : `iniciada em ${fmt.format(new Date(r.createdAt))}${r.provider === "opapingou" ? ` · ${paymentMethodName(r)}` : ""}`}
         </p>
         {r.reviewReason && s === "awaiting_approval" && (
@@ -176,11 +190,11 @@ function RegistrationRow({ r }: { r: Registration }) {
             {r.approval === "approved" ? "Aprovada" : "Reprovada"} em {fmt.format(new Date(r.reviewedAt))}
           </p>
         )}
-        {r.discountCents > 0 && (
-          <p className="text-caption">
-            Lote {formatBRL(r.listPriceCents)} − desconto {formatBRL(r.discountCents)} = {formatBRL(r.amountCents)}
-          </p>
-        )}
+        <p className="text-caption">
+          {r.discountCents > 0
+            ? `Lista ${formatBRL(r.listPriceCents)} − desconto ${r.discountSource === "coupon" ? `do cupom ${r.couponCode ?? ""}` : "do convite"} ${formatBRL(r.discountCents)} = ${formatBRL(r.amountCents)}`
+            : `Lista ${formatBRL(r.listPriceCents)} · sem desconto`}
+        </p>
         {r.stripePaymentIntent && (
           <a
             href={`https://dashboard.stripe.com/payments/${r.stripePaymentIntent}`}
@@ -196,7 +210,7 @@ function RegistrationRow({ r }: { r: Registration }) {
             {r.opaPaymentLink ? "Link de pagamento" : "Pix"} Opa Pingou · {r.opaChargeId}
           </p>
         )}
-        {s === "rejected" && r.status === "paid" && <RefundBox r={r} />}
+        {s === "rejected" && r.status === "paid" && r.amountCents > 0 && <RefundBox r={r} />}
         {r.duplicateCharges.map((c) => (
           <DuplicateBox key={c.id} charge={c} />
         ))}
@@ -206,13 +220,23 @@ function RegistrationRow({ r }: { r: Registration }) {
           <>
             <form action={approveRegistration}>
               <input type="hidden" name="id" value={r.id} />
-              <ConfirmSubmit message={`Aprovar ${r.name} e enviar o ingresso por e-mail?`} className={buttonClass("primary", "sm")}>
+              <ConfirmSubmit
+                message={`Aprovar ${r.name} e enviar o ingresso por e-mail?${r.amountCents === 0 ? " A inscrição é gratuita." : ""}`}
+                className={buttonClass("primary", "sm")}
+              >
                 Aprovar
               </ConfirmSubmit>
             </form>
             <form action={rejectRegistration} className="flex flex-col gap-2 md:items-end">
               <input type="hidden" name="id" value={r.id} />
-              <ConfirmSubmit message={`Reprovar ${r.name}? O reembolso de ${formatBRL(r.amountCents)} é feito à mão no meio de pagamento.`} className={buttonClass("secondary", "sm")}>
+              <ConfirmSubmit
+                message={
+                  r.amountCents > 0
+                    ? `Reprovar ${r.name}? O reembolso de ${formatBRL(r.amountCents)} é feito à mão no meio de pagamento (fica marcado aqui como pendente).`
+                    : `Reprovar ${r.name}? A inscrição é gratuita: não há reembolso.`
+                }
+                className={buttonClass("secondary", "sm")}
+              >
                 Reprovar
               </ConfirmSubmit>
               <label className="flex items-center gap-2 text-caption">

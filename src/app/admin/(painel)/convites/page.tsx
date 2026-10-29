@@ -23,7 +23,7 @@ export default async function ConvitesPage() {
         </h1>
         <p className="max-w-[40ch] text-body-md">
           Cada convite gera um link /inscricao/&lt;código&gt;. Um checkout em andamento segura a vaga por 1 hora; só a inscrição paga
-          consome a vaga de vez. O desconto vale sobre o lote à venda no momento da inscrição; cortesia confirma sem Pix.
+          consome a vaga de vez. O desconto vale sobre o lote à venda no momento da inscrição e não soma com cupom (vale o maior); cortesia vai sem Pix. Toda inscrição passa pela aprovação em Participantes.
         </p>
         <InviteForm />
       </div>

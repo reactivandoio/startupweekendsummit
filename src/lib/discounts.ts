@@ -27,6 +27,23 @@ export function applyDiscount(listCents: number, discount: InviteDiscount, minCh
   return { listCents, discountCents: off, finalCents, courtesy: finalCents === 0 };
 }
 
+// De onde veio o desconto aplicado na inscrição (null = sem desconto)
+export type DiscountSource = "invite" | "coupon";
+
+// Convite e cupom não acumulam: vale o que dá o maior desconto. Empate fica com o convite (o cupom continua
+// registrado na inscrição para rastrear a origem). Sem desconto nenhum, source null.
+export function bestDiscount(
+  listCents: number,
+  invite: InviteDiscount,
+  coupon: InviteDiscount | null,
+  minChargeCents = 1,
+): PriceBreakdown & { source: DiscountSource | null } {
+  const byInvite = applyDiscount(listCents, invite, minChargeCents);
+  const byCoupon = coupon ? applyDiscount(listCents, coupon, minChargeCents) : null;
+  if (byCoupon && byCoupon.discountCents > byInvite.discountCents) return { ...byCoupon, source: "coupon" };
+  return { ...byInvite, source: byInvite.discountCents > 0 ? "invite" : null };
+}
+
 // "R$ 1.234,56" / "350" / "350,00" → centavos (sem limite; quem chama valida a faixa)
 export function parseBRLCents(raw: string): number | null {
   const s = raw.replace(/[R$\s]/g, "").replace(/\./g, "").replace(",", ".");

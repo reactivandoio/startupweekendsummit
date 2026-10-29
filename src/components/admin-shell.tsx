@@ -55,6 +55,18 @@ const nav: NavItem[] = [
     ),
   },
   {
+    href: "/admin/cupons",
+    label: "Cupons",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...stroke}>
+        <path d="M3 5h14v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4V5Z" />
+        <path d="M8 12.5l4-5" />
+        <circle cx="8" cy="8" r="0.75" />
+        <circle cx="12" cy="12" r="0.75" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/patrocinadores",
     label: "Patrocinadores",
     icon: (

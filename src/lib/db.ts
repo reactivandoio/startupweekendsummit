@@ -108,7 +108,7 @@ export function ensureSchema() {
       await sql`alter table registrations add column if not exists opa_charge_id text unique`;
       await sql`alter table registrations add column if not exists opa_br_code text`;
       await sql`alter table registrations add column if not exists opa_expires_at timestamptz`;
-      // Desconto por convite (percent: % inteiro; fixed: centavos; courtesy: sem Pix, confirma direto)
+      // Desconto por convite (percent: % inteiro; fixed: centavos; courtesy: sem Pix, direto para a aprovação)
       await sql`alter table invites add column if not exists discount_kind text not null default 'none'`;
       await sql`alter table invites add column if not exists discount_value int not null default 0`;
       // Na inscrição: preço do lote no momento e desconto aplicado; amount_cents segue sendo o valor pago
@@ -157,6 +157,38 @@ export function ensureSchema() {
           type text not null,
           received_at timestamptz not null default now()
         )`;
+      // Lote com período de vendas (Brasília no painel, UTC no banco); null = sem limite daquele lado
+      await sql`alter table ticket_lots add column if not exists starts_at timestamptz`;
+      await sql`alter table ticket_lots add column if not exists ends_at timestamptz`;
+      // Cupons de desconto/track: code em maiúsculas (único sem diferenciar maiúsculas), desconto como no convite
+      // (none = só rastreia a origem), lot_ids vazio = todos os lotes, max_uses null = sem limite
+      await sql`
+        create table if not exists coupons (
+          id uuid primary key default gen_random_uuid(),
+          code text not null,
+          description text not null default '',
+          discount_kind text not null default 'none',
+          discount_value int not null default 0,
+          lot_ids uuid[] not null default '{}',
+          max_uses int,
+          starts_at timestamptz,
+          ends_at timestamptz,
+          active boolean not null default true,
+          created_by uuid references users(id) on delete set null,
+          created_at timestamptz not null default now()
+        )`;
+      await sql`create unique index if not exists coupons_code_idx on coupons (upper(code))`;
+      // Na inscrição: cupom usado (código guardado mesmo se o cupom for apagado), se veio pelo link do cupom e de onde
+      // veio o desconto aplicado ("invite" | "coupon"; não acumulam, vale o maior). Toda inscrição nova passa por
+      // aprovação (approval "pending"); as antigas de convite seguem com approval null = confirmada ao pagar.
+      await sql`alter table registrations add column if not exists coupon_id uuid references coupons(id) on delete set null`;
+      await sql`alter table registrations add column if not exists coupon_code text`;
+      await sql`alter table registrations add column if not exists coupon_via_link boolean not null default false`;
+      await sql`alter table registrations add column if not exists discount_source text`;
+      await sql`
+        update registrations set discount_source = 'invite'
+        where discount_source is null and discount_cents > 0 and invite_id is not null and coupon_id is null`;
+      await sql`create index if not exists registrations_coupon_idx on registrations (coupon_id)`;
       // Patrocinadores do site: logo é o nome do arquivo no volume de uploads; position ordena dentro da categoria
       await sql`
         create table if not exists sponsors (
