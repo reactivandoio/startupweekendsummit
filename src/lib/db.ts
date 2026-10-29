@@ -124,6 +124,32 @@ export function ensureSchema() {
       await sql`alter table registrations add column if not exists reviewed_at timestamptz`;
       await sql`alter table registrations add column if not exists reviewed_by uuid references users(id) on delete set null`;
       await sql`alter table registrations add column if not exists refunded_at timestamptz`;
+      // Cartão de crédito (link de pagamento do Opa Pingou/Abacate Pay): meio de pagamento ("pix" | "card"; null nas antigas)
+      // e o link do checkout. review_reason: pagamento que chegou depois do prazo sem vaga ("sold_out") ou de quem já
+      // tinha outra inscrição paga ("duplicate"); a inscrição entra em aprovação no painel.
+      await sql`alter table registrations add column if not exists payment_method text`;
+      await sql`alter table registrations add column if not exists opa_payment_link text`;
+      await sql`alter table registrations add column if not exists review_reason text`;
+      // Todas as cobranças de cada inscrição: quem abandona e volta (ou troca Pix ↔ cartão) ganha cobrança nova na mesma
+      // inscrição, e a antiga continua pagável (o link do cartão não expira). O webhook acha a inscrição por qualquer uma;
+      // paid_at marca a que pagou e duplicate_at a que foi paga depois dela (estorno manual no painel do Opa Pingou).
+      await sql`
+        create table if not exists opa_charges (
+          id text primary key,
+          registration_id uuid not null references registrations(id) on delete cascade,
+          kind text not null,
+          created_at timestamptz not null default now(),
+          paid_at timestamptz,
+          duplicate_at timestamptz,
+          refunded_at timestamptz
+        )`;
+      await sql`create index if not exists opa_charges_registration_idx on opa_charges (registration_id)`;
+      await sql`
+        insert into opa_charges (id, registration_id, kind, created_at, paid_at)
+        select opa_charge_id, id, case when opa_payment_link is null then 'PIX_QR' else 'PAYMENT_LINK' end, created_at,
+               case when status = 'paid' then paid_at end
+        from registrations where opa_charge_id is not null
+        on conflict (id) do nothing`;
       // Webhooks do Opa Pingou já processados (o mesmo evento pode chegar mais de uma vez)
       await sql`
         create table if not exists opa_events (

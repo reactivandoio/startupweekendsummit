@@ -2,7 +2,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  chargeDescription,
   chargeEventStatus,
+  methodFromKind,
+  methodFromPayment,
   duplicateWebhooks,
   isOpaApiKey,
   isOpaTestKey,
@@ -115,5 +118,25 @@ describe("webhooks duplicados", () => {
   it("cria só quando a conta não tem endpoint para a URL", () => {
     assert.deepEqual(planWebhookSetup([other], url, null), { action: "create" });
     assert.deepEqual(planWebhookSetup([], url, "apagado"), { action: "create" });
+  });
+});
+
+describe("descrição da cobrança", () => {
+  it("tira acentos, troca travessão por hífen e corta em 100", () => {
+    assert.equal(chargeDescription("Ingresso — Summit (Lote 1º) — João Conceição"), "Ingresso - Summit (Lote 1) - Joao Conceicao");
+    assert.equal(chargeDescription("a – b"), "a - b");
+    assert.equal(chargeDescription(`Ingresso — ${"x".repeat(200)}`).length, 100);
+    assert.equal(chargeDescription("  muitos   espaços  "), "muitos espacos");
+  });
+});
+
+describe("meio de pagamento", () => {
+  it("vem do kind da cobrança e o pagamento confirma quando disponível", () => {
+    assert.equal(methodFromKind("PIX_QR"), "pix");
+    assert.equal(methodFromKind("PAYMENT_LINK"), "card");
+    assert.equal(methodFromPayment("PIX", "card"), "pix"); // link do Abacate pago por Pix
+    assert.equal(methodFromPayment("CREDIT_CARD", "pix"), "card");
+    assert.equal(methodFromPayment(undefined, "card"), "card");
+    assert.equal(methodFromPayment("OTHER", "pix"), "pix");
   });
 });

@@ -7,6 +7,14 @@ export type RegistrationSource = "invite" | "open";
 export type RegistrationStatus = "pending" | "paid" | "expired" | "canceled";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
+// Pagamento que chegou depois do prazo (o link do cartão não expira no Abacate Pay) e não cabe mais:
+// entra em aprovação, inclusive pelo convite. sold_out: o lote ou o convite lotou; duplicate: a pessoa já tem outra paga.
+export type ReviewReason = "sold_out" | "duplicate";
+export const reviewReasonLabel: Record<ReviewReason, string> = {
+  sold_out: "Pago depois do prazo, com o lote ou o convite já lotado",
+  duplicate: "Pago depois do prazo, mas a pessoa já tem outra inscrição paga",
+};
+
 export type Situation = "confirmed" | "awaiting_approval" | "rejected" | "awaiting_payment" | "unpaid";
 
 export const situationLabel: Record<Situation, string> = {
@@ -41,6 +49,18 @@ export const parseSource = (v: unknown): RegistrationSource | null => (sourceFil
 export function matchesFilters(r: Reg & { source: RegistrationSource }, f: { situation: Situation | null; source: RegistrationSource | null }) {
   return (!f.situation || situation(r) === f.situation) && (!f.source || r.source === f.source);
 }
+
+// Meio de pagamento para o painel e o CSV. payment_method vem do kind da cobrança (ou do pagamento, quando a chave
+// lê pagamentos); inscrições de antes do cartão no Opa Pingou foram todas Pix; Stripe é Checkout (cartão).
+export function paymentMethodName(r: { provider: string; paymentMethod: "pix" | "card" | null }): string {
+  if (r.provider === "courtesy") return "Cortesia";
+  if (r.paymentMethod === "card") return "Cartão de crédito";
+  if (r.paymentMethod === "pix" || r.provider === "opapingou") return "Pix";
+  return "Cartão (Stripe)";
+}
+
+// Página de pagamento do Opa Pingou: QR do Pix ou "aguardando pagamento" do cartão (link de pagamento)
+export const paymentPagePath = (r: { id: string; opaPaymentLink: string | null }) => (r.opaPaymentLink ? `/inscricao/cartao/${r.id}` : `/inscricao/pix/${r.id}`);
 
 // Para onde voltar para pagar de novo (Pix expirado, checkout cancelado)
 export const formPath = (r: { source: RegistrationSource; inviteCode: string }) => (r.source === "open" ? "/inscricao/aberta" : `/inscricao/${r.inviteCode}`);

@@ -7,12 +7,14 @@ import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
 import { EventMeta, PageHero } from "@/components/page-hero";
 import { SiteFooter } from "@/components/site-footer";
+import { SwitchPayment } from "@/components/switch-payment";
 import { illustrations } from "@/content/illustrations";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { firstName } from "@/lib/names";
 import { formPath } from "@/lib/registration-state";
 import { getRegistration, type Registration } from "@/lib/registrations";
+import { cardPaymentEnabled } from "@/lib/settings";
 import { syncCharge } from "@/lib/ticket-payments";
 
 export const metadata: Metadata = { title: "Pagamento via Pix", robots: { index: false, follow: false } };
@@ -24,6 +26,7 @@ const fmtTime = new Intl.DateTimeFormat("pt-BR", { timeStyle: "short", timeZone:
 async function load(id: string, check: boolean): Promise<Registration | null> {
   const reg = UUID.test(id) ? await getRegistration(id) : null;
   if (!reg || reg.provider !== "opapingou") return null;
+  if (reg.opaPaymentLink) redirect(`/inscricao/cartao/${reg.id}`); // cartão: página do link de pagamento
   if (reg.status !== "pending") return reg;
   const expired = reg.opaExpiresAt ? new Date(reg.opaExpiresAt).getTime() < Date.now() : false;
   if (!check && !expired) return reg;
@@ -38,6 +41,7 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
   const reg = await load(id, conferir === "1");
   if (reg?.status === "paid") redirect(`/inscricao/confirmada?r=${reg.id}`);
 
+  const card = reg?.status === "pending" && (await cardPaymentEnabled());
   const qr = reg?.status === "pending" && reg.opaBrCode ? await QRCode.toString(reg.opaBrCode, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : null;
 
   // Estado da página: o hero, a coluna do valor e a caixa contam a mesma história
@@ -126,6 +130,14 @@ export default async function PixPage({ params, searchParams }: PageProps<"/insc
                 <ButtonLink href={`/inscricao/pix/${reg.id}?conferir=1`} prefetch={false} variant="primary" size="md" className="self-start">
                   Já paguei
                 </ButtonLink>
+                {card && (
+                  <SwitchPayment
+                    id={reg.id}
+                    to="card"
+                    title="Prefere pagar com cartão de crédito?"
+                    text="À vista, mesmo valor, na mesma inscrição e com a vaga ainda reservada. Se já pagou o Pix, não pague no cartão."
+                  />
+                )}
               </div>
             )}
             <p className="text-body">

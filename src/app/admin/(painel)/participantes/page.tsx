@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { approveRegistration, reconcileOpaCharges, rejectRegistration, removeRegistration, toggleRefunded } from "@/app/admin/actions";
+import { approveRegistration, reconcileOpaCharges, rejectRegistration, removeRegistration, toggleDuplicateRefunded, toggleRefunded } from "@/app/admin/actions";
 import { Eyebrow } from "@/components/eyebrow";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { formatBRL, formatCpf, formatPhone } from "@/lib/cpf";
@@ -8,6 +8,8 @@ import {
   matchesFilters,
   parseSituation,
   parseSource,
+  paymentMethodName,
+  reviewReasonLabel,
   situation,
   situationFilters,
   situationLabel,
@@ -161,9 +163,14 @@ function RegistrationRow({ r }: { r: Registration }) {
         {s === "confirmed" && <p className="font-mono text-caption">Ingresso nº {ticketNumber(r.id)}</p>}
         <p className="text-caption">
           {r.status === "paid" && r.paidAt
-            ? `${r.provider === "courtesy" ? "Cortesia" : formatBRL(r.amountCents)} em ${fmt.format(new Date(r.paidAt))}`
-            : `iniciada em ${fmt.format(new Date(r.createdAt))}`}
+            ? `${r.provider === "courtesy" ? "Cortesia" : `${formatBRL(r.amountCents)} · ${paymentMethodName(r)}`} em ${fmt.format(new Date(r.paidAt))}`
+            : `iniciada em ${fmt.format(new Date(r.createdAt))}${r.provider === "opapingou" ? ` · ${paymentMethodName(r)}` : ""}`}
         </p>
+        {r.reviewReason && s === "awaiting_approval" && (
+          <p className="border-2 border-ink bg-marigold-wash p-2 text-caption font-semibold text-ink">
+            {reviewReasonLabel[r.reviewReason]}. Aprove se houver vaga; se não, reprove e estorne no Opa Pingou.
+          </p>
+        )}
         {r.reviewedAt && (
           <p className="text-caption">
             {r.approval === "approved" ? "Aprovada" : "Reprovada"} em {fmt.format(new Date(r.reviewedAt))}
@@ -186,10 +193,13 @@ function RegistrationRow({ r }: { r: Registration }) {
         )}
         {r.opaChargeId && s !== "rejected" && (
           <p className="break-all text-caption" title="Id da cobrança no Opa Pingou">
-            Pix Opa Pingou · {r.opaChargeId}
+            {r.opaPaymentLink ? "Link de pagamento" : "Pix"} Opa Pingou · {r.opaChargeId}
           </p>
         )}
         {s === "rejected" && r.status === "paid" && <RefundBox r={r} />}
+        {r.duplicateCharges.map((c) => (
+          <DuplicateBox key={c.id} charge={c} />
+        ))}
       </div>
       <div className="flex flex-col gap-2 md:items-end">
         {s === "awaiting_approval" && (
@@ -222,6 +232,28 @@ function RegistrationRow({ r }: { r: Registration }) {
         )}
       </div>
     </li>
+  );
+}
+
+// Pagamento em dobro: a pessoa pagou a mesma inscrição por duas cobranças (ex.: Pix e depois o link do cartão).
+// A inscrição vale; a segunda cobrança é estornada à mão no painel do Opa Pingou e marcada aqui.
+function DuplicateBox({ charge }: { charge: Registration["duplicateCharges"][number] }) {
+  return (
+    <div className={`mt-2 flex flex-col gap-2 border-2 border-ink p-3 text-caption text-ink ${charge.refundedAt ? "bg-grass-wash" : "bg-marigold-wash"}`}>
+      <p className="font-semibold">
+        {charge.refundedAt ? `Pagamento em dobro estornado em ${fmt.format(new Date(charge.refundedAt))}` : "Pagamento em dobro: estornar"}
+      </p>
+      <p className="break-all">
+        {charge.kind === "PAYMENT_LINK" ? "Link de pagamento" : "Pix"} Opa Pingou · cobrança {charge.id} · paga em {fmt.format(new Date(charge.at))}
+      </p>
+      <form action={toggleDuplicateRefunded}>
+        <input type="hidden" name="chargeId" value={charge.id} />
+        <input type="hidden" name="refunded" value={charge.refundedAt ? "0" : "1"} />
+        <button type="submit" className={buttonClass("secondary", "sm")}>
+          {charge.refundedAt ? "Desmarcar estorno" : "Marcar como estornada"}
+        </button>
+      </form>
+    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { OpaApiError, type OpaCharge, type OpaWebhookEndpoint } from "@/lib/opapingou-core";
+import { chargeDescription, OpaApiError, type ChargeKind, type OpaCharge, type OpaPayment, type OpaWebhookEndpoint } from "@/lib/opapingou-core";
 import { getSetting } from "@/lib/settings";
 import { appUrl } from "@/lib/stripe";
 
@@ -46,15 +46,29 @@ export async function checkApiKey(key: string): Promise<{ ok: true; who: string 
   }
 }
 
-// Pix QR com validade de 1h (mesma janela que segura a vaga). Idempotency-Key = id da inscrição.
-export function createCharge(registrationId: string, amountCents: number, description: string) {
+// Validade de 1h (mesma janela que segura a vaga). Idempotency-Key = id da inscrição (+ nº da tentativa, quando a
+// pessoa retoma ou troca de meio e a inscrição ganha outra cobrança).
+// Cartão: link de pagamento do Abacate Pay (à vista, sem repassar a tarifa: mesmo valor do Pix); bankAccountId
+// fixa a conta Abacate, sem ele a API usa a conta padrão de links. O link não expira no Abacate: um pagamento
+// depois do prazo ainda marca a cobrança como paga (ver applyChargeStatus).
+export function createCharge(registrationId: string, amountCents: number, description: string, opts: { kind?: ChargeKind; bankAccountId?: string | null; attempt?: number } = {}) {
+  const kind = opts.kind ?? "PIX_QR";
   return request<OpaCharge>("POST", "/charges", {
-    idempotencyKey: `sws-${registrationId}`,
-    body: { amountCents, description: description.slice(0, 140), validity: "ONE_HOUR", kind: "PIX_QR" },
+    idempotencyKey: opts.attempt ? `sws-${registrationId}-${opts.attempt + 1}` : `sws-${registrationId}`,
+    body: {
+      amountCents,
+      description: chargeDescription(description),
+      validity: "ONE_HOUR",
+      kind,
+      ...(kind === "PAYMENT_LINK" && opts.bankAccountId ? { bankAccountId: opts.bankAccountId } : {}),
+    },
   });
 }
 
 export const getCharge = (id: string) => request<OpaCharge>("GET", `/charges/${encodeURIComponent(id)}`);
+
+// Precisa do escopo payments:read; sem ele a API responde 403 e o meio fica pelo kind da cobrança
+export const getPayment = (id: string) => request<OpaPayment>("GET", `/payments/${encodeURIComponent(id)}`);
 
 export type { OpaWebhookEndpoint };
 

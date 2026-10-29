@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { formatCpf, formatPhone } from "@/lib/cpf";
 import { ticketNumber } from "@/lib/mail";
-import { isConfirmed, matchesFilters, parseSituation, parseSource, situation } from "@/lib/registration-state";
+import { isConfirmed, matchesFilters, parseSituation, parseSource, paymentMethodName, situation } from "@/lib/registration-state";
 import { listRegistrations } from "@/lib/registrations";
 
 const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const filters = { situation: parseSituation(params.get("situacao")), source: parseSource(params.get("origem")) };
   const rows = (await listRegistrations()).filter((r) => matchesFilters(r, filters));
-  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "situacao", "status", "origem", "aprovacao", "analisada_em", "reembolsado_em", "preco_lote", "desconto", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "stripe_payment_intent", "cobranca_opapingou", "consentimento_patrocinadores_em", "iniciada_em"];
+  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "situacao", "status", "origem", "aprovacao", "analisada_em", "reembolsado_em", "preco_lote", "desconto", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "meio_pagamento", "revisao", "pagamento_em_dobro", "stripe_payment_intent", "cobranca_opapingou", "consentimento_patrocinadores_em", "iniciada_em"];
   const lines = rows.map((r) =>
     [
       r.name,
@@ -35,6 +35,9 @@ export async function GET(request: Request) {
       r.lotName,
       isConfirmed(r) ? ticketNumber(r.id) : "",
       r.provider,
+      paymentMethodName(r),
+      r.reviewReason ?? "",
+      r.duplicateCharges.map((c) => `${c.id}${c.refundedAt ? " (estornado)" : ""}`).join(" "),
       r.stripePaymentIntent ?? "",
       r.opaChargeId ?? "",
       r.sponsorConsentAt ?? "",

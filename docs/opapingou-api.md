@@ -32,6 +32,9 @@ Estas são todas as rotas da API REST `v1`. Nenhuma outra existe.
 - Cobranças:
   - `POST /v1/charges` — Criar cobrança (charges:write)
   - `GET /v1/charges/{id}` — Consultar cobrança (charges:read)
+- Pagamentos:
+  - `GET /v1/payments/{id}` — Consultar pagamento (payments:read)
+  - `POST /v1/payments/{id}/refund` — Estornar pagamento (payments:write)
 - Webhooks:
   - `GET /v1/webhook-endpoints` — Listar endpoints de webhook (webhooks:read)
   - `POST /v1/webhook-endpoints` — Criar endpoint de webhook (webhooks:write)
@@ -68,7 +71,8 @@ Uma chave de teste só enxerga contas em modo de teste (`testMode`) e só recebe
 - `bank_accounts:write` — Alterar as contas bancárias conectadas. Rotas: nenhuma rota REST hoje — não use.
 - `charges:read` — Ler cobranças e prever o roteamento. Rotas: `GET /v1/charges/{id}`.
 - `charges:write` — Criar, cancelar e simular cobranças. Rotas: `POST /v1/charges`.
-- `payments:read` — Ler os pagamentos recebidos. Rotas: nenhuma rota REST hoje — não use.
+- `payments:read` — Ler os pagamentos recebidos. Rotas: `GET /v1/payments/{id}`.
+- `payments:write` — Estornar pagamentos. Rotas: `POST /v1/payments/{id}/refund`.
 - `dashboard:read` — Ler os totais do painel. Rotas: nenhuma rota REST hoje — não use.
 - `webhooks:read` — Ler endpoints e entregas de webhook. Rotas: `GET /v1/webhook-endpoints`, `GET /v1/webhook-endpoints/{id}`, `GET /v1/webhook-deliveries`.
 - `webhooks:write` — Gerenciar endpoints e reenviar entregas de webhook. Rotas: `POST /v1/webhook-endpoints`, `PATCH /v1/webhook-endpoints/{id}`, `DELETE /v1/webhook-endpoints/{id}`, `POST /v1/webhook-endpoints/{id}/rotate-secret`, `POST /v1/webhook-endpoints/{id}/test`, `POST /v1/webhook-deliveries/{id}/redeliver`.
@@ -143,6 +147,8 @@ Erros desta área: `WEBHOOK_URL_INVALID`, `INVALID_WEBHOOK_EVENT` e `WEBHOOK_END
 
 - Pagamentos:
   - `payment.confirmed` — Pagamento confirmado
+  - `payment.refund_requested` — Estorno solicitado
+  - `payment.refund_failed` — Estorno não concluído
   - `payment.refunded` — Pagamento estornado
   - `payment.charged_back` — Pagamento contestado
 - Cobranças:
@@ -255,6 +261,8 @@ Erros de validação (`VALIDATION_FAILED`, `400`) trazem também `errors`, uma l
 
 Uma rota que não existe responde `404` com `NOT_FOUND`; um método errado em um caminho conhecido também responde `404`. Toda resposta, de sucesso ou de erro, traz o cabeçalho `X-Request-Id`, o mesmo valor de `requestId`: informe-o ao falar com o suporte.
 
+Erros do provedor de pagamentos (o banco ou a plataforma da conta) nunca voltam como `502` ou `504`. Quando o provedor recusa o pedido, a resposta é `422` `PROVIDER_REJECTED`, com `provider`, `providerStatus` (o status HTTP que o provedor respondeu), `providerCode` e, quando ele informa, `providerDetail`: corrija os dados antes de repetir. Quando o provedor está fora do ar ou falha do lado dele, a resposta é `503` `PROVIDER_UNAVAILABLE`, com `Retry-After`: espere esses segundos e repita com a mesma `Idempotency-Key`.
+
 ### Códigos de erro
 
 Status HTTP · `code` · mensagem (`title`). É o catálogo inteiro da plataforma: nem todo código ocorre nas rotas REST.
@@ -310,6 +318,9 @@ Status HTTP · `code` · mensagem (`title`). É o catálogo inteiro da plataform
 - 409 `STAFF_EXISTS` — Este e-mail já faz parte da equipe.
 - 409 `ROLE_IN_USE` — Esta role ainda tem membros. Mova-os para outra role antes de remover.
 - 409 `PAYMENT_AMOUNT_MISMATCH` — O valor pago não confere com o valor da cobrança.
+- 409 `REFUND_UNSUPPORTED` — Esse banco não permite estorno pelo Opa Pingou.
+- 409 `PAYMENT_NOT_REFUNDABLE` — Esse pagamento não pode ser estornado.
+- 409 `REFUND_INSUFFICIENT_FUNDS` — Saldo insuficiente no provedor para o estorno.
 - 409 `BANK_ACCOUNT_DUPLICATE` — Essa chave Pix já está conectada em outra conta deste banco.
 - 409 `BANK_ACCOUNT_PIX_KEY_CHANGE` — Para usar outra chave Pix, conecte uma nova conta.
 - 409 `BANK_ACCOUNT_DISCONNECTED` — Essa conta está desconectada. Reconecte para usar.
@@ -329,7 +340,9 @@ Status HTTP · `code` · mensagem (`title`). É o catálogo inteiro da plataform
 - 409 `IDEMPOTENCY_IN_PROGRESS` — Uma requisição com esta Idempotency-Key ainda está em andamento.
 - 422 `NO_ROUTABLE_ACCOUNT` — Conecte um banco para gerar cobranças.
 - 422 `BANK_CREDENTIALS_INVALID` — Não conseguimos validar as credenciais. Confira as chaves.
-- 422 `PAYMENT_LINK_UNAVAILABLE` — Conecte uma conta Mercado Pago para gerar links de pagamento.
+- 422 `PROVIDER_REJECTED` — O provedor de pagamentos recusou o pedido. Confira os dados enviados antes de tentar de novo.
+- 422 `PAYMENT_LINK_UNAVAILABLE` — Conecte uma conta Mercado Pago ou Abacate Pay para gerar links de pagamento.
+- 422 `CARD_FEE_PASSTHROUGH_UNSUPPORTED` — Repassar a tarifa do cartão ao comprador só vale para link de pagamento no Abacate Pay.
 - 422 `RECURRENCE_UNSUPPORTED` — Essa conta não oferece Pix Automático.
 - 422 `RECURRENCE_SCOPES_MISSING` — O banco recusou o acesso ao Pix Automático. Confira se a credencial tem os escopos de Pix Automático habilitados.
 - 422 `DEVICE_WITHOUT_PUSH_TOKEN` — Esse dispositivo não registrou um token de push.
@@ -338,9 +351,24 @@ Status HTTP · `code` · mensagem (`title`). É o catálogo inteiro da plataform
 - 429 `RATE_LIMITED` — Muitas requisições. Tente de novo em instantes.
 - 500 `NETWORK` — Sem conexão. Verifique sua internet e tente de novo.
 - 500 `UNKNOWN` — Algo deu errado. Tente de novo.
-- 502 `PROVIDER_ERROR` — O provedor de pagamentos respondeu com erro. Tente de novo.
-- 502 `WEBHOOK_REGISTRATION_FAILED` — A conta foi conectada, mas não conseguimos registrar o webhook no provedor.
+- 503 `PROVIDER_ERROR` — O provedor de pagamentos respondeu com erro. Tente de novo.
 - 503 `PROVIDER_UNAVAILABLE` — Não conseguimos falar com o provedor de pagamentos. Tente de novo em instantes.
+- 503 `WEBHOOK_REGISTRATION_FAILED` — A conta foi conectada, mas não conseguimos registrar o webhook no provedor.
+
+Recusa do provedor · 422 · application/problem+json:
+
+```json
+{
+  "type": "https://opapingou.com.br/docs#erro-PROVIDER_REJECTED",
+  "title": "O provedor de pagamentos recusou o pedido. Confira os dados enviados antes de tentar de novo.",
+  "status": 422,
+  "code": "PROVIDER_REJECTED",
+  "provider": "ABACATE",
+  "providerStatus": 400,
+  "providerCode": "Invalid description",
+  "requestId": "req_01J9Z3K8X2"
+}
+```
 
 Erro de validação · 400 · application/problem+json:
 
@@ -458,10 +486,11 @@ Cria uma cobrança. O roteamento escolhe a conta com cota grátis disponível, a
 Corpo (JSON):
 
 - `amountCents` — `integer`, obrigatório. Valor em centavos.
-- `description` — `string`, opcional. Até 140 caracteres.
+- `description` — `string`, opcional. Até 140 caracteres. Em conta Abacate Pay, vai ao provedor sem acentos, com travessões trocados por hífen e cortada em 100 caracteres; a cobrança guarda o texto original.
 - `validity` — `ChargeValidity` (`FIFTEEN_MIN` | `ONE_HOUR` | `ONE_DAY` | `SEVEN_DAYS`), obrigatório. Por quanto tempo a cobrança pode ser paga.
-- `kind` — `ChargeKind` (`PIX_QR` | `PAYMENT_LINK`), opcional. Padrão: `PIX_QR`. `PAYMENT_LINK` exige uma conta Mercado Pago conectada.
-- `bankAccountId` — `id`, opcional. Só `PIX_QR`: cobra nesta conta e pula o roteamento.
+- `kind` — `ChargeKind` (`PIX_QR` | `PAYMENT_LINK`), opcional. Padrão: `PIX_QR`. `PAYMENT_LINK` exige uma conta Mercado Pago ou Abacate Pay conectada. No Abacate Pay o link aceita Pix e cartão (à vista) e não expira no provedor: a cobrança expira só no Opa Pingou, e um pagamento feito depois disso ainda a marca como paga.
+- `bankAccountId` — `id`, opcional. Cobra nesta conta: no `PIX_QR` pula o roteamento; no `PAYMENT_LINK` escolhe a conta do link (sem ela, a padrão entre Mercado Pago e Abacate Pay, senão a primeira).
+- `passCardFeeToPayer` — `boolean`, opcional. Só `PAYMENT_LINK` numa conta Abacate Pay: quem paga no cartão paga também a tarifa do cartão, por cima do valor (o Pix não muda). Padrão `false`. Em qualquer outro caso, `true` responde `422` `CARD_FEE_PASSTHROUGH_UNSUPPORTED`. O pagamento registra sempre o valor da cobrança.
 
 Observações:
 
@@ -470,6 +499,7 @@ Observações:
 - Sem o cabeçalho: `400` `IDEMPOTENCY_KEY_REQUIRED`. Mesma chave com outro corpo: `409` `IDEMPOTENCY_KEY_REUSED`. Enquanto a primeira requisição ainda roda: `409` `IDEMPOTENCY_IN_PROGRESS`, com `Retry-After`.
 - Com `bankAccountId` de uma conta fora da chave (outra empresa, outro modo ou fora da lista de contas da chave): `404` `NOT_FOUND`. Uma chave de teste só cobra em contas de teste.
 - Limite de 60 requisições por minuto por chave nesta rota, além do limite geral da chave.
+- O provedor da conta recusou a cobrança: `422` `PROVIDER_REJECTED`, com `providerCode` e `providerDetail` dizendo o motivo. Provedor fora do ar: `503` `PROVIDER_UNAVAILABLE`, com `Retry-After`; repita com a mesma `Idempotency-Key`.
 - Quando a cobrança é paga, expira ou é cancelada, os endpoints inscritos recebem `charge.paid`, `charge.expired` ou `charge.canceled`.
 
 Exemplo:
@@ -540,6 +570,7 @@ Resposta (`201`):
   "txid": "7f3c2a9e4b1d48c6a5f0b2e9d4c7f1a8",
   "brCode": "00020126580014br.gov.bcb.pix…6304A1B2",
   "paymentLink": null,
+  "passCardFeeToPayer": false,
   "providerRef": "7f3c2a9e4b1d48c6a5f0b2e9d4c7f1a8",
   "paymentId": null,
   "feeCents": 0,
@@ -619,6 +650,7 @@ Resposta (`200`):
   "txid": "7f3c2a9e4b1d48c6a5f0b2e9d4c7f1a8",
   "brCode": "00020126580014br.gov.bcb.pix…6304A1B2",
   "paymentLink": null,
+  "passCardFeeToPayer": false,
   "providerRef": "7f3c2a9e4b1d48c6a5f0b2e9d4c7f1a8",
   "paymentId": null,
   "feeCents": 0,
@@ -626,6 +658,127 @@ Resposta (`200`):
   "routingReason": "62 Pix grátis sobrando",
   "paidAt": null,
   "createdAt": "2026-09-30T14:32:00.000Z"
+}
+```
+
+### Consultar pagamento — `GET /v1/payments/{id}`
+
+Devolve um pagamento do cliente. O `id` vem de `paymentId` na cobrança ou do evento `payment.confirmed`.
+
+- Acesso: chave com o escopo `payments:read`.
+- Sucesso: `200` com `Payment`.
+- Parâmetros de caminho: `id` (identificador do recurso).
+
+Observações:
+
+- Um pagamento numa conta fora da chave (outro modo ou fora da lista de contas da chave) responde `404` `PAYMENT_NOT_FOUND`.
+
+Exemplo:
+
+```bash
+curl "https://api.opapingou.com.br/v1/payments/{id}" \
+  -H "Authorization: Bearer $OPAPINGOU_API_KEY"
+```
+
+Resposta (`200`):
+
+```json
+{
+  "id": "4d5e6f70-8a9b-4c1d-9e2f-3a4b5c6d7e8f",
+  "amountCents": 35000,
+  "netCents": 33715,
+  "providerFeeCents": 1285,
+  "origin": "PAYMENT_LINK",
+  "method": "CREDIT_CARD",
+  "status": "CONFIRMED",
+  "provider": "ABACATE",
+  "bankAccount": {
+    "id": "b3f1c2d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+    "provider": "INTER",
+    "label": "Conta da loja",
+    "displayName": "Conta da loja",
+    "testMode": false
+  },
+  "charge": {
+    "id": "9a8b7c6d-5e4f-4321-a0b1-c2d3e4f5a6b7",
+    "kind": "PAYMENT_LINK",
+    "description": "Inscrição 42"
+  },
+  "payerName": "Carlos Comprador",
+  "payerMessage": null,
+  "paidAt": "2026-10-22T14:32:00.000Z",
+  "refundedAt": null,
+  "refundRequestedAt": null,
+  "refundReason": null,
+  "refundNextAttemptAt": null,
+  "refundFailedAt": null
+}
+```
+
+### Estornar pagamento — `POST /v1/payments/{id}/refund`
+
+Pede ao provedor o estorno total do pagamento. Hoje só para pagamentos em contas Abacate Pay (Pix e cartão).
+
+- Acesso: chave com o escopo `payments:write`.
+- Sucesso: `202` com `Payment`.
+- Parâmetros de caminho: `id` (identificador do recurso).
+
+Corpo (JSON):
+
+- `reason` — `string`, opcional. Motivo do estorno, até 500 caracteres. Vai para o histórico do provedor.
+
+Observações:
+
+- Responde `202` com o pagamento: o pedido foi aceito pelo provedor e `refundRequestedAt` fica preenchido. O evento `payment.refund_requested` sai na hora; `payment.refunded` sai quando o provedor confirma — no Abacate Pay, em geral na mesma chamada, e o `status` já volta `REFUNDED`.
+- O estorno é sempre total e sai do saldo da loja no provedor. A tarifa do provedor não é devolvida.
+- Repetir o pedido num pagamento ainda `CONFIRMED` chama o provedor de novo (idempotente) e responde `202` outra vez. Num pagamento já `REFUNDED` ou `CHARGED_BACK`: `409` `PAYMENT_NOT_REFUNDABLE`.
+- Sem saldo na loja do provedor, o estorno entra numa fila: a resposta continua `202`, com `refundNextAttemptAt` preenchido, e o Opa Pingou tenta de novo sozinho (15 min, 1 h, 6 h e depois uma vez por dia). Se em 30 dias não houver saldo, a fila desiste: `refundFailedAt` é preenchido e sai `payment.refund_failed`. Repetir o pedido tira da fila e tenta na hora.
+- `409` `REFUND_UNSUPPORTED` quando o banco da conta não permite estorno pelo Opa Pingou; `503` `PROVIDER_UNAVAILABLE` quando o provedor está ocupado com esse pagamento (repita em instantes).
+- O corpo pode ser omitido. Validação estrita: um campo fora da lista responde `400` `VALIDATION_FAILED`.
+
+Exemplo:
+
+```bash
+curl -X POST "https://api.opapingou.com.br/v1/payments/{id}/refund" \
+  -H "Authorization: Bearer $OPAPINGOU_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "reason": "Inscrição reprovada"
+}'
+```
+
+Resposta (`202`):
+
+```json
+{
+  "id": "4d5e6f70-8a9b-4c1d-9e2f-3a4b5c6d7e8f",
+  "amountCents": 35000,
+  "netCents": 33715,
+  "providerFeeCents": 1285,
+  "origin": "PAYMENT_LINK",
+  "method": "CREDIT_CARD",
+  "status": "CONFIRMED",
+  "provider": "ABACATE",
+  "bankAccount": {
+    "id": "b3f1c2d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+    "provider": "INTER",
+    "label": "Conta da loja",
+    "displayName": "Conta da loja",
+    "testMode": false
+  },
+  "charge": {
+    "id": "9a8b7c6d-5e4f-4321-a0b1-c2d3e4f5a6b7",
+    "kind": "PAYMENT_LINK",
+    "description": "Inscrição 42"
+  },
+  "payerName": "Carlos Comprador",
+  "payerMessage": null,
+  "paidAt": "2026-10-22T14:32:00.000Z",
+  "refundedAt": null,
+  "refundRequestedAt": null,
+  "refundReason": null,
+  "refundNextAttemptAt": null,
+  "refundFailedAt": null
 }
 ```
 
@@ -1132,6 +1285,7 @@ Uma cobrança.
 - `txid` — `string`
 - `brCode` — `string`, pode ser `null`. Pix copia e cola; `null` em link de pagamento.
 - `paymentLink` — `string`, pode ser `null`. URL do checkout (só `PAYMENT_LINK`).
+- `passCardFeeToPayer` — `boolean`. Link do Abacate Pay em que o comprador paga a tarifa do cartão.
 - `providerRef` — `string`, pode ser `null`. Identificador da cobrança no provedor.
 - `paymentId` — `id`, pode ser `null`. Pagamento que quitou a cobrança, quando houver.
 - `feeCents` — `integer`. Tarifa estimada.
@@ -1149,6 +1303,37 @@ A conta em que a cobrança foi roteada.
 - `label` — `string`, pode ser `null`. Nome dado pelo cliente à conta.
 - `displayName` — `string`. Nome exibido: `label` ou banco + chave Pix mascarada.
 - `testMode` — `boolean`. Conta de sandbox do provedor.
+
+### Payment
+
+Dinheiro que entrou: o pagamento de uma cobrança, de um link ou um Pix direto na chave. Nasce do que o provedor informa, nunca do corpo de um webhook.
+
+- `id` — `id`
+- `amountCents` — `integer`. Valor bruto que o pagador pagou, em centavos.
+- `netCents` — `integer`. `amountCents` menos a tarifa do provedor.
+- `providerFeeCents` — `integer`. Tarifa que o provedor reteve; `0` quando ele não informa.
+- `origin` — `PaymentOrigin` (`CHARGE` | `PAYMENT_LINK` | `INBOUND` | `RECURRING`)
+- `method` — `PaymentMethod` (`PIX` | `CREDIT_CARD` | `DEBIT_CARD` | `BOLETO` | `ACCOUNT_MONEY` | `OTHER`)
+- `status` — `PaymentStatus` (`CONFIRMED` | `REFUNDED` | `CHARGED_BACK`). Só anda para frente: `CONFIRMED`, depois `REFUNDED` (estornado) ou `CHARGED_BACK` (contestado).
+- `provider` — `BankProvider` (`INTER` | `C6` | `ABACATE` | `MERCADO_PAGO` | `ASAAS` | `TRANSFEERA` | `BS2`)
+- `bankAccount` — `ChargeBankAccount`. Conta em que o dinheiro entrou.
+- `charge` — `PaymentCharge`, pode ser `null`. Cobrança que o pagamento quitou; `null` para um Pix direto na chave.
+- `payerName` — `string`, pode ser `null`
+- `payerMessage` — `string`, pode ser `null`. Mensagem do pagador (Pix) ou descrição do provedor.
+- `paidAt` — `date-time`. Horário do provedor, não o do webhook.
+- `refundedAt` — `date-time`, pode ser `null`
+- `refundRequestedAt` — `date-time`, pode ser `null`. Quando o estorno foi pedido (`POST /v1/payments/{id}/refund` ou painel); `null` se nunca foi.
+- `refundReason` — `string`, pode ser `null`. Motivo informado no pedido de estorno.
+- `refundNextAttemptAt` — `date-time`, pode ser `null`. Estorno na fila porque faltou saldo no provedor: quando o Opa Pingou tenta de novo. `null` fora da fila.
+- `refundFailedAt` — `date-time`, pode ser `null`. A fila desistiu do estorno (30 dias sem saldo, ou recusa definitiva do provedor) e `payment.refund_failed` saiu. Um novo pedido limpa.
+
+### PaymentCharge
+
+A cobrança que o pagamento quitou.
+
+- `id` — `id`
+- `kind` — `ChargeKind` (`PIX_QR` | `PAYMENT_LINK`)
+- `description` — `string`, pode ser `null`
 
 ### Health
 
@@ -1232,6 +1417,9 @@ Uma página de entregas.
 - `ChargeStatus`: `PENDING`, `PAID`, `EXPIRED`, `CANCELED`
 - `ChargeValidity`: `FIFTEEN_MIN`, `ONE_HOUR`, `ONE_DAY`, `SEVEN_DAYS`
 - `ChargeKind`: `PIX_QR`, `PAYMENT_LINK`
+- `PaymentOrigin`: `CHARGE`, `PAYMENT_LINK`, `INBOUND`, `RECURRING`
+- `PaymentMethod`: `PIX`, `CREDIT_CARD`, `DEBIT_CARD`, `BOLETO`, `ACCOUNT_MONEY`, `OTHER`
+- `PaymentStatus`: `CONFIRMED`, `REFUNDED`, `CHARGED_BACK`
 - `WebhookEndpointStatus`: `ACTIVE`, `DISABLED`
 - `WebhookDeliveryStatus`: `PENDING`, `DELIVERING`, `SUCCEEDED`, `FAILED`
 

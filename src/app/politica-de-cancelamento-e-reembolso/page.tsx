@@ -25,14 +25,16 @@ A organizadora e responsável pelas vendas é a **${site.legalName}**, CNPJ **${
     title: "Pagamento único, sem assinatura",
     content: `A inscrição é cobrada **uma única vez**, no valor mostrado na página de inscrição. **Não é assinatura**: não há mensalidade, cobrança recorrente nem renovação automática, e nenhum outro valor é cobrado depois.
 
-O pagamento é feito por Pix, processado pelo Opa Pingou (ou por cartão, processado pelo Stripe, quando essa opção for oferecida). A organização não armazena dados de cartão nem de conta bancária.`,
+O pagamento é feito por **Pix** ou por **cartão de crédito, à vista** (sem parcelamento), processados pelo Opa Pingou com a Abacate Pay. O valor é o mesmo nas duas formas: a tarifa do cartão não é repassada a você. A organização não armazena dados de cartão nem de conta bancária.
+
+O pagamento reserva a vaga por **1 hora**. Se ele chegar depois disso e o lote ou o convite já estiver completo, a inscrição passa pela análise da organização: você recebe o ingresso, se houver vaga, ou a **devolução integral**, pelo mesmo meio de pagamento.`,
   },
   {
     id: "arrependimento",
     title: "Direito de arrependimento (7 dias)",
     content: `Como a compra é feita pela internet, você pode desistir da inscrição em até **7 (sete) dias corridos contados da data da compra** (a confirmação do pagamento), sem precisar justificar, conforme o art. 49 do Código de Defesa do Consumidor (Lei nº 8.078/1990).
 
-Nesse caso, o reembolso é **integral**: devolvemos todo o valor pago, sem descontar taxas, **pelo mesmo meio de pagamento** usado na compra. Pagamentos por Pix são devolvidos por Pix para a conta de origem.`,
+Nesse caso, o reembolso é **integral**: devolvemos todo o valor pago, sem descontar taxas, **pelo mesmo meio de pagamento** usado na compra. Pagamentos por Pix são devolvidos por Pix para a conta de origem; pagamentos no cartão de crédito são **estornados no mesmo cartão**. O estorno é feito manualmente pela organização no meio de pagamento, e o prazo para aparecer na fatura depende da operadora do cartão.`,
   },
   {
     id: "cancelamento",
@@ -80,7 +82,7 @@ export default function PoliticaDeCancelamentoPage() {
     <LegalPage
       eyebrow="Documento"
       title="Política de Cancelamento e Reembolso."
-      updated="26 de outubro de 2026"
+      updated="29 de outubro de 2026"
       intro={{
         label: "Resumo",
         text: "Pagamento único, sem assinatura. Até 7 dias depois da compra, você desiste e recebe tudo de volta, pelo mesmo meio. Depois disso, cancelamento com 50% até 19/11/2026 e transferência da inscrição até 2/12/2026.",

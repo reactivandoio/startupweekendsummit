@@ -9,6 +9,7 @@ import { formatBRL } from "@/lib/cpf";
 import { describeDiscount } from "@/lib/discounts";
 import { getInviteByCode, inviteAvailable } from "@/lib/invites";
 import { firstName } from "@/lib/names";
+import { cardPaymentEnabled } from "@/lib/settings";
 import { currentOffer, offerPrice } from "@/lib/tickets";
 
 // Página de convite: não indexa e não entra no sitemap
@@ -20,7 +21,9 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
   const { code } = await params;
   const { cancelado } = await searchParams;
   const invite = await getInviteByCode(code);
-  const ticket = await currentOffer();
+  const [ticket, cardOn] = await Promise.all([currentOffer(), cardPaymentEnabled()]);
+  const card = ticket.enabled && ticket.provider === "opapingou" && cardOn;
+  const payVia = card ? "Pagamento via Pix ou cartão de crédito" : "Pagamento via Pix";
   const available = invite ? inviteAvailable(invite) : false;
   // Preço deste convite: lote à venda − desconto (cortesia quando zera)
   const price = ticket.enabled && invite ? offerPrice(ticket, invite.discount) : null;
@@ -63,9 +66,9 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
               {price?.courtesy
                 ? "Ingresso cortesia da organização: sem pagamento. Preencha seus dados e a inscrição é confirmada na hora, com o ingresso por e-mail."
                 : price && price.discountCents > 0
-                  ? `Valor com o desconto do seu convite. ${ticket.enabled && ticket.provider === "opapingou" ? "Pagamento via Pix, com confirmação na hora e ingresso por e-mail." : "Pagamento pelo Stripe, com confirmação por e-mail."}`
+                  ? `Valor com o desconto do seu convite. ${ticket.enabled && ticket.provider === "opapingou" ? `${payVia}, com confirmação na hora e ingresso por e-mail.` : "Pagamento pelo Stripe, com confirmação por e-mail."}`
                   : ticket.enabled && ticket.provider === "opapingou"
-                ? "Valor por participante. Pagamento via Pix, com confirmação na hora e ingresso por e-mail."
+                ? `Valor por participante. ${payVia}, com confirmação na hora e ingresso por e-mail.`
                 : "Valor único por participante. Pagamento pelo Stripe, com confirmação por e-mail."}
             </p>
             <ul className="border-t border-ink">
@@ -120,6 +123,7 @@ export default async function InscricaoPage({ params, searchParams }: PageProps<
                   code={invite.code}
                   priceLabel={price ? formatBRL(price.finalCents) : formatBRL(ticket.priceCents)}
                   method={price?.courtesy ? "courtesy" : ticket.provider === "opapingou" ? "pix" : "checkout"}
+                  card={card}
                 />
               </>
             )}

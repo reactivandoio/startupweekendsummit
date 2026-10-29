@@ -1,7 +1,7 @@
 // pnpm test — situação da inscrição (pagamento + aprovação do cadastro aberto)
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formPath, isConfirmed, matchesFilters, parseSituation, parseSource, situation } from "./registration-state.ts";
+import { formPath, isConfirmed, matchesFilters, parseSituation, parseSource, paymentMethodName, paymentPagePath, situation } from "./registration-state.ts";
 
 describe("situation", () => {
   it("convite pago é confirmado direto, sem aprovação", () => {
@@ -50,5 +50,19 @@ describe("formPath", () => {
   it("volta ao convite ou à página aberta", () => {
     assert.equal(formPath({ source: "invite", inviteCode: "abc" }), "/inscricao/abc");
     assert.equal(formPath({ source: "open", inviteCode: "" }), "/inscricao/aberta");
+  });
+});
+
+describe("meio de pagamento", () => {
+  it("usa o gravado na inscrição e cai no provedor nas antigas", () => {
+    assert.equal(paymentMethodName({ provider: "opapingou", paymentMethod: "card" }), "Cartão de crédito");
+    assert.equal(paymentMethodName({ provider: "opapingou", paymentMethod: "pix" }), "Pix");
+    assert.equal(paymentMethodName({ provider: "opapingou", paymentMethod: null }), "Pix");
+    assert.equal(paymentMethodName({ provider: "stripe", paymentMethod: null }), "Cartão (Stripe)");
+    assert.equal(paymentMethodName({ provider: "courtesy", paymentMethod: null }), "Cortesia");
+  });
+  it("manda para a página do Pix ou do cartão", () => {
+    assert.equal(paymentPagePath({ id: "x", opaPaymentLink: null }), "/inscricao/pix/x");
+    assert.equal(paymentPagePath({ id: "x", opaPaymentLink: "https://pay" }), "/inscricao/cartao/x");
   });
 });

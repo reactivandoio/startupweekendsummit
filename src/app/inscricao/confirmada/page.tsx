@@ -9,7 +9,7 @@ import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
 import { sendPaymentReceived, ticketNumber } from "@/lib/mail";
 import { firstName } from "@/lib/names";
-import { formPath, situation } from "@/lib/registration-state";
+import { formPath, paymentPagePath, situation } from "@/lib/registration-state";
 import { getRegistration, getRegistrationBySession, markPaid, type Registration } from "@/lib/registrations";
 import { stripe } from "@/lib/stripe";
 
@@ -17,17 +17,17 @@ export const metadata: Metadata = { title: "Inscrição confirmada", robots: { i
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type Outcome = "paid" | "review" | "rejected" | "processing" | "open" | "unknown";
+type Outcome = "paid" | "review" | "late" | "rejected" | "processing" | "open" | "unknown";
 type Resolved = { outcome: Outcome; firstName: string; back: string; amount: string; ticket: string };
 
 const empty: Resolved = { outcome: "unknown", firstName: "", back: "", amount: "", ticket: "" };
 
 const base = (r: Registration) => ({ firstName: firstName(r.name), back: formPath(r), amount: r.provider === "courtesy" ? "Cortesia" : formatBRL(r.amountCents), ticket: ticketNumber(r.id) });
 
-// Paga: confirmada, ou (cadastro aberto) em análise/reprovada
+// Paga: confirmada, ou (cadastro aberto ou pagamento tardio sem vaga) em análise/reprovada
 function paidOutcome(r: Registration): Outcome {
   const s = situation({ ...r, status: "paid" });
-  return s === "awaiting_approval" ? "review" : s === "rejected" ? "rejected" : "paid";
+  return s === "awaiting_approval" ? (r.reviewReason ? "late" : "review") : s === "rejected" ? "rejected" : "paid";
 }
 
 // Volta do Checkout. Confirma pelo Stripe (não confia só no webhook) e marca como paga se já estiver.
@@ -51,12 +51,13 @@ async function resolveStripe(sessionId: string): Promise<Resolved> {
   }
 }
 
-// Pix do Opa Pingou: a página do QR manda pra cá quando a cobrança é paga; se ainda não foi, volta pro QR.
+// Opa Pingou: a página do QR (Pix) ou a de "aguardando pagamento" (cartão) manda pra cá quando a cobrança é paga;
+// se ainda não foi, volta pra ela.
 // Cortesia chega aqui direto do formulário, já confirmada.
 async function resolveOpa(id: string): Promise<Resolved> {
   const registration = await getRegistration(id).catch(() => null);
   if (!registration || (registration.provider !== "opapingou" && registration.provider !== "courtesy")) return empty;
-  if (registration.status !== "paid") redirect(`/inscricao/pix/${registration.id}`);
+  if (registration.status !== "paid") redirect(paymentPagePath(registration));
   return { outcome: paidOutcome(registration), ...base(registration) };
 }
 
@@ -73,6 +74,12 @@ const copy: Record<Outcome, { tag: string; title: string; box: string; text: str
     title: "Pagamento recebido.",
     box: "Sua inscrição está em análise.",
     text: "As inscrições por esta página passam pela aprovação da organização. Assim que a sua for analisada, você recebe um e-mail: com o ingresso, se aprovada; se não for, o valor pago é devolvido integralmente.",
+  },
+  late: {
+    tag: "Em análise",
+    title: "Pagamento recebido.",
+    box: "Sua inscrição está em análise.",
+    text: "O pagamento chegou depois do prazo de 1 hora da reserva e a vaga não estava mais garantida. A organização vai analisar e você recebe um e-mail: com o ingresso, se houver vaga; se não houver, o valor pago é devolvido integralmente.",
   },
   rejected: {
     tag: "Não aprovada",
