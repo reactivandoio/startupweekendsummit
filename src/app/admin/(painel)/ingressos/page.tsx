@@ -7,7 +7,7 @@ import { formatBRL } from "@/lib/cpf";
 import { brasiliaInputValue, describePeriod, lotStateLabel, type LotState } from "@/lib/lots-core";
 import { listWebhookEndpoints, opaApiUrl, opaWebhookUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
 import { duplicateWebhooks, isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
-import { cardPaymentEnabled, getSetting, openRegistrationEnabled } from "@/lib/settings";
+import { cardPaymentEnabled, getSetting, openRegistrationEnabled, secretsStatus, type SecretsStatus } from "@/lib/settings";
 import { appUrl } from "@/lib/stripe";
 import { currentOffer, listLots } from "@/lib/tickets";
 
@@ -26,6 +26,8 @@ const stateClass: Record<LotState, string> = {
 };
 
 export default async function IngressosPage() {
+  // secretsStatus antes: migra o que estiver em texto puro (passada a janela do deploy)
+  const secrets = await secretsStatus();
   const [apiKey, webhookId, lots, offer, openEnabled, cardEnabled, cardAccount] = await Promise.all([
     getSetting("opapingou_api_key"),
     getSetting("opapingou_webhook_id"),
@@ -67,6 +69,8 @@ export default async function IngressosPage() {
             : "Configure o Opa Pingou e tenha pelo menos um lote ativo, dentro do período de vendas e com vaga, para abrir as inscrições."}
         </p>
       </div>
+
+      <SecretsAlert status={secrets} />
 
       <section className="grid gap-10 lg:grid-cols-[minmax(280px,420px)_1fr]">
         <div className="flex flex-col gap-6">
@@ -110,6 +114,7 @@ export default async function IngressosPage() {
 
         <dl className="self-start border-t border-ink">
           <Row label="API">{opaApiUrl()}</Row>
+          <Row label="Criptografia">{secretsLabel(secrets)}</Row>
           <Row label="Chave">
             {apiKey ? (
               <div className="flex flex-wrap items-center gap-3">
@@ -265,6 +270,39 @@ export default async function IngressosPage() {
         )}
       </section>
     </div>
+  );
+}
+
+const SECRET_NAMES: Record<string, string> = { opapingou_api_key: "a chave da API", opapingou_webhook_secret: "o segredo do webhook" };
+const names = (keys: string[]) => keys.map((k) => SECRET_NAMES[k] ?? k).join(" e ");
+
+function secretsLabel(s: SecretsStatus) {
+  if (s.unreadable.length) return `Não abre ${names(s.unreadable)}`;
+  if (s.key === "ok")
+    return s.plaintext.length ? `Cifra ${names(s.plaintext)} em até 10 min depois do deploy` : "Segredos cifrados no banco (AES-256-GCM)";
+  return s.key === "invalid" ? "SETTINGS_ENCRYPTION_KEY inválida: segredos em texto puro" : "Sem SETTINGS_ENCRYPTION_KEY: segredos em texto puro";
+}
+
+// Falta da variável não fecha as vendas (os segredos seguem em texto puro, como antes), mas tem que aparecer aqui.
+function SecretsAlert({ status }: { status: SecretsStatus }) {
+  if (status.unreadable.length)
+    return (
+      <p className="max-w-[70ch] border-2 border-ink bg-marigold-wash p-4 text-body" role="alert">
+        <strong>Não consigo abrir {names(status.unreadable)} do Opa Pingou.</strong> Eles foram cifrados com uma SETTINGS_ENCRYPTION_KEY que não
+        está mais no servidor (ou mudou). Volte a chave original ao .env e faça o deploy, ou salve a chave da API e troque o segredo do webhook de
+        novo aqui.
+      </p>
+    );
+  if (status.key === "ok") return null;
+  return (
+    <p className="max-w-[70ch] border-2 border-ink bg-marigold-wash p-4 text-body" role="alert">
+      <strong>
+        {status.key === "invalid" ? "SETTINGS_ENCRYPTION_KEY inválida" : "SETTINGS_ENCRYPTION_KEY não configurada"}: os segredos do Opa Pingou estão
+        em texto puro no banco.
+      </strong>{" "}
+      As vendas seguem normais. Gere a chave com <code className="font-mono">openssl rand -base64 32</code>, coloque no .env do servidor e faça o
+      deploy: na primeira leitura os valores atuais são cifrados (ver README).
+    </p>
   );
 }
 

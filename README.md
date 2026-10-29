@@ -40,6 +40,17 @@ cada build — as duas cores ficariam com chaves diferentes e quem carregou a p�
 "Failed to find Server Action" ao enviar um formulário. O deploy falha na hora do build se ela faltar, antes de
 qualquer troca de nginx, então a cor no ar continua servindo.
 
+`SETTINGS_ENCRYPTION_KEY` cifra no banco (AES-256-GCM) a chave da API e o segredo do webhook do Opa Pingou salvos no
+painel. Gere uma vez com `openssl rand -base64 32` (32 bytes em base64), coloque no `.env` do diretório de produção
+(o `docker-compose.yml` a repassa às duas cores, `app-blue` e `app-green`) e faça o deploy; a variável só chega aos
+containers quando eles são recriados. Os valores antigos em texto puro são cifrados na primeira leitura depois que o
+container está no ar há 10 min (migração idempotente; abrir `/admin/ingressos` também migra) — a espera é para a cor
+antiga, sem este código, nunca ler um valor cifrado durante o blue/green. Pelo mesmo motivo, um rollback para uma
+versão anterior ao STA-23 depois da migração deixa o Opa Pingou sem chave: salve a chave e troque o segredo no painel. Sem a variável, ou com tamanho errado, nada para: os
+segredos ficam em texto puro como antes e o painel mostra um alerta. Guarde a chave junto do backup do `.env` — se ela
+for perdida ou trocada, os valores já cifrados não abrem (o painel avisa) e é preciso salvar a chave da API e trocar o
+segredo do webhook de novo no painel. O painel só mostra a chave mascarada e os logs citam só o nome da configuração.
+
 Deploy contínuo: push na `main` dispara `.github/workflows/deploy.yml` no runner self-hosted do jarvis, que faz o
 blue/green acima. Os PRs para a `main` passam pelo `.github/workflows/ci.yml` (lint, typecheck com `next typegen`,
 testes e build), num runner do GitHub e sem segredos — nunca no self-hosted, porque o repo é público e PR de fork
@@ -112,7 +123,7 @@ com vaga, na ordem da lista, é o que está à venda; quando esgota, o próximo 
 cadastrado vale o valor único de `TICKET_PRICE_CENTS` no `.env`, como antes.
 
 **Opa Pingou** (Pix): a chave de API é configurada no painel, em `/admin/ingressos` (não no `.env`); o painel valida a
-chave na API antes de salvar. Depois, "Cadastrar webhook" cria o endpoint `https://<APP_URL>/api/opapingou/webhook`
+chave na API antes de salvar e a guarda cifrada (ver `SETTINGS_ENCRYPTION_KEY` acima). Depois, "Cadastrar webhook" cria o endpoint `https://<APP_URL>/api/opapingou/webhook`
 (eventos `charge.paid`, `charge.expired`, `charge.canceled`) e guarda o segredo de assinatura; "Enviar teste" dispara
 um `ping`. A chave precisa dos escopos `charges:write`, `charges:read`, `webhooks:read` e `webhooks:write`. Use
 `opk_test_…` para testar sem dinheiro — staging não é sandbox. `OPAPINGOU_API_URL` (opcional) aponta para staging;
@@ -152,7 +163,7 @@ atualiza o código em `/mnt/hd2tb/projetos/startupweekendsummit` e roda `bash de
   `src/lib/invites.ts`, `src/lib/registrations.ts`, `src/lib/tickets.ts` (lotes e o que está à venda),
   `src/lib/opapingou.ts` (cliente REST), `src/lib/opapingou-core.ts` (assinatura, testado),
   `src/lib/ticket-payments.ts` (aplica o estado da cobrança) e `src/lib/stripe.ts` — convites, inscrições, pagamentos.
-- `src/lib/settings.ts` — configurações editadas no painel (chave e webhook do Opa Pingou, tema padrão).
+- `src/lib/settings.ts` — configurações editadas no painel (chave e webhook do Opa Pingou, tema padrão); os segredos passam por `src/lib/secrets-core.ts` (cifra/decifra, migração, máscara).
 - `src/lib/theme.ts` e `src/lib/theme-core.ts` — tema da requisição (cookie ou padrão) e helpers puros (testados);
   `src/components/theme.tsx` — provider e botão de tema; `src/content/illustrations.ts` — ilustrações nos dois temas.
 - `src/lib/auth.ts` — magic link, sessões e usuários do painel; `src/lib/mail.ts` — envio de e-mail (SMTP).
