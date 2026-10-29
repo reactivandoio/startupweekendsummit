@@ -1,7 +1,19 @@
 // pnpm test — situação da inscrição (pagamento + aprovação do cadastro aberto)
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formPath, isConfirmed, matchesFilters, parseCouponFilter, parseSituation, paymentMethodName, paymentPagePath, situation } from "./registration-state.ts";
+import { readFileSync } from "node:fs";
+import {
+  canRemove,
+  formPath,
+  isConfirmed,
+  matchesFilters,
+  parseCouponFilter,
+  parseSituation,
+  paymentMethodName,
+  paymentPagePath,
+  removeConfirmMessage,
+  situation,
+} from "./registration-state.ts";
 
 describe("situation", () => {
   it("convite antigo (sem aprovação) pago é confirmado", () => {
@@ -56,6 +68,52 @@ describe("filtros", () => {
     assert.equal(parseCouponFilter(["TRACK"]), null);
     assert.equal(parseCouponFilter("track"), "TRACK");
     assert.equal(parseCouponFilter("a b"), null);
+  });
+});
+
+describe("remoção lógica", () => {
+  const rejected = { status: "paid", approval: "rejected", source: "open", couponViaLink: false, couponCode: null, removedAt: null } as const;
+  const removed = { ...rejected, removedAt: "2026-10-29T12:00:00.000Z" } as const;
+  const none = { situation: null, entry: null, coupon: null };
+  it("remove só reprovada ou não paga, e não remove de novo", () => {
+    assert.ok(canRemove(rejected));
+    assert.ok(canRemove({ status: "expired", approval: "pending" }));
+    assert.ok(canRemove({ status: "pending", approval: "pending" }));
+    assert.ok(!canRemove({ status: "paid", approval: "pending" }));
+    assert.ok(!canRemove({ status: "paid", approval: "approved" }));
+    assert.ok(!canRemove({ status: "paid", approval: null }));
+    assert.ok(!canRemove(removed));
+  });
+  it("removida some da lista padrão e de toda situação, e só aparece em Removidas", () => {
+    assert.ok(matchesFilters(rejected, none));
+    assert.ok(!matchesFilters(removed, none));
+    assert.ok(!matchesFilters(removed, { ...none, situation: "rejected" }));
+    assert.ok(matchesFilters(removed, { ...none, situation: "removed" }));
+    assert.ok(!matchesFilters(rejected, { ...none, situation: "removed" }));
+  });
+  it("Removidas combina com origem e cupom", () => {
+    assert.ok(matchesFilters(removed, { situation: "removed", entry: "open", coupon: "-" }));
+    assert.ok(!matchesFilters(removed, { situation: "removed", entry: "invite", coupon: null }));
+  });
+  it("restaurada (removedAt null) volta para a lista como reprovada", () => {
+    const restored = { ...removed, removedAt: null };
+    assert.ok(matchesFilters(restored, { ...none, situation: "rejected" }));
+    assert.equal(situation(restored), "rejected");
+  });
+  it("filtro na URL", () => {
+    assert.equal(parseSituation("removed"), "removed");
+  });
+  it("confirmação avisa do estorno manual só em reprovada paga sem reembolso marcado", () => {
+    const brl = (c: number) => `R$ ${c / 100}`;
+    const paid = { ...rejected, name: "Ana", amountCents: 15000, refundedAt: null };
+    assert.match(removeConfirmMessage(paid, brl), /ATENÇÃO[^]*R\$ 150[^]*Opa Pingou/);
+    assert.doesNotMatch(removeConfirmMessage({ ...paid, refundedAt: "2026-10-29T12:00:00.000Z" }, brl), /ATENÇÃO/);
+    assert.doesNotMatch(removeConfirmMessage({ ...paid, amountCents: 0 }, brl), /ATENÇÃO/);
+    assert.doesNotMatch(removeConfirmMessage({ ...paid, status: "expired", approval: "pending" }, brl), /ATENÇÃO/);
+  });
+  it("nada é apagado do banco: nenhum DELETE em registrations", () => {
+    const src = readFileSync(new URL("./registrations.ts", import.meta.url), "utf8");
+    assert.doesNotMatch(src, /delete\s+from\s+registrations/i);
   });
 });
 

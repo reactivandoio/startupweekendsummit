@@ -45,6 +45,8 @@ export type Registration = {
   reviewReason: ReviewReason | null; // pagamento tardio que entrou em aprovação
   duplicateCharges: DuplicateCharge[]; // cobranças pagas depois de a inscrição já estar paga: estorno manual
   sponsorConsentAt: string | null; // quando aceitou compartilhar os dados com patrocinadores; null = não aceitou
+  removedAt: string | null; // remoção lógica no painel; null = na lista
+  removedByName: string; // quem removeu (nome ou e-mail); "" se a conta foi apagada
   createdAt: string;
   paidAt: string | null;
 };
@@ -87,6 +89,8 @@ type Row = {
   review_reason: ReviewReason | null;
   duplicate_charges?: DuplicateCharge[] | null;
   sponsor_consent_at: Date | null;
+  removed_at: Date | null;
+  removed_by_name?: string | null;
   created_at: Date;
   paid_at: Date | null;
 };
@@ -126,12 +130,15 @@ const toRegistration = (r: Row): Registration => ({
   reviewReason: r.review_reason,
   duplicateCharges: r.duplicate_charges ?? [],
   sponsorConsentAt: r.sponsor_consent_at ? r.sponsor_consent_at.toISOString() : null,
+  removedAt: r.removed_at ? r.removed_at.toISOString() : null,
+  removedByName: r.removed_by_name ?? "",
   createdAt: r.created_at.toISOString(),
   paidAt: r.paid_at ? r.paid_at.toISOString() : null,
 });
 
 const withInvite = () => sql`
   select r.*, i.name as invite_name, i.code as invite_code, l.name as lot_name,
+    (select coalesce(nullif(u.name, ''), u.email) from users u where u.id = r.removed_by) as removed_by_name,
     (select coalesce(json_agg(json_build_object('id', c.id, 'kind', c.kind, 'at', c.duplicate_at, 'refundedAt', c.refunded_at) order by c.duplicate_at), '[]'::json)
       from opa_charges c where c.registration_id = r.id and c.duplicate_at is not null) as duplicate_charges
   from registrations r left join invites i on i.id = r.invite_id left join ticket_lots l on l.id = r.lot_id`;
@@ -203,7 +210,7 @@ export async function findResumableRegistration(f: { source: RegistrationSource;
     ${withInvite()}
     where r.status <> 'paid' and r.provider = 'opapingou' and r.source = ${f.source}
       and r.invite_id is not distinct from ${f.inviteId}::uuid and r.approval is distinct from 'rejected'
-      and (r.cpf = ${f.cpf} or r.email = ${f.email})
+      and r.removed_at is null and (r.cpf = ${f.cpf} or r.email = ${f.email})
     order by r.created_at desc limit 1`;
   return row ? toRegistration(row) : null;
 }
@@ -255,7 +262,7 @@ export async function listPendingOpaRegistrations(): Promise<Registration[]> {
 export async function findPaidRegistration(email: string, cpf: string): Promise<Registration | null> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
-    ${withInvite()} where r.status = 'paid' and r.approval is distinct from 'rejected' and (r.email = ${email} or r.cpf = ${cpf}) limit 1`;
+    ${withInvite()} where r.status = 'paid' and r.approval is distinct from 'rejected' and r.removed_at is null and (r.email = ${email} or r.cpf = ${cpf}) limit 1`;
   return row ? toRegistration(row) : null;
 }
 
@@ -330,7 +337,8 @@ export async function markPaid(
         amount_cents = coalesce(${amountCents}, amount_cents),
         payment_method = coalesce(${opts.method ?? null}, payment_method),
         review_reason = ${review},
-        approval = case when ${review}::text is null then approval else 'pending' end
+        approval = case when ${review}::text is null then approval else 'pending' end,
+        removed_at = null, removed_by = null
     where id = ${id} and status <> 'paid'
     returning id`;
   if (!row) return null;
@@ -344,9 +352,9 @@ export async function lateSeatProblem(reg: Pick<Registration, "id" | "lotId" | "
   await ensureSchema();
   const [dup] = await sql`
     select 1 from registrations
-    where id <> ${reg.id} and status = 'paid' and approval is distinct from 'rejected' and (email = ${reg.email} or cpf = ${reg.cpf}) limit 1`;
+    where id <> ${reg.id} and status = 'paid' and approval is distinct from 'rejected' and removed_at is null and (email = ${reg.email} or cpf = ${reg.cpf}) limit 1`;
   if (dup) return "duplicate";
-  const holds = () => sql`id <> ${reg.id} and (status = 'paid' or (status = 'pending' and coalesce(opa_expires_at, created_at + interval '1 hour') > now()))`;
+  const holds = () => sql`id <> ${reg.id} and removed_at is null and (status = 'paid' or (status = 'pending' and coalesce(opa_expires_at, created_at + interval '1 hour') > now()))`;
   if (reg.lotId) {
     const [lot] = await sql<{ full: boolean }[]>`
       select l.quantity is not null and (select count(*) from registrations
@@ -390,8 +398,20 @@ export async function setRefunded(id: string, refunded: boolean) {
     where id = ${id} and status = 'paid' and approval = 'rejected'`;
 }
 
-// Remove só o que nunca foi pago (pago se resolve no Stripe, com estorno)
-export async function deleteUnpaidRegistration(id: string) {
+// Remoção lógica: só reprovada ou que nunca pagou (canRemove), e nada sai do banco. Reprovada já tinha devolvido vaga e
+// cupom; a não paga deixa de segurar os dela porque as contagens ignoram removed_at.
+export async function removeRegistration(id: string, userId: string): Promise<boolean> {
   await ensureSchema();
-  await sql`delete from registrations where id = ${id} and status <> 'paid'`;
+  const rows = await sql`
+    update registrations set removed_at = now(), removed_by = ${userId}
+    where id = ${id} and removed_at is null and (approval = 'rejected' or status <> 'paid')
+    returning id`;
+  return rows.length > 0;
+}
+
+// Restaurar: volta para a lista como era (reprovada continua reprovada, sem reabrir vaga)
+export async function restoreRegistration(id: string): Promise<boolean> {
+  await ensureSchema();
+  const rows = await sql`update registrations set removed_at = null, removed_by = null where id = ${id} and removed_at is not null returning id`;
+  return rows.length > 0;
 }

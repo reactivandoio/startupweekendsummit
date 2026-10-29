@@ -49,10 +49,10 @@ const toCoupon = (r: Row): Coupon => ({
 // vendido: só as pagas não reprovadas
 const select = () => sql`
   select c.*,
-    (select count(*) from registrations r where r.coupon_id = c.id and r.approval is distinct from 'rejected'
+    (select count(*) from registrations r where r.coupon_id = c.id and r.approval is distinct from 'rejected' and r.removed_at is null
       and (r.status = 'paid' or (r.status = 'pending' and coalesce(r.opa_expires_at, r.created_at + interval '1 hour') > now()))) as uses,
-    (select count(*) from registrations r where r.coupon_id = c.id and r.status = 'paid' and r.approval is distinct from 'rejected') as paid,
-    (select sum(r.amount_cents) from registrations r where r.coupon_id = c.id and r.status = 'paid' and r.approval is distinct from 'rejected') as sold_cents
+    (select count(*) from registrations r where r.coupon_id = c.id and r.status = 'paid' and r.approval is distinct from 'rejected' and r.removed_at is null) as paid,
+    (select sum(r.amount_cents) from registrations r where r.coupon_id = c.id and r.status = 'paid' and r.approval is distinct from 'rejected' and r.removed_at is null) as sold_cents
   from coupons c`;
 
 export async function listCoupons(): Promise<Coupon[]> {

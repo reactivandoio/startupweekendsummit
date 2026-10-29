@@ -9,12 +9,13 @@ const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
 const reais = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 
 // Mesmos filtros da lista (?situacao=…&origem=…&cupom=…): o botão do painel baixa o que está na tela
+// (as removidas só com ?situacao=removed, como na lista)
 export async function GET(request: Request) {
   if (!(await getCurrentUser())) return new Response("Unauthorized", { status: 401 });
   const params = new URL(request.url).searchParams;
   const filters = { situation: parseSituation(params.get("situacao")), entry: parseEntry(params.get("origem")), coupon: parseCouponFilter(params.get("cupom")) };
   const rows = (await listRegistrations()).filter((r) => matchesFilters(r, filters));
-  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "situacao", "status", "origem", "cupom", "aprovacao", "analisada_em", "reembolsado_em", "preco_lote", "desconto", "desconto_origem", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "meio_pagamento", "revisao", "pagamento_em_dobro", "stripe_payment_intent", "cobranca_opapingou", "consentimento_patrocinadores_em", "iniciada_em"];
+  const header = ["nome", "email", "whatsapp", "cpf", "nascimento", "situacao", "status", "origem", "cupom", "aprovacao", "analisada_em", "reembolsado_em", "preco_lote", "desconto", "desconto_origem", "valor", "pago_em", "convite", "lote", "ingresso", "pagamento", "meio_pagamento", "revisao", "pagamento_em_dobro", "stripe_payment_intent", "cobranca_opapingou", "consentimento_patrocinadores_em", "iniciada_em", "removida_em", "removida_por"];
   const lines = rows.map((r) =>
     [
       r.name,
@@ -45,6 +46,8 @@ export async function GET(request: Request) {
       r.opaChargeId ?? "",
       r.sponsorConsentAt ?? "",
       r.createdAt,
+      r.removedAt ?? "",
+      r.removedByName,
     ]
       .map(esc)
       .join(","),

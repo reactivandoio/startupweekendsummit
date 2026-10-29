@@ -40,18 +40,39 @@ export function situation(r: Reg): Situation {
 // Tem ingresso válido (e-mail com o número já enviado ou a enviar)
 export const isConfirmed = (r: Reg) => situation(r) === "confirmed";
 
+// Remoção é sempre lógica (removed_at/removed_by): a inscrição fica no banco com dados, cobrança e histórico, mas some
+// da lista e do CSV padrão, não segura vaga do lote/convite nem uso de cupom e não entra nas contagens do painel.
+// Só sai da lista quem não tem ingresso: reprovada, ou que nunca pagou. Restaurar volta ao que era (reprovada fica reprovada).
+type Removable = Reg & { removedAt?: string | null };
+
+export const canRemove = (r: Removable) => !r.removedAt && (r.approval === "rejected" || r.status !== "paid");
+
+// Texto da confirmação de remover; reprovada paga e ainda não reembolsada ganha o aviso do estorno manual
+export function removeConfirmMessage(r: Removable & { name: string; amountCents: number; refundedAt: string | null }, brl: (cents: number) => string) {
+  const base = `Remover a inscrição de ${r.name} da lista? Ela fica guardada em "Removidas", com todos os dados, e pode ser restaurada.`;
+  if (r.approval === "rejected" && r.status === "paid" && r.amountCents > 0 && !r.refundedAt) {
+    return `ATENÇÃO: ${r.name} pagou ${brl(r.amountCents)} e o reembolso ainda não foi marcado como feito. Remover não estorna nada: o estorno é manual no painel do Opa Pingou (ou do Stripe).\n\n${base}`;
+  }
+  return base;
+}
+
 // Filtros da lista de participantes (?situacao=…&origem=…&cupom=…); valor desconhecido = todos.
 // origem: convite, inscrição aberta ou link de cupom; cupom: código, ou "-" para as inscrições sem cupom.
+// situacao=removed: só as removidas (todas as outras opções mostram só as não removidas).
 export const situationFilters = ["confirmed", "awaiting_approval", "rejected", "awaiting_payment", "unpaid"] as const satisfies readonly Situation[];
 
-export const parseSituation = (v: unknown): Situation | null => (situationFilters as readonly unknown[]).includes(v) ? (v as Situation) : null;
+export type SituationFilter = Situation | "removed";
+
+export const parseSituation = (v: unknown): SituationFilter | null =>
+  v === "removed" || (situationFilters as readonly unknown[]).includes(v) ? (v as SituationFilter) : null;
 export const parseCouponFilter = (v: unknown): string | null => (typeof v === "string" && /^(-|[A-Za-z0-9_-]{1,40})$/.test(v) ? v.toUpperCase() : null);
 
-export type Filters = { situation: Situation | null; entry: RegistrationEntry | null; coupon: string | null };
+export type Filters = { situation: SituationFilter | null; entry: RegistrationEntry | null; coupon: string | null };
 
-export function matchesFilters(r: Reg & { source: RegistrationSource; couponViaLink: boolean; couponCode: string | null }, f: Filters) {
+export function matchesFilters(r: Removable & { source: RegistrationSource; couponViaLink: boolean; couponCode: string | null }, f: Filters) {
+  if (f.situation === "removed" ? !r.removedAt : r.removedAt) return false;
   return (
-    (!f.situation || situation(r) === f.situation) &&
+    (!f.situation || f.situation === "removed" || situation(r) === f.situation) &&
     (!f.entry || registrationEntry(r) === f.entry) &&
     (!f.coupon || (f.coupon === "-" ? !r.couponCode : r.couponCode === f.coupon))
   );

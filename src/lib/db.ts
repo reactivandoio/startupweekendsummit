@@ -189,6 +189,10 @@ export function ensureSchema() {
         update registrations set discount_source = 'invite'
         where discount_source is null and discount_cents > 0 and invite_id is not null and coupon_id is null`;
       await sql`create index if not exists registrations_coupon_idx on registrations (coupon_id)`;
+      // Remoção lógica no painel (reprovadas e não pagas): nunca apaga do banco. Removida não segura vaga nem uso de
+      // cupom e não entra nas contagens; restaurar limpa as duas colunas.
+      await sql`alter table registrations add column if not exists removed_at timestamptz`;
+      await sql`alter table registrations add column if not exists removed_by uuid references users(id) on delete set null`;
       // Patrocinadores do site: logo é o nome do arquivo no volume de uploads; position ordena dentro da categoria
       await sql`
         create table if not exists sponsors (

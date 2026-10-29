@@ -20,7 +20,14 @@ import {
   testWebhookEndpoint,
 } from "@/lib/opapingou";
 import { duplicateWebhooks, isOpaApiKey, isOpaTestKey, OpaApiError, planWebhookSetup } from "@/lib/opapingou-core";
-import { deleteUnpaidRegistration, listPendingOpaRegistrations, reviewRegistration, setDuplicateChargeRefunded, setRefunded } from "@/lib/registrations";
+import {
+  listPendingOpaRegistrations,
+  removeRegistration as removeRegistrationById,
+  restoreRegistration as restoreRegistrationById,
+  reviewRegistration,
+  setDuplicateChargeRefunded,
+  setRefunded,
+} from "@/lib/registrations";
 import { deleteSetting, getSetting, setSetting } from "@/lib/settings";
 import { createOrganizer, deleteOrganizer, getOrganizer, moveOrganizer, setOrganizerActive, updateOrganizer } from "@/lib/organizers";
 import { ALT_MAX, BIO_MAX, NAME_MAX, normalizeUrl, parseSocials, ROLE_MAX, type SocialKind } from "@/lib/organizers-core";
@@ -195,12 +202,27 @@ export async function removeInvite(formData: FormData) {
   revalidatePath("/admin/convites");
 }
 
+// Remoção lógica (reprovada ou não paga): sai da lista, das contagens e das vagas, mas fica no banco com quem e quando
 export async function removeRegistration(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await removeRegistrationById(id, me.id);
+  revalidateRegistrationCounts();
+}
+
+export async function restoreRegistration(formData: FormData) {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  if (id) await deleteUnpaidRegistration(id);
+  if (id) await restoreRegistrationById(id);
+  revalidateRegistrationCounts();
+}
+
+// Telas que contam inscrições (vagas do lote e do convite, usos do cupom)
+function revalidateRegistrationCounts() {
   revalidatePath("/admin/participantes");
   revalidatePath("/admin/convites");
+  revalidatePath("/admin/ingressos");
+  revalidatePath("/admin/cupons");
 }
 
 /* ---------- Aprovação de todas as inscrições ---------- */
