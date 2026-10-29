@@ -13,11 +13,11 @@ import { formPath, paymentPagePath } from "@/lib/registration-state";
 import {
   attachStripeSession,
   createRegistration,
-  deleteUnpaidRegistration,
   findPaidRegistration,
   findResumableRegistration,
   getRegistration,
   markPaid,
+  markUnpaid,
   updateRegistrationData,
   type Pricing,
 } from "@/lib/registrations";
@@ -193,8 +193,9 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     }
   } catch (err) {
     console.error("[registerParticipant]", err);
-    // sem cobrança, a inscrição pendente só seguraria a vaga à toa
-    await deleteUnpaidRegistration(registration.id).catch(() => {});
+    // sem cobrança, a inscrição pendente só seguraria a vaga à toa: fica cancelada (nada sai do banco) e é retomada
+    // se a pessoa tentar de novo
+    await markUnpaid(registration.id, "canceled").catch(() => {});
     return { status: "error", message: failMessage(card), values: { ...values, paymentMethod: chosen } };
   }
   redirect(next);

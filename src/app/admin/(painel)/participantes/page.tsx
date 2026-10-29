@@ -1,15 +1,25 @@
 import Link from "next/link";
-import { approveRegistration, reconcileOpaCharges, rejectRegistration, removeRegistration, toggleDuplicateRefunded, toggleRefunded } from "@/app/admin/actions";
+import {
+  approveRegistration,
+  reconcileOpaCharges,
+  rejectRegistration,
+  removeRegistration,
+  restoreRegistration,
+  toggleDuplicateRefunded,
+  toggleRefunded,
+} from "@/app/admin/actions";
 import { Eyebrow } from "@/components/eyebrow";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { entryFilters, entryLabel, parseEntry, registrationEntry } from "@/lib/coupons-core";
 import { formatBRL, formatCpf, formatPhone } from "@/lib/cpf";
 import { ticketNumber } from "@/lib/mail";
 import {
+  canRemove,
   matchesFilters,
   parseCouponFilter,
   parseSituation,
   paymentMethodName,
+  removeConfirmMessage,
   reviewReasonLabel,
   situation,
   situationFilters,
@@ -37,16 +47,19 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/ad
   const { situacao, origem, cupom } = await searchParams;
   const filters: Filters = { situation: parseSituation(situacao), entry: parseEntry(origem), coupon: parseCouponFilter(cupom) };
   const all = await listRegistrations();
+  // Removidas (lógicas) ficam fora das contagens e só aparecem no filtro "Removidas"
+  const active = all.filter((r) => !r.removedAt);
+  const removedCount = all.length - active.length;
   const couponCodes = [...new Set(all.map((r) => r.couponCode).filter((c): c is string => Boolean(c)))].sort();
   if (filters.coupon && filters.coupon !== "-" && !couponCodes.includes(filters.coupon)) couponCodes.push(filters.coupon);
   const shown = all.filter((r) => matchesFilters(r, filters));
 
-  const count = (s: Situation) => all.filter((r) => situation(r) === s).length;
+  const count = (s: Situation) => active.filter((r) => situation(r) === s).length;
   const confirmed = count("confirmed");
   const awaitingApproval = count("awaiting_approval");
-  const pending = all.filter((r) => r.status === "pending");
+  const pending = active.filter((r) => r.status === "pending");
   // Recebido: tudo que foi pago, menos o que já foi reembolsado
-  const total = all.filter((r) => r.status === "paid" && !r.refundedAt).reduce((sum, r) => sum + r.amountCents, 0);
+  const total = active.filter((r) => r.status === "paid" && !r.refundedAt).reduce((sum, r) => sum + r.amountCents, 0);
   const pendingPix = pending.filter((r) => r.opaChargeId).length;
   const csvHref = filterHref(filters).replace("/admin/participantes", "/admin/participantes.csv");
   return (
@@ -89,6 +102,15 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/ad
               href: filterHref({ ...filters, situation: s }),
               active: filters.situation === s,
             })),
+            ...(removedCount > 0 || filters.situation === "removed"
+              ? [
+                  {
+                    label: `Removidas (${all.filter((r) => matchesFilters(r, { ...filters, situation: "removed" })).length})`,
+                    href: filterHref({ ...filters, situation: "removed" }),
+                    active: filters.situation === "removed",
+                  },
+                ]
+              : []),
           ]}
         />
         <FilterRow
@@ -112,7 +134,7 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/ad
 
       {shown.length === 0 ? (
         <p className="border-t border-ink pt-6 text-body-md">
-          {all.length === 0 ? "Nenhuma inscrição ainda." : "Nenhuma inscrição com esses filtros."}
+          {all.length === 0 ? "Nenhuma inscrição ainda." : filters.situation === "removed" ? "Nenhuma inscrição removida com esses filtros." : "Nenhuma inscrição com esses filtros."}
         </p>
       ) : (
         <ul className="border-t border-ink">
@@ -185,6 +207,12 @@ function RegistrationRow({ r }: { r: Registration }) {
             {reviewReasonLabel[r.reviewReason]}. Aprove se houver vaga; se não, reprove e estorne no Opa Pingou.
           </p>
         )}
+        {r.removedAt && (
+          <p className="border-2 border-ink bg-ash p-2 text-caption font-semibold text-ink">
+            Removida em {fmt.format(new Date(r.removedAt))}
+            {r.removedByName && ` por ${r.removedByName}`}
+          </p>
+        )}
         {r.reviewedAt && (
           <p className="text-caption">
             {r.approval === "approved" ? "Aprovada" : "Reprovada"} em {fmt.format(new Date(r.reviewedAt))}
@@ -246,12 +274,23 @@ function RegistrationRow({ r }: { r: Registration }) {
             </form>
           </>
         )}
-        {r.status !== "paid" && (
+        {canRemove(r) && (
           <form action={removeRegistration}>
             <input type="hidden" name="id" value={r.id} />
-            <button type="submit" className={buttonClass("secondary", "sm")}>
+            <ConfirmSubmit message={removeConfirmMessage(r, formatBRL)} className={buttonClass("secondary", "sm")}>
               Remover
-            </button>
+            </ConfirmSubmit>
+          </form>
+        )}
+        {r.removedAt && (
+          <form action={restoreRegistration}>
+            <input type="hidden" name="id" value={r.id} />
+            <ConfirmSubmit
+              message={`Restaurar a inscrição de ${r.name}? Ela volta para a lista ${s === "rejected" ? "como reprovada" : `como "${situationLabel[s]}"`}.`}
+              className={buttonClass("secondary", "sm")}
+            >
+              Restaurar
+            </ConfirmSubmit>
           </form>
         )}
       </div>

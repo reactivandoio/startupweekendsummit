@@ -51,7 +51,7 @@ const toLot = (r: Row): TicketLot => {
 const soldSubquery = () => sql`
   (select count(*) from registrations r
     where r.lot_id = l.id
-      and r.approval is distinct from 'rejected'
+      and r.approval is distinct from 'rejected' and r.removed_at is null
       and (r.status = 'paid' or (r.status = 'pending' and coalesce(r.opa_expires_at, r.created_at + interval '1 hour') > now())))`;
 
 export async function listLots(): Promise<TicketLot[]> {
