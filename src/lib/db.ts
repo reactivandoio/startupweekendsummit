@@ -170,6 +170,22 @@ export function ensureSchema() {
           created_at timestamptz not null default now(),
           updated_at timestamptz not null default now()
         )`;
+      // Organizadores do site: foto é o nome do arquivo no volume de uploads ('' = sem foto, o card mostra as iniciais);
+      // socials é a lista [{ kind, url }] na ordem do painel; inativo some do site sem perder o cadastro
+      await sql`
+        create table if not exists organizers (
+          id uuid primary key default gen_random_uuid(),
+          name text not null,
+          role text not null default '',
+          bio text not null default '',
+          photo text not null default '',
+          photo_alt text not null default '',
+          socials jsonb not null default '[]',
+          active boolean not null default true,
+          position int not null default 0,
+          created_at timestamptz not null default now(),
+          updated_at timestamptz not null default now()
+        )`;
       const seed = process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase();
       if (seed) {
         await sql`insert into users (email, name) values (${seed}, ${process.env.ADMIN_SEED_NAME ?? ""}) on conflict (email) do nothing`;

@@ -4,10 +4,24 @@ import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/button";
 
-const ACCEPTED: Record<string, string> = {
+type Mode = "image" | "logo" | "photo";
+
+const IMAGE_TYPES: Record<string, string> = {
   "image/svg+xml": "svg",
   "image/png": "png",
   "image/webp": "webp",
+};
+
+// Tipos aceitos e textos de cada modo; o servidor (saveImageUpload) confere de novo pelos bytes
+const modes: Record<Mode, { accepted: Record<string, string>; formats: string; current: string; change: string }> = {
+  image: { accepted: IMAGE_TYPES, formats: "SVG, PNG ou WebP", current: "Imagem atual", change: "Trocar imagem" },
+  logo: { accepted: IMAGE_TYPES, formats: "SVG, PNG ou WebP com fundo transparente", current: "Logo atual", change: "Trocar logo" },
+  photo: {
+    accepted: { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" },
+    formats: "JPG, PNG ou WebP",
+    current: "Foto atual",
+    change: "Trocar foto",
+  },
 };
 
 const OPAQUE_MESSAGE = "Este arquivo tem fundo opaco e ficaria um bloco preto no site. Envie SVG, PNG ou WebP com fundo transparente.";
@@ -65,9 +79,12 @@ export function FileUpload({
   current?: { url: string; alt: string };
   hint?: string;
   label?: string;
-  /** "logo": prévia como no site (tinta sobre o papel do tema) e exige fundo transparente */
-  preview?: "image" | "logo";
+  /** "logo": prévia como no site (tinta sobre o papel do tema) e exige fundo transparente;
+      "photo": foto JPG/PNG/WebP, prévia quadrada e recortada ao centro como no site */
+  preview?: Mode;
 }) {
+  const mode = modes[preview];
+  const ACCEPTED = mode.accepted;
   const input = useRef<HTMLInputElement>(null);
   const zone = useRef<HTMLButtonElement>(null);
   const [picked, setPicked] = useState<{ file: File; url: string } | null>(null);
@@ -94,7 +111,7 @@ export function FileUpload({
     const okType = f.type in ACCEPTED || (!f.type && ext && Object.values(ACCEPTED).includes(ext));
     if (!okType) {
       clear();
-      setError(preview === "logo" ? "Formato não aceito. Use SVG, PNG ou WebP com fundo transparente." : "Formato não aceito. Use SVG, PNG ou WebP.");
+      setError(`Formato não aceito. Use ${mode.formats}.`);
       return;
     }
     if (f.size > maxBytes) {
@@ -124,7 +141,7 @@ export function FileUpload({
   };
 
   const describedBy = [hint ? hintId : null].filter(Boolean).join(" ") || undefined;
-  const shown = picked ? { src: picked.url, title: picked.file.name, meta: formatBytes(picked.file.size) } : current ? { src: current.url, title: "Logo atual", meta: null } : null;
+  const shown = picked ? { src: picked.url, title: picked.file.name, meta: formatBytes(picked.file.size) } : current ? { src: current.url, title: mode.current, meta: null } : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -158,21 +175,37 @@ export function FileUpload({
         >
           <div className="flex items-center gap-4">
             <span
-              className={`relative block h-20 w-32 shrink-0 ${preview === "logo" ? "border border-ash bg-paper" : "bg-[repeating-conic-gradient(var(--color-ash)_0_25%,transparent_0_50%)] bg-[length:16px_16px]"}`}
-              title={preview === "logo" ? "Como vai aparecer no site" : undefined}
+              className={`relative block h-20 shrink-0 ${
+                preview === "photo"
+                  ? "w-20 border border-ash bg-ash"
+                  : preview === "logo"
+                    ? "w-32 border border-ash bg-paper"
+                    : "w-32 bg-[repeating-conic-gradient(var(--color-ash)_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
+              }`}
+              title={preview === "image" ? undefined : "Como vai aparecer no site"}
             >
-              <Image src={shown.src} alt="" fill unoptimized sizes="128px" className={`object-contain p-2 ${preview === "logo" ? "logo-mono" : ""}`} />
+              <Image
+                src={shown.src}
+                alt=""
+                fill
+                unoptimized
+                sizes="128px"
+                className={preview === "photo" ? "object-cover" : `object-contain p-2 ${preview === "logo" ? "logo-mono" : ""}`}
+              />
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <p className="truncate text-body font-semibold" title={shown.title}>
                 {shown.title}
               </p>
-              <p className="text-caption">{shown.meta ?? "Arraste outro arquivo aqui para trocar."}{preview === "logo" ? " Prévia como no site, no tema atual." : ""}</p>
+              <p className="text-caption">
+                {shown.meta ?? "Arraste outro arquivo aqui para trocar."}
+                {preview === "logo" ? " Prévia como no site, no tema atual." : preview === "photo" ? " Recorte quadrado ao centro, como no site." : ""}
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button ref={zone} size="sm" onClick={() => input.current?.click()} aria-describedby={describedBy}>
-              {file ? "Trocar arquivo" : "Trocar logo"}
+              {file ? "Trocar arquivo" : mode.change}
             </Button>
             {file && (
               <Button size="sm" onClick={clear}>
@@ -201,7 +234,9 @@ export function FileUpload({
             <path d="M16 22V6M9 13l7-7 7 7M5 20v6h22v-6" />
           </svg>
           <span className="text-body font-semibold">{label}</span>
-          <span className="text-caption">SVG, PNG ou WebP com fundo transparente, até {formatBytes(maxBytes)}</span>
+          <span className="text-caption">
+            {mode.formats}, até {formatBytes(maxBytes)}
+          </span>
         </button>
       )}
 

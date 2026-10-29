@@ -4,6 +4,7 @@ import { ButtonAnchor, ButtonLink, buttonClass } from "@/components/button";
 import { Eyebrow } from "@/components/eyebrow";
 import { Mural } from "@/components/mural";
 import { EventMeta, PageHero } from "@/components/page-hero";
+import { OrganizersSection } from "@/components/organizers-section";
 import { SiteFooter } from "@/components/site-footer";
 import { SponsorsSection } from "@/components/sponsors-section";
 import { illustrations } from "@/content/illustrations";
@@ -191,6 +192,9 @@ export default function Home() {
             ))}
           </ul>
         </section>
+
+        {/* Organização: cadastrada no painel; some sem organizadores ativos */}
+        <OrganizersSection />
 
         {/* Programação */}
         <section id="programacao" className="mx-auto flex w-full max-w-page scroll-mt-8 flex-col gap-15 px-4 sm:px-6">
