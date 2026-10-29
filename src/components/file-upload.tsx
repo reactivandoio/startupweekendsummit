@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/button";
 
-type Mode = "image" | "logo" | "photo";
+type Mode = "image" | "logo";
 
 const IMAGE_TYPES: Record<string, string> = {
   "image/svg+xml": "svg",
@@ -16,12 +16,6 @@ const IMAGE_TYPES: Record<string, string> = {
 const modes: Record<Mode, { accepted: Record<string, string>; formats: string; current: string; change: string }> = {
   image: { accepted: IMAGE_TYPES, formats: "SVG, PNG ou WebP", current: "Imagem atual", change: "Trocar imagem" },
   logo: { accepted: IMAGE_TYPES, formats: "SVG, PNG ou WebP com fundo transparente", current: "Logo atual", change: "Trocar logo" },
-  photo: {
-    accepted: { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" },
-    formats: "JPG, PNG ou WebP",
-    current: "Foto atual",
-    change: "Trocar foto",
-  },
 };
 
 const OPAQUE_MESSAGE = "Este arquivo tem fundo opaco e ficaria um bloco preto no site. Envie SVG, PNG ou WebP com fundo transparente.";
@@ -79,8 +73,7 @@ export function FileUpload({
   current?: { url: string; alt: string };
   hint?: string;
   label?: string;
-  /** "logo": prévia como no site (tinta sobre o papel do tema) e exige fundo transparente;
-      "photo": foto JPG/PNG/WebP, prévia quadrada e recortada ao centro como no site */
+  /** "logo": prévia como no site (tinta sobre o papel do tema) e exige fundo transparente */
   preview?: Mode;
 }) {
   const mode = modes[preview];
@@ -175,12 +168,8 @@ export function FileUpload({
         >
           <div className="flex items-center gap-4">
             <span
-              className={`relative block h-20 shrink-0 ${
-                preview === "photo"
-                  ? "w-20 border border-ash bg-ash"
-                  : preview === "logo"
-                    ? "w-32 border border-ash bg-paper"
-                    : "w-32 bg-[repeating-conic-gradient(var(--color-ash)_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
+              className={`relative block h-20 w-32 shrink-0 ${
+                preview === "logo" ? "border border-ash bg-paper" : "bg-[repeating-conic-gradient(var(--color-ash)_0_25%,transparent_0_50%)] bg-[length:16px_16px]"
               }`}
               title={preview === "image" ? undefined : "Como vai aparecer no site"}
             >
@@ -190,7 +179,7 @@ export function FileUpload({
                 fill
                 unoptimized
                 sizes="128px"
-                className={preview === "photo" ? "object-cover" : `object-contain p-2 ${preview === "logo" ? "logo-mono" : ""}`}
+                className={`object-contain p-2 ${preview === "logo" ? "logo-mono" : ""}`}
               />
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -199,7 +188,7 @@ export function FileUpload({
               </p>
               <p className="text-caption">
                 {shown.meta ?? "Arraste outro arquivo aqui para trocar."}
-                {preview === "logo" ? " Prévia como no site, no tema atual." : preview === "photo" ? " Recorte quadrado ao centro, como no site." : ""}
+                {preview === "logo" ? " Prévia como no site, no tema atual." : ""}
               </p>
             </div>
           </div>

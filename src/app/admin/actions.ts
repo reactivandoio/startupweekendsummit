@@ -29,7 +29,8 @@ import { appUrl } from "@/lib/stripe";
 import { parseTheme, themeLabel } from "@/lib/theme-core";
 import { syncCharge } from "@/lib/ticket-payments";
 import { createLot, deleteLot, moveLot, updateLot } from "@/lib/tickets";
-import { deleteImageUpload, saveImageUpload } from "@/lib/uploads";
+import { deleteImageUpload, saveImageUpload, savePhotoUpload } from "@/lib/uploads";
+import { parseCrop } from "@/lib/photo-crop-core";
 import { deleteVolunteer } from "@/lib/volunteers";
 
 const inviteUrl = (code: string) => `${appUrl()}/inscricao/${code}`;
@@ -637,8 +638,13 @@ export async function saveOrganizer(_prev: OrganizerFormState, formData: FormDat
   const removePhoto = formData.get("removePhoto") === "on";
   const kinds = formData.getAll("socialKind").map(String);
   const urls = formData.getAll("socialUrl").map(String);
+  // photo: o quadrado recortado no navegador (components/photo-field.tsx); photoSource: o original, só quando a foto é
+  // nova; photoCrop: estado do editor, pra reabrir o recorte no mesmo lugar
   const file = formData.get("photo");
   const hasFile = file instanceof File && file.size > 0;
+  const sourceFile = formData.get("photoSource");
+  const hasSource = sourceFile instanceof File && sourceFile.size > 0;
+  const crop = parseCrop(text("photoCrop"));
   const fail = (message: string): OrganizerFormState => ({
     status: "error",
     message,
@@ -661,16 +667,29 @@ export async function saveOrganizer(_prev: OrganizerFormState, formData: FormDat
   if (id && !current) return fail("Organizador não encontrado. Ele pode ter sido removido.");
 
   let photo = removePhoto ? "" : (current?.photo ?? "");
-  if (hasFile) {
-    const upload = await saveImageUpload(file, "photo");
+  let photoSource = removePhoto ? "" : (current?.photoSource ?? "");
+  let photoCrop = removePhoto ? null : (current?.photoCrop ?? null);
+  if (hasFile && !removePhoto) {
+    const upload = await savePhotoUpload(file, "crop");
     if (!upload.ok) return fail(upload.message);
     photo = upload.filename;
+    photoCrop = crop;
+    if (hasSource) {
+      const source = await savePhotoUpload(sourceFile, "source");
+      if (!source.ok) {
+        await deleteImageUpload(photo);
+        return fail(source.message);
+      }
+      photoSource = source.filename;
+    }
   }
 
-  const data = { name, role, bio, photo, photoAlt, socials: parsed.socials, active };
+  const data = { name, role, bio, photo, photoSource, photoCrop, photoAlt, socials: parsed.socials, active };
   if (current) {
     await updateOrganizer(current.id, data);
+    // arquivos substituídos ou removidos saem do volume (o cadastro em si não é apagado aqui)
     if (current.photo && photo !== current.photo) await deleteImageUpload(current.photo);
+    if (current.photoSource && photoSource !== current.photoSource) await deleteImageUpload(current.photoSource);
   } else {
     await createOrganizer(data);
   }
@@ -684,6 +703,7 @@ export async function removeOrganizer(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const removed = id ? await deleteOrganizer(id) : null;
   if (removed?.photo) await deleteImageUpload(removed.photo);
+  if (removed?.photoSource) await deleteImageUpload(removed.photoSource);
   revalidateOrganizers();
 }
 

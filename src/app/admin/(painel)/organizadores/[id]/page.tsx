@@ -25,7 +25,14 @@ export default async function EditarOrganizadorPage({ params }: PageProps<"/admi
           photoAlt: organizer.photoAlt,
           active: organizer.active,
           socials: organizer.socials,
-          photoUrl: organizer.photo ? uploadUrl(organizer.photo) : null,
+          photo: organizer.photo
+            ? {
+                url: uploadUrl(organizer.photo),
+                sourceUrl: organizer.photoSource ? uploadUrl(organizer.photoSource) : null,
+                crop: organizer.photoCrop,
+                alt: organizer.photoAlt || organizer.name,
+              }
+            : null,
         }}
       />
     </div>

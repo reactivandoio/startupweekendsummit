@@ -214,3 +214,49 @@ select.field {
 html[data-theme="dark"] select.field {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23f4f4f4' stroke-width='1.5'/%3E%3C/svg%3E");
 }
+
+/* Grade de organizadores (components/organizers-section.tsx): flex com a última linha centralizada.
+   O número de colunas por largura chega em --cols-sm/md/lg/xl (calculado por quantidade, ver gridColumns);
+   cada card ocupa a fração da largura menos os espaços, com 0.5px de folga pra arredondamento não quebrar a linha. */
+.organizers-grid {
+  --cols: 1;
+  --gap-x: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: var(--gap-x);
+  row-gap: 40px;
+}
+.organizers-grid > li {
+  display: flex;
+  width: calc((100% - (var(--cols) - 1) * var(--gap-x)) / var(--cols) - 0.5px);
+}
+@media (width >= 40rem) {
+  .organizers-grid {
+    --cols: var(--cols-sm, 2);
+    row-gap: 56px;
+  }
+}
+@media (width >= 48rem) {
+  .organizers-grid {
+    --cols: var(--cols-md, 3);
+  }
+}
+@media (width >= 64rem) {
+  .organizers-grid {
+    --cols: var(--cols-lg, 4);
+  }
+}
+@media (width >= 80rem) {
+  .organizers-grid {
+    --cols: var(--cols-xl, 5);
+  }
+}
+
+/* <dialog> modais (recorte da foto no painel, bio completa no site): sem o estilo padrão do navegador */
+dialog {
+  max-width: none;
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.7);
+}

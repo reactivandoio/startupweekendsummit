@@ -2,13 +2,16 @@ import "server-only";
 import { cache } from "react";
 import { ensureSchema, sql } from "@/lib/db";
 import { sanitizeSocials, type Social } from "@/lib/organizers-core";
+import { parseCrop, type Crop } from "@/lib/photo-crop-core";
 
 export type Organizer = {
   id: string;
   name: string;
   role: string;
   bio: string;
-  photo: string; // arquivo no volume de uploads; vazio = sem foto
+  photo: string; // recorte quadrado exibido no site, arquivo no volume de uploads; vazio = sem foto
+  photoSource: string; // original guardado pra recortar de novo; vazio nas fotos de antes do editor (recorta a partir de photo)
+  photoCrop: Crop | null; // estado do editor de recorte; null = recorte padrão (centro, sem zoom)
   photoAlt: string; // vazio = usa o nome (ver organizerAlt)
   socials: Social[];
   active: boolean;
@@ -23,6 +26,8 @@ type Row = {
   role: string;
   bio: string;
   photo: string;
+  photo_source: string;
+  photo_crop: unknown;
   photo_alt: string;
   socials: unknown;
   active: boolean;
@@ -35,11 +40,16 @@ const toOrganizer = (r: Row): Organizer => ({
   role: r.role,
   bio: r.bio,
   photo: r.photo,
+  photoSource: r.photo_source,
+  photoCrop: parseCrop(r.photo_crop),
   photoAlt: r.photo_alt,
   socials: sanitizeSocials(r.socials),
   active: r.active,
   position: r.position,
 });
+
+// jsonb aceita null direto; o objeto vai serializado
+const cropJson = (crop: Crop | null) => (crop ? sql.json(crop) : null);
 
 // Sem alt informado no painel, "Foto de <nome>" descreve a imagem
 export const organizerAlt = (o: Organizer) => o.photoAlt || `Foto de ${o.name}`;
@@ -63,8 +73,9 @@ export async function getOrganizer(id: string): Promise<Organizer | null> {
 export async function createOrganizer(data: OrganizerInput): Promise<Organizer> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
-    insert into organizers (name, role, bio, photo, photo_alt, socials, active, position)
-    values (${data.name}, ${data.role}, ${data.bio}, ${data.photo}, ${data.photoAlt}, ${sql.json(data.socials)}, ${data.active},
+    insert into organizers (name, role, bio, photo, photo_source, photo_crop, photo_alt, socials, active, position)
+    values (${data.name}, ${data.role}, ${data.bio}, ${data.photo}, ${data.photoSource}, ${cropJson(data.photoCrop)}, ${data.photoAlt},
+      ${sql.json(data.socials)}, ${data.active},
       (select coalesce(max(position), -1) + 1 from organizers))
     returning *`;
   return toOrganizer(row);
@@ -78,6 +89,8 @@ export async function updateOrganizer(id: string, data: OrganizerInput) {
       role = ${data.role},
       bio = ${data.bio},
       photo = ${data.photo},
+      photo_source = ${data.photoSource},
+      photo_crop = ${cropJson(data.photoCrop)},
       photo_alt = ${data.photoAlt},
       socials = ${sql.json(data.socials)},
       active = ${data.active},

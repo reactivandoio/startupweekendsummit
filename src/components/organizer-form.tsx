@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useId, useState } from "react";
 import { saveOrganizer, type OrganizerFormState } from "@/app/admin/actions";
 import { Button } from "@/components/button";
-import { FileUpload } from "@/components/file-upload";
+import { PhotoField, type CurrentPhoto } from "@/components/photo-field";
 import { Select } from "@/components/select";
 import { SocialIcon } from "@/components/social-icon";
 import { ALT_MAX, BIO_MAX, isSocialKind, NAME_MAX, ROLE_MAX, SOCIALS_MAX, socialKinds, URL_MAX } from "@/lib/organizers-core";
@@ -29,7 +29,7 @@ type Editing = {
   photoAlt: string;
   active: boolean;
   socials: { kind: string; url: string }[];
-  photoUrl: string | null;
+  photo: CurrentPhoto | null;
 };
 
 // Sem `organizer`: cadastro. Com `organizer`: edição (a foto atual fica se nenhum arquivo novo for enviado).
@@ -48,7 +48,7 @@ function Fields({
   pending,
 }: {
   organizer?: Editing;
-  values?: Omit<Editing, "id" | "photoUrl">;
+  values?: Omit<Editing, "id" | "photo">;
   state: OrganizerFormState;
   action: (formData: FormData) => void;
   pending: boolean;
@@ -105,20 +105,11 @@ function Fields({
         <label htmlFor="o-photo" className="text-body font-semibold">
           Foto
         </label>
-        <FileUpload
+        <PhotoField
           id="o-photo"
-          name="photo"
-          label="Arraste a foto aqui ou escolha no computador"
-          preview="photo"
-          current={organizer?.photoUrl ? { url: organizer.photoUrl, alt: organizer.photoAlt || organizer.name } : undefined}
-          hint={`Opcional. JPG, PNG ou WebP até 2 MB; no site a foto é recortada em quadrado, ao centro — prefira rosto centralizado. Sem foto, o card mostra as iniciais.${organizer?.photoUrl ? " Para manter a atual, não escolha outra." : ""}`}
+          current={organizer?.photo ?? undefined}
+          hint="Opcional. Ao escolher, você recorta o quadrado que aparece no site (posição, zoom e rotação); dá para ajustar depois. Sem foto, o card mostra as iniciais."
         />
-        {organizer?.photoUrl && (
-          <label className="flex items-center gap-2 text-body">
-            <input type="checkbox" name="removePhoto" className="h-4 w-4 accent-ink" />
-            Remover a foto atual
-          </label>
-        )}
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="o-alt" className="text-body font-semibold">
