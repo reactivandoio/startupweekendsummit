@@ -32,7 +32,7 @@ Ao se inscrever, você concorda com estes Termos de Participação. Podemos atua
 • As informações fornecidas (nome, e-mail, WhatsApp, CPF e data de nascimento) são verdadeiras, completas e atualizadas
 • O convite é pessoal e não deve ser repassado a terceiros
 
-O pagamento da inscrição é feito online, por cartão (processado pelo Stripe) ou por Pix (processado pelo Opa Pingou). Esses serviços são de terceiros, sujeitos aos próprios termos e à própria disponibilidade; a organização não armazena dados de cartão nem de conta bancária. A inscrição é confirmada após a confirmação do pagamento, e o comprovante e o ingresso são enviados para o e-mail cadastrado.
+O pagamento da inscrição é feito online, por cartão (processado pelo Stripe) ou por Pix (processado pelo Opa Pingou). Esses serviços são de terceiros, sujeitos aos próprios termos e à própria disponibilidade; a organização não armazena dados de cartão nem de conta bancária. Toda inscrição, paga ou gratuita (com cupom ou cortesia), por convite ou pela página de inscrição, passa pela aprovação da organização: a inscrição só é confirmada depois de aprovada, e então o ingresso é enviado para o e-mail cadastrado. Se não for aprovada, o valor pago é devolvido integralmente. Cupons de desconto não se somam ao desconto do convite: vale o maior.
 
 A organização pode cancelar inscrições feitas com informações falsas, com convite indevido ou em desacordo com estes Termos.`,
   },
@@ -107,7 +107,7 @@ export default function TermosDeUsoPage() {
     <LegalPage
       eyebrow="Documento"
       title="Termos de Participação."
-      updated="26 de outubro de 2026"
+      updated="29 de outubro de 2026"
       intro={{
         label: "Descrição do evento",
         text: `O ${site.name} reúne, por três dias, as lideranças voluntárias que disseminam empreendedorismo e influenciam o ecossistema de startups no Brasil inteiro. De ${site.date}, em ${site.cityName}, você vai conhecer quem organiza as comunidades Startup Weekend pelo país, mentores, parceiros e patrocinadores, trocar aprendizados e construir, junto, os próximos passos do movimento no Brasil.`,

@@ -1,13 +1,13 @@
 // pnpm test — situação da inscrição (pagamento + aprovação do cadastro aberto)
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formPath, isConfirmed, matchesFilters, parseSituation, parseSource, paymentMethodName, paymentPagePath, situation } from "./registration-state.ts";
+import { formPath, isConfirmed, matchesFilters, parseCouponFilter, parseSituation, paymentMethodName, paymentPagePath, situation } from "./registration-state.ts";
 
 describe("situation", () => {
-  it("convite pago é confirmado direto, sem aprovação", () => {
+  it("convite antigo (sem aprovação) pago é confirmado", () => {
     assert.equal(situation({ status: "paid", approval: null }), "confirmed");
   });
-  it("cadastro aberto pago aguarda aprovação", () => {
+  it("toda inscrição nova paga (ou gratuita) aguarda aprovação", () => {
     assert.equal(situation({ status: "paid", approval: "pending" }), "awaiting_approval");
     assert.equal(isConfirmed({ status: "paid", approval: "pending" }), false);
   });
@@ -26,23 +26,36 @@ describe("situation", () => {
 });
 
 describe("filtros", () => {
-  const open = { status: "paid", approval: "pending", source: "open" } as const;
-  const invite = { status: "paid", approval: null, source: "invite" } as const;
+  const open = { status: "paid", approval: "pending", source: "open", couponViaLink: false, couponCode: null } as const;
+  const viaLink = { status: "paid", approval: "pending", source: "open", couponViaLink: true, couponCode: "TRACK" } as const;
+  const invite = { status: "paid", approval: null, source: "invite", couponViaLink: false, couponCode: "TRACK" } as const;
+  const none = { situation: null, entry: null, coupon: null };
   it("sem filtro passa tudo", () => {
-    assert.ok(matchesFilters(open, { situation: null, source: null }));
-    assert.ok(matchesFilters(invite, { situation: null, source: null }));
+    assert.ok(matchesFilters(open, none));
+    assert.ok(matchesFilters(invite, none));
   });
   it("filtra por situação e por origem juntos", () => {
-    assert.ok(matchesFilters(open, { situation: "awaiting_approval", source: "open" }));
-    assert.ok(!matchesFilters(open, { situation: "awaiting_approval", source: "invite" }));
-    assert.ok(!matchesFilters(invite, { situation: "awaiting_approval", source: null }));
+    assert.ok(matchesFilters(open, { ...none, situation: "awaiting_approval", entry: "open" }));
+    assert.ok(!matchesFilters(open, { ...none, situation: "awaiting_approval", entry: "invite" }));
+    assert.ok(!matchesFilters(invite, { ...none, situation: "awaiting_approval" }));
+  });
+  it("link de cupom é uma origem própria", () => {
+    assert.ok(matchesFilters(viaLink, { ...none, entry: "coupon_link" }));
+    assert.ok(!matchesFilters(viaLink, { ...none, entry: "open" }));
+  });
+  it("filtra por cupom, ou pelas sem cupom", () => {
+    assert.ok(matchesFilters(invite, { ...none, coupon: "TRACK" }));
+    assert.ok(!matchesFilters(open, { ...none, coupon: "TRACK" }));
+    assert.ok(matchesFilters(open, { ...none, coupon: "-" }));
+    assert.ok(!matchesFilters(viaLink, { ...none, coupon: "-" }));
   });
   it("valores desconhecidos na URL viram 'todos'", () => {
     assert.equal(parseSituation("x"), null);
     assert.equal(parseSituation(undefined), null);
     assert.equal(parseSituation("rejected"), "rejected");
-    assert.equal(parseSource(["open"]), null);
-    assert.equal(parseSource("open"), "open");
+    assert.equal(parseCouponFilter(["TRACK"]), null);
+    assert.equal(parseCouponFilter("track"), "TRACK");
+    assert.equal(parseCouponFilter("a b"), null);
   });
 });
 
@@ -60,6 +73,7 @@ describe("meio de pagamento", () => {
     assert.equal(paymentMethodName({ provider: "opapingou", paymentMethod: null }), "Pix");
     assert.equal(paymentMethodName({ provider: "stripe", paymentMethod: null }), "Cartão (Stripe)");
     assert.equal(paymentMethodName({ provider: "courtesy", paymentMethod: null }), "Cortesia");
+    assert.equal(paymentMethodName({ provider: "courtesy", paymentMethod: null, discountSource: "coupon" }), "Gratuita (cupom)");
   });
   it("manda para a página do Pix ou do cartão", () => {
     assert.equal(paymentPagePath({ id: "x", opaPaymentLink: null }), "/inscricao/pix/x");

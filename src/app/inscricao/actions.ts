@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { site } from "@/content/site";
 import { isValidCpf, isValidIsoDate, isValidPhone, normalizeEmail, onlyDigits } from "@/lib/cpf";
+import { quotePrice } from "@/lib/checkout";
+import { normalizeCouponCode, type PriceQuote } from "@/lib/coupons-core";
 import { NO_DISCOUNT } from "@/lib/discounts";
 import { getInviteByCode, inviteAvailable, type Invite } from "@/lib/invites";
 import { sendPaymentReceived } from "@/lib/mail";
@@ -17,13 +19,14 @@ import {
   getRegistration,
   markPaid,
   updateRegistrationData,
+  type Pricing,
 } from "@/lib/registrations";
 import { cardPaymentEnabled, openRegistrationEnabled } from "@/lib/settings";
 import { appUrl, stripe } from "@/lib/stripe";
 import { startOpaPayment } from "@/lib/ticket-payments";
-import { currentOffer, offerPrice } from "@/lib/tickets";
+import { currentOffer, minChargeCents } from "@/lib/tickets";
 
-export type RegistrationFieldErrors = Partial<Record<"name" | "email" | "phone" | "cpf" | "birthDate" | "consent", string>>;
+export type RegistrationFieldErrors = Partial<Record<"name" | "email" | "phone" | "cpf" | "birthDate" | "consent" | "coupon", string>>;
 
 export type RegistrationFormState = {
   status: "idle" | "error";
@@ -40,9 +43,10 @@ function text(formData: FormData, key: string, max = 200) {
 }
 
 // Valida, cria a inscrição pendente e manda pro pagamento: Pix do Opa Pingou (página com QR), cartão de crédito pelo
-// link de pagamento do Opa Pingou (página "aguardando pagamento") ou Checkout do Stripe.
-// Cortesia (desconto do convite cobre o lote): confirma direto, sem cobrança. Em sucesso, redireciona (não retorna).
-// mode=open: cadastro aberto, sem convite; mesma cobrança, mas a inscrição paga fica aguardando aprovação no painel.
+// link de pagamento do Opa Pingou (página "aguardando pagamento") ou Checkout do Stripe. Em sucesso, redireciona.
+// Preço: lote à venda − o maior entre o desconto do convite e o do cupom (não acumulam). Valor zero (cortesia do
+// convite ou cupom de 100%): sem cobrança, vai direto para "aguardando aprovação".
+// Toda inscrição, por convite ou aberta (mode=open), paga ou gratuita, passa pela aprovação no painel.
 export async function registerParticipant(_prev: RegistrationFormState, formData: FormData): Promise<RegistrationFormState> {
   // Honeypot: bots preenchem; humanos não veem o campo.
   if (text(formData, "website")) return { status: "idle" };
@@ -55,7 +59,10 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   const birthDate = text(formData, "birthDate", 10);
   const consent = formData.get("consent") === "on";
   const sponsorConsent = formData.get("sponsorConsent") === "on"; // opcional: não bloqueia a inscrição
-  const values = { name, email, phone: text(formData, "phone", 40), cpf: text(formData, "cpf", 20), birthDate };
+  const couponRaw = text(formData, "coupon", 60);
+  const couponCode = normalizeCouponCode(couponRaw) || null;
+  const couponViaLink = Boolean(couponCode) && formData.get("couponViaLink") === "1";
+  const values = { name, email, phone: text(formData, "phone", 40), cpf: text(formData, "cpf", 20), birthDate, coupon: couponRaw };
 
   const errors: RegistrationFieldErrors = {};
   if (name.trim().split(/\s+/).length < 2) errors.name = "Informe nome e sobrenome.";
@@ -66,7 +73,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   if (!consent) errors.consent = "Precisamos do seu consentimento para concluir a inscrição.";
   if (Object.keys(errors).length > 0) return { status: "error", message: "Revise os campos destacados.", errors, values };
 
-  // Cadastro aberto (/inscricao/aberta): sem convite e sem desconto; paga e entra em análise
+  // Inscrição aberta (/inscricao/aberta): sem convite; o cupom é o único desconto possível
   const open = formData.get("mode") === "open";
   const source = open ? "open" : "invite";
   let invite: Invite | null = null;
@@ -80,6 +87,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
       return { status: "error", message: "Este convite não está mais disponível. Fale com a organização.", values };
     }
   }
+  const inviteDiscount = invite?.discount ?? NO_DISCOUNT;
   // Só bloqueia quem já pagou; pendente (abandonou o Pix ou o cartão no meio) é retomada logo abaixo
   if (await findPaidRegistration(email, cpf)) {
     return {
@@ -93,23 +101,50 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   const chosen = formData.get("paymentMethod") === "card" && (await cardPaymentEnabled()) ? "card" : "pix";
   const description = (r: { name: string }) => `${ticket.name} — ${r.name}`;
   const person = { name, email, phone, cpf, birthDate, sponsorConsent };
-  // Mesmo convite (ou cadastro aberto) e mesma pessoa, ainda não paga: retoma a mesma inscrição em vez de criar outra
+  const couponError = (message: string): RegistrationFormState => ({ status: "error", message, errors: { coupon: message }, values: { ...values, paymentMethod: chosen } });
+  const pricing = (q: PriceQuote, lotId: string | null, coupon: { id: string } | null): Pricing => ({
+    amountCents: q.finalCents,
+    listPriceCents: q.listCents,
+    discountCents: q.discountCents,
+    discountSource: q.source,
+    lotId,
+    couponId: coupon?.id ?? null,
+    couponCode: q.couponCode,
+    couponViaLink,
+  });
+  // Mesmo convite (ou inscrição aberta) e mesma pessoa, ainda não paga: retoma a mesma inscrição em vez de criar outra
   const resumable = ticket.enabled && ticket.provider !== "opapingou" ? null : await findResumableRegistration({ source, inviteId: invite?.id ?? null, email, cpf });
   const failMessage = (card: boolean) =>
     card ? "Não conseguimos abrir o pagamento com cartão agora. Tente novamente em instantes ou escolha Pix." : "Não conseguimos iniciar o pagamento agora. Tente novamente em instantes.";
+  const charge = async (reg: { id: string; amountCents: number }): Promise<{ next: string } | { error: RegistrationFormState }> => {
+    try {
+      return { next: await startOpaPayment(reg, chosen, description({ name })) };
+    } catch (err) {
+      console.error("[registerParticipant] retomada", err);
+      return { error: { status: "error", message: failMessage(chosen === "card"), values: { ...values, paymentMethod: chosen } } };
+    }
+  };
 
   // A vaga ainda é dela (cobrança valendo): segue com o mesmo preço, mesmo com o lote "esgotado" por ela mesma.
   // Mesmo meio: volta para a página da cobrança; outro meio: nova cobrança na mesma inscrição.
+  // Cupom diferente do que ela usou: recalcula sobre o preço do lote que ela segura e gera nova cobrança.
   if (resumable && holdsSeat(resumable)) {
+    if (couponCode !== resumable.couponCode) {
+      const quoted = await quotePrice({ listCents: resumable.listPriceCents, lotId: resumable.lotId, minChargeCents: minChargeCents("opapingou") }, inviteDiscount, couponRaw);
+      if (!quoted.ok) return couponError(quoted.message);
+      const q = quoted.quote;
+      await updateRegistrationData(resumable.id, { ...person, price: { ...pricing(q, resumable.lotId, quoted.coupon), ...(q.courtesy ? { provider: "courtesy" } : {}) } });
+      if (q.courtesy) await confirmFree(resumable.id);
+      const r = await charge({ id: resumable.id, amountCents: q.finalCents });
+      if ("error" in r) return r.error;
+      redirect(r.next);
+    }
     await updateRegistrationData(resumable.id, person);
     let next = paymentPagePath(resumable);
     if (resumePlan(resumable, chosen) === "new_charge") {
-      try {
-        next = await startOpaPayment(resumable, chosen, description({ name }));
-      } catch (err) {
-        console.error("[registerParticipant] retomada", err);
-        return { status: "error", message: failMessage(chosen === "card"), values: { ...values, paymentMethod: chosen } };
-      }
+      const r = await charge(resumable);
+      if ("error" in r) return r.error;
+      next = r.next;
     }
     redirect(next);
   }
@@ -122,45 +157,29 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     return { status: "error", message, values };
   }
 
-  const price = offerPrice(ticket, invite?.discount ?? NO_DISCOUNT);
+  const quoted = await quotePrice({ listCents: ticket.priceCents, lotId: ticket.lotId, minChargeCents: minChargeCents(ticket.provider) }, inviteDiscount, couponRaw);
+  if (!quoted.ok) return couponError(quoted.message);
+  const price = quoted.quote;
+  const priced = pricing(price, ticket.lotId, quoted.coupon);
 
   // Inscrição não paga cuja cobrança venceu: a vaga é disputada de novo (checada acima); preço do lote de agora
-  if (resumable && !price.courtesy && ticket.provider === "opapingou") {
-    await updateRegistrationData(resumable.id, {
-      ...person,
-      price: { amountCents: price.finalCents, listPriceCents: price.listCents, discountCents: price.discountCents, lotId: ticket.lotId },
-    });
-    let next: string;
-    try {
-      next = await startOpaPayment({ id: resumable.id, amountCents: price.finalCents }, chosen, description({ name }));
-    } catch (err) {
-      console.error("[registerParticipant] retomada", err);
-      return { status: "error", message: failMessage(chosen === "card"), values: { ...values, paymentMethod: chosen } };
-    }
-    redirect(next);
+  if (resumable && ticket.provider === "opapingou") {
+    await updateRegistrationData(resumable.id, { ...person, price: { ...priced, ...(price.courtesy ? { provider: "courtesy" } : {}) } });
+    if (price.courtesy) await confirmFree(resumable.id);
+    const r = await charge({ id: resumable.id, amountCents: price.finalCents });
+    if ("error" in r) return r.error;
+    redirect(r.next);
   }
 
   const registration = await createRegistration({
     inviteId: invite?.id ?? null,
     source,
-    name,
-    email,
-    phone,
-    cpf,
-    birthDate,
-    amountCents: price.finalCents,
-    listPriceCents: price.listCents,
-    discountCents: price.discountCents,
+    ...person,
+    ...priced,
     provider: price.courtesy ? "courtesy" : ticket.provider,
-    lotId: ticket.lotId,
-    sponsorConsent,
   });
 
-  if (price.courtesy) {
-    const paid = await markPaid(registration.id, null, 0);
-    if (paid) await sendPaymentReceived(paid).catch((err) => console.error("[registerParticipant] mail", err));
-    redirect(`/inscricao/confirmada?r=${registration.id}`);
-  }
+  if (price.courtesy) await confirmFree(registration.id);
 
   // Cartão só quando escolhido e ligado no painel; mesmo valor do Pix (a tarifa do cartão não é repassada)
   const card = ticket.provider === "opapingou" && chosen === "card";
@@ -179,6 +198,30 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
     return { status: "error", message: failMessage(card), values: { ...values, paymentMethod: chosen } };
   }
   redirect(next);
+}
+
+// Valor zero (cortesia do convite ou cupom de 100%): sem cobrança, entra direto em "aguardando aprovação" e recebe o
+// e-mail de inscrição em análise. Redireciona (não retorna).
+async function confirmFree(id: string): Promise<never> {
+  const paid = await markPaid(id, null, 0);
+  if (paid) await sendPaymentReceived(paid).catch((err) => console.error("[registerParticipant] mail", err));
+  redirect(`/inscricao/confirmada?r=${id}`);
+}
+
+export type CouponPreviewState = { status: "idle" } | { status: "ok"; quote: PriceQuote } | { status: "error"; message: string };
+
+// "Aplicar" do campo Cupom: valida na hora e devolve o valor recalculado. O envio confere tudo de novo.
+// code: convite da página (vazio na inscrição aberta).
+export async function previewCoupon(inviteCode: string, couponRaw: string): Promise<CouponPreviewState> {
+  const ticket = await currentOffer();
+  if (!ticket.enabled) return { status: "error", message: "As inscrições não estão abertas agora." };
+  const invite = inviteCode ? await getInviteByCode(inviteCode.slice(0, 64)) : null;
+  const quoted = await quotePrice(
+    { listCents: ticket.priceCents, lotId: ticket.lotId, minChargeCents: minChargeCents(ticket.provider) },
+    invite && !invite.revokedAt ? invite.discount : NO_DISCOUNT,
+    couponRaw.slice(0, 60),
+  );
+  return quoted.ok ? { status: "ok", quote: quoted.quote } : { status: "error", message: quoted.message };
 }
 
 export type SwitchPaymentState = { status: "idle" | "error"; message?: string };
