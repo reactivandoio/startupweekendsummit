@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { hasTransparency } from "./image-alpha.ts";
+import { processCroppedPhoto, processSourcePhoto } from "./photos.ts";
 
 // Caminho absoluto, definido nos dois compose (volume nomeado "uploads", o mesmo para blue e green).
 // Sem a variável, cai em ./uploads (gitignored) — mas aí o arquivo fica na camada do container e some no deploy.
@@ -34,23 +35,38 @@ export const OPAQUE_MESSAGE = "Este arquivo tem fundo opaco e ficaria um bloco p
 
 export type UploadResult = { ok: true; filename: string } | { ok: false; message: string };
 
-/* "logo" (patrocinadores): SVG, PNG ou WebP com transparência, porque o site pinta o logo de tinta.
-   "photo" (organizadores): JPG, PNG ou WebP, sem SVG (foto não é vetor) e sem exigir transparência. */
-export async function saveImageUpload(file: File, kind: "logo" | "photo" = "logo"): Promise<UploadResult> {
-  const what = kind === "logo" ? "O logo" : "A foto";
-  if (file.size > MAX_UPLOAD_BYTES) return { ok: false, message: `${what} passa de 2 MB. Exporte uma versão menor.` };
+// Logos de patrocinadores: SVG, PNG ou WebP com transparência, porque o site pinta o logo de tinta.
+export async function saveImageUpload(file: File): Promise<UploadResult> {
+  if (file.size > MAX_UPLOAD_BYTES) return { ok: false, message: "O logo passa de 2 MB. Exporte uma versão menor." };
   const buf = Buffer.from(await file.arrayBuffer());
   const ext = sniff(buf);
-  if (kind === "photo") {
-    if (ext !== "jpg" && ext !== "png" && ext !== "webp") return { ok: false, message: "Formato não aceito. Use JPG, PNG ou WebP." };
-  } else {
-    if (!ext) return { ok: false, message: "Formato não aceito. Use SVG, PNG ou WebP com fundo transparente." };
-    if (!hasTransparency(buf, ext)) return { ok: false, message: OPAQUE_MESSAGE };
-  }
+  if (!ext) return { ok: false, message: "Formato não aceito. Use SVG, PNG ou WebP com fundo transparente." };
+  if (!hasTransparency(buf, ext)) return { ok: false, message: OPAQUE_MESSAGE };
   const filename = `${randomUUID()}.${ext}`;
   // um volume recém-criado monta vazio
   await mkdir(/*turbopackIgnore: true*/ UPLOADS_DIR, { recursive: true });
   await writeFile(pathOf(filename), buf);
+  return { ok: true, filename };
+}
+
+/* Foto de organizador. "crop": o quadrado recortado no navegador, que o site exibe; "source": o original, guardado
+   pra recortar de novo. Nos dois casos o arquivo salvo é o WebP que o sharp gera (tamanho e peso controlados aqui,
+   não pelo navegador); o tipo recebido só precisa ser imagem rasterizada. */
+export async function savePhotoUpload(file: File, role: "crop" | "source"): Promise<UploadResult> {
+  if (file.size > MAX_UPLOAD_BYTES) return { ok: false, message: "A foto passa de 2 MB. Exporte uma versão menor." };
+  const buf = Buffer.from(await file.arrayBuffer());
+  const ext = sniff(buf);
+  if (ext !== "jpg" && ext !== "png" && ext !== "webp") return { ok: false, message: "Formato não aceito. Use JPG, PNG ou WebP." };
+  let out: Buffer;
+  try {
+    out = role === "crop" ? await processCroppedPhoto(buf) : await processSourcePhoto(buf);
+  } catch (err) {
+    console.error("[savePhotoUpload]", err);
+    return { ok: false, message: "Não conseguimos ler essa imagem. Tente exportar de novo em JPG ou PNG." };
+  }
+  const filename = `${randomUUID()}.webp`;
+  await mkdir(/*turbopackIgnore: true*/ UPLOADS_DIR, { recursive: true });
+  await writeFile(pathOf(filename), out);
   return { ok: true, filename };
 }
 

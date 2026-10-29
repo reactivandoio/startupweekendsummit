@@ -90,3 +90,23 @@ export function initials(name: string): string {
   const last = words.length > 1 ? words[words.length - 1][0] : "";
   return (first + last).toUpperCase();
 }
+
+/* Quantas colunas a grade da home usa numa faixa de largura, dada a quantidade de organizadores.
+   Até `max` cabem numa linha só (mas nunca menos que `min` colunas, senão um organizador sozinho vira um banner).
+   Acima disso, escolhe a contagem cujas linhas ficam mais cheias: linha completa vale 1, última linha parcial vale
+   a fração preenchida, e cada coluna a mais soma 0,2 (menos linhas), de modo que 6 vira 3+3 em vez de 5+1 e
+   7 vira 4+3 em vez de 5+2. A última linha é centralizada pelo CSS (.organizers-grid). */
+export function gridColumns(n: number, { min, max }: { min: number; max: number }): number {
+  if (n <= max) return Math.max(min, n);
+  let best = max;
+  let bestScore = -1;
+  for (let cols = max; cols >= min; cols--) {
+    const rest = n % cols;
+    const score = (rest === 0 ? 1 : rest / cols) + 0.2 * cols;
+    if (score > bestScore) {
+      best = cols;
+      bestScore = score;
+    }
+  }
+  return best;
+}

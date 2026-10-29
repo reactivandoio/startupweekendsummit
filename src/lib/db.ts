@@ -222,6 +222,10 @@ export function ensureSchema() {
           created_at timestamptz not null default now(),
           updated_at timestamptz not null default now()
         )`;
+      // STA-25: photo passa a ser o recorte quadrado (WebP) gerado no servidor; photo_source guarda o original
+      // pra recortar de novo e photo_crop o estado do editor ({ x, y, zoom, rotation }); null = sem recorte salvo
+      await sql`alter table organizers add column if not exists photo_source text not null default ''`;
+      await sql`alter table organizers add column if not exists photo_crop jsonb`;
       const seed = process.env.ADMIN_SEED_EMAIL?.trim().toLowerCase();
       if (seed) {
         await sql`insert into users (email, name) values (${seed}, ${process.env.ADMIN_SEED_NAME ?? ""}) on conflict (email) do nothing`;

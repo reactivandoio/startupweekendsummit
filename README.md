@@ -106,12 +106,24 @@ cache longo — cada envio gera um nome novo. Trocar ou excluir o logo apaga o a
 ## Organizadores
 
 Cadastrados em `/admin/organizadores`: nome, papel/cargo (opcional), biografia (até 280 caracteres, com contador),
-foto (JPG, PNG ou WebP até 2 MB, no mesmo volume de uploads; opcional — sem foto o card mostra as iniciais), texto
-alternativo, redes sociais (LinkedIn, Instagram, X, site ou outra; o domínio das redes conhecidas é conferido e
-`@usuario` vira o perfil no Instagram e no X) e ativo/inativo. A ordem é a das setas ↑ ↓ do painel. Na home, a seção
-Organização (`src/components/organizers-section.tsx`, `#organizadores`, entre o after movie e a programação) mostra
-só os ativos, com a foto recortada em quadrado; sem nenhum ativo, ela não aparece. No menu, a seção faz parte do
-grupo "O evento" do scroll spy.
+foto (opcional — sem foto o card mostra as iniciais), texto alternativo, redes sociais (LinkedIn, Instagram, X, site
+ou outra; o domínio das redes conhecidas é conferido e `@usuario` vira o perfil no Instagram e no X) e ativo/inativo.
+A ordem é a das setas ↑ ↓ do painel.
+
+**Foto com recorte.** Ao escolher a foto (JPG, PNG ou WebP até 2 MB), abre o editor de recorte quadrado
+(`src/components/photo-cropper.tsx`): arrastar para posicionar, zoom (controle, roda do mouse, pinça ou teclas + −),
+girar 90°, prévia de como fica no card e Aplicar/Cancelar; no teclado, setas movem e R gira. "Ajustar recorte"
+reabre o editor numa foto já salva, no mesmo ponto. O navegador manda o quadrado recortado e o servidor
+(`src/lib/photos.ts`, sharp) grava no volume de uploads dois WebP: o recorte de 720×720 que o site mostra
+(`organizers.photo`) e o original com orientação EXIF aplicada e até 1600 px (`photo_source`), além do estado do
+recorte (`photo_crop`). Fotos de antes do editor não têm original; o primeiro "Ajustar recorte" passa a guardá-lo.
+
+Na home, a seção Organização (`src/components/organizers-section.tsx`, `#organizadores`, entre o after movie e a
+programação) mostra só os ativos; sem nenhum ativo, ela não aparece. A grade é flex com a última linha centralizada e
+o número de colunas por largura calculado pela quantidade (`gridColumns` em `src/lib/organizers-core.ts`: 6 → 3+3,
+7 → 4+3, 10 → 5+5, até 5 colunas a partir de 1280 px); cards da mesma altura, fotos do mesmo tamanho, bio em até
+4 linhas com "Ver mais" num dialog e redes alinhadas na base. No celular, a foto fica ao lado do nome. No menu, a
+seção faz parte do grupo "O evento" do scroll spy.
 
 ## Inscrição no evento (por convite + Opa Pingou)
 
