@@ -26,6 +26,8 @@ x-app: &app
     STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
     STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     TICKET_PRICE_CENTS: ${TICKET_PRICE_CENTS:-}
+    # cifra os segredos do Opa Pingou guardados no banco (settings); a MESMA nas duas cores
+    SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:-}
     # Tem que bater com o volume abaixo: sem ele os logos enviados pelo painel iriam pra
     # camada do container e sumiriam no próximo deploy.
     UPLOADS_DIR: /uploads
@@ -67,6 +69,7 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       TICKET_PRICE_CENTS: ${TICKET_PRICE_CENTS:-}
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:-}
       UPLOADS_DIR: /app/uploads
     volumes:
       - .:/app
