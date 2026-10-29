@@ -17,7 +17,7 @@ import {
   testWebhookEndpoint,
 } from "@/lib/opapingou";
 import { duplicateWebhooks, isOpaApiKey, isOpaTestKey, OpaApiError, planWebhookSetup } from "@/lib/opapingou-core";
-import { deleteUnpaidRegistration, listPendingOpaRegistrations, reviewRegistration, setRefunded } from "@/lib/registrations";
+import { deleteUnpaidRegistration, listPendingOpaRegistrations, reviewRegistration, setDuplicateChargeRefunded, setRefunded } from "@/lib/registrations";
 import { deleteSetting, getSetting, setSetting } from "@/lib/settings";
 import { createSponsor, deleteSponsor, getSponsor, isSponsorTier, moveSponsor, updateSponsor } from "@/lib/sponsors";
 import { appUrl } from "@/lib/stripe";
@@ -226,12 +226,45 @@ export async function toggleRefunded(formData: FormData) {
   revalidatePath("/admin/participantes");
 }
 
+// Pagamento em dobro (outra cobrança paga com a inscrição já paga): o estorno é manual no Opa Pingou; aqui só a marcação
+export async function toggleDuplicateRefunded(formData: FormData) {
+  await requireUser();
+  const chargeId = String(formData.get("chargeId") ?? "");
+  if (chargeId) await setDuplicateChargeRefunded(chargeId, formData.get("refunded") === "1");
+  revalidatePath("/admin/participantes");
+}
+
 export async function toggleOpenRegistration(formData: FormData) {
   const me = await requireUser();
   if (formData.get("enabled") === "1") await setSetting("open_registration", "on", me.id);
   else await deleteSetting("open_registration");
   revalidatePath("/admin/ingressos");
   revalidatePath("/inscricao/aberta");
+}
+
+// Cartão de crédito no checkout (link de pagamento do Opa Pingou): ligado por padrão; "off" esconde a opção
+export async function toggleCardPayment(formData: FormData) {
+  const me = await requireUser();
+  if (formData.get("enabled") === "1") await deleteSetting("opapingou_card");
+  else await setSetting("opapingou_card", "off", me.id);
+  revalidatePath("/admin/ingressos");
+}
+
+export type CardAccountState = { status: "idle" | "ok" | "error"; message?: string };
+
+// bankAccountId da conta Abacate Pay (o Opa Pingou não lista contas pela API: o id vem do painel dele). Vazio = conta padrão.
+export async function saveCardAccount(_prev: CardAccountState, formData: FormData): Promise<CardAccountState> {
+  const me = await requireUser();
+  const id = String(formData.get("accountId") ?? "").trim().toLowerCase();
+  if (!id) {
+    await deleteSetting("opapingou_card_account");
+    revalidatePath("/admin/ingressos");
+    return { status: "ok", message: "Sem conta fixa: o Opa Pingou usa a conta padrão de links de pagamento." };
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) return { status: "error", message: "O id da conta é um UUID, como b3f1c2d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d." };
+  await setSetting("opapingou_card_account", id, me.id);
+  revalidatePath("/admin/ingressos");
+  return { status: "ok", message: "Conta salva. Os próximos links de pagamento saem nela." };
 }
 
 /* ---------- Ingressos: Opa Pingou e lotes ---------- */

@@ -4,7 +4,16 @@ import { ensureSchema, sql } from "@/lib/db";
 // Chaves conhecidas. Segredos (chave de API, segredo do webhook) nunca voltam para o navegador.
 // site_theme: tema padrão do site ("dark" | "light"), escolhido em /admin/configuracoes.
 // open_registration: "on" abre /inscricao/aberta (cadastro sem convite, com aprovação); sem a chave, fica fechada.
-export type SettingKey = "opapingou_api_key" | "opapingou_webhook_id" | "opapingou_webhook_secret" | "site_theme" | "open_registration";
+// opapingou_card: "off" esconde o cartão de crédito no checkout; sem a chave, o cartão aparece ao lado do Pix.
+// opapingou_card_account: bankAccountId da conta Abacate Pay no Opa Pingou para os links de pagamento (opcional).
+export type SettingKey =
+  | "opapingou_api_key"
+  | "opapingou_webhook_id"
+  | "opapingou_webhook_secret"
+  | "opapingou_card"
+  | "opapingou_card_account"
+  | "site_theme"
+  | "open_registration";
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
   await ensureSchema();
@@ -13,6 +22,7 @@ export async function getSetting(key: SettingKey): Promise<string | null> {
 }
 
 export const openRegistrationEnabled = async () => (await getSetting("open_registration")) === "on";
+export const cardPaymentEnabled = async () => (await getSetting("opapingou_card")) !== "off";
 
 export async function setSetting(key: SettingKey, value: string, userId: string | null) {
   await ensureSchema();

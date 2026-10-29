@@ -37,23 +37,28 @@ function Field({
   );
 }
 
-const submitLabel = { pix: "Gerar Pix", checkout: "Ir para o pagamento", courtesy: "Confirmar inscrição" };
-const pendingLabel = { pix: "Gerando o Pix…", checkout: "Abrindo o pagamento…", courtesy: "Confirmando…" };
+const submitLabel = { pix: "Gerar Pix", card: "Pagar com cartão", checkout: "Ir para o pagamento", courtesy: "Confirmar inscrição" };
+const pendingLabel = { pix: "Gerando o Pix…", card: "Abrindo o pagamento…", checkout: "Abrindo o pagamento…", courtesy: "Confirmando…" };
 const footnote = {
   pix: "Na próxima tela aparecem o QR Code e o Pix copia e cola, válidos por 1 hora.",
+  card: "Na próxima tela, o pagamento com cartão de crédito (à vista, mesmo valor do Pix) abre numa nova aba e fica aberto por 1 hora.",
   checkout: "Pagamento seguro pelo Stripe. Você volta pra cá assim que concluir.",
   courtesy: "Ingresso cortesia: sem pagamento. A confirmação chega no seu e-mail.",
 };
 
 const linkClass = "underline decoration-grass decoration-2 underline-offset-4 hover:text-grass-deep";
 
-// Formulário do convite: dados do participante → Pix do Opa Pingou, Checkout do Stripe ou cortesia (redireciona ao enviar).
+// Formulário do convite: dados do participante → Pix ou cartão do Opa Pingou, Checkout do Stripe ou cortesia (redireciona ao enviar).
+// card: no Opa Pingou, oferece "Cartão de crédito" (link de pagamento) ao lado do Pix.
 // Máscaras no cliente (CPF, WhatsApp, data); o servidor recebe CPF/telefone como estão e guarda só dígitos,
 // e a data já em YYYY-MM-DD (campo escondido). Validação no cliente antes do envio, com as mesmas regras do servidor.
 // code null: cadastro aberto (sem convite), cuja inscrição paga passa pela aprovação da organização.
-export function RegistrationForm({ code, priceLabel, method }: { code: string | null; priceLabel: string; method: "pix" | "checkout" | "courtesy" }) {
+export function RegistrationForm({ code, priceLabel, method, card = false }: { code: string | null; priceLabel: string; method: "pix" | "checkout" | "courtesy"; card?: boolean }) {
   const [state, formAction, pending] = useActionState(registerParticipant, initialState);
   const v = state.values ?? {};
+  const choice = method === "pix" && card;
+  const [payWith, setPayWith] = useState<"pix" | "card">(() => (v.paymentMethod === "card" ? "card" : "pix"));
+  const shown = choice ? payWith : method;
   const [cpf, setCpf] = useState(() => maskCpf(v.cpf ?? ""));
   const [phone, setPhone] = useState(() => maskPhone(v.phone ?? ""));
   const [email, setEmail] = useState(v.email ?? "");
@@ -238,11 +243,45 @@ export function RegistrationForm({ code, priceLabel, method }: { code: string | 
         </span>
       </label>
 
+      {choice && (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-3 text-body font-semibold">Forma de pagamento</legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                { value: "pix", title: "Pix", hint: "QR Code ou copia e cola, aprovação na hora." },
+                { value: "card", title: "Cartão de crédito", hint: "À vista, mesmo valor. Abre numa nova aba." },
+              ] as const
+            ).map((o) => (
+              <label
+                key={o.value}
+                className={`flex cursor-pointer items-start gap-3 border-2 border-ink p-4 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink ${
+                  payWith === o.value ? "bg-marigold-wash shadow-hard-sm" : "bg-paper"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={o.value}
+                  checked={payWith === o.value}
+                  onChange={() => setPayWith(o.value)}
+                  className="mt-1 h-4 w-4 accent-ink"
+                />
+                <span className="flex flex-col gap-1">
+                  <span className="text-body font-semibold">{o.title}</span>
+                  <span className="text-caption text-ink/60">{o.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
       <Button type="submit" variant="primary" size="lg" disabled={pending} className="w-full">
-        {pending ? pendingLabel[method] : `${submitLabel[method]} · ${method === "courtesy" ? "Cortesia" : priceLabel}`}
+        {pending ? pendingLabel[shown] : `${submitLabel[shown]} · ${method === "courtesy" ? "Cortesia" : priceLabel}`}
       </Button>
       <p className="text-caption text-ink/60">
-        {footnote[method]}
+        {footnote[shown]}
         {code === null && " A inscrição passa pela aprovação da organização: o ingresso chega por e-mail depois dela; se não for aprovada, o valor é devolvido."}
       </p>
     </form>

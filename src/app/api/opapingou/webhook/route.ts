@@ -33,9 +33,10 @@ export async function POST(request: Request) {
       // o tipo do evento é o que vale; o objeto vem igual ao da API, mas não dependemos de todos os campos
       if (reg) {
         await applyChargeStatus(reg, {
-          id: reg.opaChargeId ?? "",
+          id: String(charge.id), // pode ser uma cobrança anterior da inscrição (retomada ou troca de meio)
           status: eventChargeStatus[status],
           amountCents: typeof charge.amountCents === "number" ? charge.amountCents : reg.amountCents,
+          paymentId: typeof charge.paymentId === "string" ? charge.paymentId : null,
         });
       } else console.warn(`[opapingou] ${event.type} da cobrança ${charge.id} sem inscrição`);
     }

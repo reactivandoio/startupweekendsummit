@@ -1,12 +1,12 @@
-import { moveLotAction, removeLotAction, removeOpaKey, toggleOpenRegistration, updateLotAction } from "@/app/admin/actions";
+import { moveLotAction, removeLotAction, removeOpaKey, toggleCardPayment, toggleOpenRegistration, updateLotAction } from "@/app/admin/actions";
 import { buttonClass } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
 import { Eyebrow } from "@/components/eyebrow";
-import { LotForm, OpaDuplicateWebhookDelete, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
+import { CardAccountForm, LotForm, OpaDuplicateWebhookDelete, OpaKeyForm, OpaWebhookButtons } from "@/components/opapingou-forms";
 import { formatBRL } from "@/lib/cpf";
 import { listWebhookEndpoints, opaApiUrl, opaWebhookUrl, type OpaWebhookEndpoint } from "@/lib/opapingou";
 import { duplicateWebhooks, isOpaTestKey, maskOpaKey } from "@/lib/opapingou-core";
-import { getSetting, openRegistrationEnabled } from "@/lib/settings";
+import { cardPaymentEnabled, getSetting, openRegistrationEnabled } from "@/lib/settings";
 import { appUrl } from "@/lib/stripe";
 import { currentOffer, listLots } from "@/lib/tickets";
 
@@ -16,12 +16,14 @@ const btn = buttonClass("secondary", "sm");
 const centsToInput = (c: number) => (c / 100).toFixed(2).replace(".", ",");
 
 export default async function IngressosPage() {
-  const [apiKey, webhookId, lots, offer, openEnabled] = await Promise.all([
+  const [apiKey, webhookId, lots, offer, openEnabled, cardEnabled, cardAccount] = await Promise.all([
     getSetting("opapingou_api_key"),
     getSetting("opapingou_webhook_id"),
     listLots(),
     currentOffer(),
     openRegistrationEnabled(),
+    cardPaymentEnabled(),
+    getSetting("opapingou_card_account"),
   ]);
   const openUrl = `${appUrl()}/inscricao/aberta`;
 
@@ -51,7 +53,7 @@ export default async function IngressosPage() {
         </h1>
         <p className="max-w-[60ch] text-body-md">
           {offer.enabled
-            ? `Pagamento por ${offer.provider === "opapingou" ? "Pix, via Opa Pingou" : "Stripe (sem chave do Opa Pingou)"}.`
+            ? `Pagamento por ${offer.provider === "opapingou" ? `Pix${cardEnabled ? " e cartão de crédito" : ""}, via Opa Pingou` : "Stripe (sem chave do Opa Pingou)"}.`
             : "Configure o Opa Pingou e crie pelo menos um lote ativo para abrir as vendas nos convites."}
         </p>
       </div>
@@ -129,6 +131,25 @@ export default async function IngressosPage() {
               {apiKey && <OpaWebhookButtons registered={Boolean(webhookId)} />}
             </div>
           </Row>
+          <Row label="Cartão">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-semibold">{cardEnabled ? "Oferecido no checkout" : "Desligado"}</span>
+                <form action={toggleCardPayment}>
+                  <input type="hidden" name="enabled" value={cardEnabled ? "0" : "1"} />
+                  <button type="submit" className={btn}>
+                    {cardEnabled ? "Desligar" : "Ligar"}
+                  </button>
+                </form>
+              </div>
+              <p className="text-caption">
+                Link de pagamento do Opa Pingou na conta Abacate Pay: cartão à vista, mesmo valor do Pix (a tarifa não é repassada). O link não expira no
+                Abacate: pagamento depois de 1 hora sem vaga entra em &quot;aguardando aprovação&quot; em Participantes, com aviso por e-mail. Estornos são
+                feitos à mão no painel do Opa Pingou.
+              </p>
+              <CardAccountForm accountId={cardAccount} />
+            </div>
+          </Row>
           {duplicates.length > 0 && (
             <Row label="Duplicados">
               <div className="flex flex-col gap-4">
@@ -159,7 +180,7 @@ export default async function IngressosPage() {
         <div className="flex flex-col gap-6">
           <Eyebrow>Lotes</Eyebrow>
           <p className="max-w-[40ch] text-body-md">
-            O primeiro lote ativo com vaga é o que está à venda; quando esgota, o próximo entra sozinho. Pix aberto segura a vaga por 1 hora.
+            O primeiro lote ativo com vaga é o que está à venda; quando esgota, o próximo entra sozinho. Pagamento aberto (Pix ou cartão) segura a vaga por 1 hora.
             {lots.length === 0 && " Sem lotes, vale o valor único do .env (TICKET_PRICE_CENTS)."}
           </p>
           <LotForm />

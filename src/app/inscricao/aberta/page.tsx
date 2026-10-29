@@ -6,7 +6,7 @@ import { RegistrationForm } from "@/components/registration-form";
 import { SiteFooter } from "@/components/site-footer";
 import { site } from "@/content/site";
 import { formatBRL } from "@/lib/cpf";
-import { openRegistrationEnabled } from "@/lib/settings";
+import { cardPaymentEnabled, openRegistrationEnabled } from "@/lib/settings";
 import { currentOffer } from "@/lib/tickets";
 
 // Cadastro aberto, sem convite: o link é enviado pela organização. Não indexa, fica fora do sitemap
@@ -16,14 +16,15 @@ export const metadata: Metadata = { title: "Inscrição", robots: { index: false
 const included = ["Três dias de programação", "Welcome dinner de sexta", "Alimentação durante o evento", "Kit do participante"];
 
 const steps = [
-  "Preencha seus dados e pague pelo Pix.",
+  "Preencha seus dados e faça o pagamento.",
   "A organização analisa sua inscrição.",
   "Aprovada, o ingresso chega no seu e-mail. Se não for aprovada, devolvemos o valor pago.",
 ];
 
 export default async function InscricaoAbertaPage({ searchParams }: PageProps<"/inscricao/aberta">) {
   const { cancelado } = await searchParams;
-  const [enabled, ticket] = await Promise.all([openRegistrationEnabled(), currentOffer()]);
+  const [enabled, ticket, cardOn] = await Promise.all([openRegistrationEnabled(), currentOffer(), cardPaymentEnabled()]);
+  const card = ticket.enabled && ticket.provider === "opapingou" && cardOn;
   const soldOut = !ticket.enabled && ticket.reason === "sold_out";
 
   return (
@@ -47,7 +48,7 @@ export default async function InscricaoAbertaPage({ searchParams }: PageProps<"/
             {ticket.enabled && ticket.lotName && <p className="text-body-md font-semibold">{ticket.lotName}</p>}
             <p className="max-w-[40ch] text-body-md">
               {ticket.enabled && ticket.provider === "opapingou"
-                ? "Valor por participante. Pagamento via Pix; o ingresso chega por e-mail depois da aprovação."
+                ? `Valor por participante. Pagamento via Pix${card ? " ou cartão de crédito" : ""}; o ingresso chega por e-mail depois da aprovação.`
                 : "Valor único por participante. Pagamento pelo Stripe; o ingresso chega por e-mail depois da aprovação."}
             </p>
             <ol className="border-t border-ink">
@@ -99,7 +100,7 @@ export default async function InscricaoAbertaPage({ searchParams }: PageProps<"/
                     — O pagamento não foi concluído. Preencha os dados de novo para tentar outra vez.
                   </p>
                 )}
-                <RegistrationForm code={null} priceLabel={formatBRL(ticket.priceCents)} method={ticket.provider === "opapingou" ? "pix" : "checkout"} />
+                <RegistrationForm code={null} priceLabel={formatBRL(ticket.priceCents)} method={ticket.provider === "opapingou" ? "pix" : "checkout"} card={card} />
               </>
             )}
           </div>

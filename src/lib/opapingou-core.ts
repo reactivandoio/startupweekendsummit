@@ -30,15 +30,53 @@ export const maskOpaKey = (key: string) => `${key.slice(0, 9)}…${key.slice(-4)
 
 export type ChargeStatus = "PENDING" | "PAID" | "EXPIRED" | "CANCELED";
 
+export type ChargeKind = "PIX_QR" | "PAYMENT_LINK";
+
 // Só os campos da cobrança que o site usa
 export type OpaCharge = {
   id: string;
   amountCents: number;
   status: ChargeStatus;
+  kind: ChargeKind;
   brCode: string | null;
+  paymentLink: string | null; // checkout do link de pagamento (Abacate Pay: Pix e cartão à vista)
+  paymentId: string | null; // pagamento que quitou a cobrança (GET /v1/payments/{id})
   expiresAt: string;
   paidAt: string | null;
 };
+
+// Só os campos do pagamento que o site usa
+export type OpaPayment = {
+  id: string;
+  method: "PIX" | "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO" | "ACCOUNT_MONEY" | "OTHER";
+  charge: { id: string; kind: ChargeKind } | null;
+};
+
+// Meio de pagamento gravado na inscrição. Pelo kind da cobrança na criação; quando o pagamento pode ser consultado,
+// vale o método dele (o link do Abacate também aceita Pix).
+export type PaymentMethod = "pix" | "card";
+export const paymentMethodLabel: Record<PaymentMethod, string> = { pix: "Pix", card: "Cartão de crédito" };
+export const methodFromKind = (kind: ChargeKind): PaymentMethod => (kind === "PAYMENT_LINK" ? "card" : "pix");
+export function methodFromPayment(method: OpaPayment["method"] | undefined, fallback: PaymentMethod): PaymentMethod {
+  if (method === "PIX") return "pix";
+  if (method === "CREDIT_CARD" || method === "DEBIT_CARD") return "card";
+  return fallback;
+}
+
+// Descrição da cobrança: o Abacate Pay recusa acentos e travessões e corta em 100 caracteres. O Opa Pingou já
+// normaliza na conta Abacate, mas mandamos pronta em todas as cobranças (Pix e cartão) para o texto ser o mesmo.
+export const DESCRIPTION_MAX = 100;
+export function chargeDescription(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[‐-―−]/g, "-")
+    .replace(/[^\x20-\x7e]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, DESCRIPTION_MAX)
+    .trim();
+}
 
 export type OpaEvent = {
   id: string;

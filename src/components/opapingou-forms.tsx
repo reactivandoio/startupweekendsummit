@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createLotAction, deleteDuplicateOpaWebhook, saveOpaKey, setupOpaWebhook, testOpaWebhook, type OpaFormState } from "@/app/admin/actions";
+import { createLotAction, deleteDuplicateOpaWebhook, saveCardAccount, saveOpaKey, setupOpaWebhook, testOpaWebhook, type OpaFormState } from "@/app/admin/actions";
 import { buttonClass } from "@/components/button";
 
 const idle: OpaFormState = { status: "idle" };
@@ -25,7 +25,7 @@ export function OpaKeyForm({ configured }: { configured: boolean }) {
           {configured ? "Trocar a chave de API" : "Chave de API"}
         </label>
         <input id="opa-key" name="apiKey" type="password" autoComplete="off" spellCheck={false} className="field font-mono" placeholder="opk_live_… ou opk_test_…" required />
-        <p className="text-caption text-ink/60">Escopos necessários: charges:write, charges:read, webhooks:read e webhooks:write.</p>
+        <p className="text-caption text-ink/60">Escopos necessários: charges:write, charges:read, webhooks:read e webhooks:write. Opcional: payments:read, para gravar se o link do cartão foi pago no cartão ou no Pix.</p>
       </div>
       <Message state={state} />
       <button type="submit" disabled={pending} className={primary}>
@@ -107,6 +107,23 @@ export function LotForm() {
       <Message state={state} />
       <button type="submit" disabled={pending} className={primary}>
         {pending ? "Criando…" : "Criar lote"}
+      </button>
+    </form>
+  );
+}
+
+// Conta Abacate Pay dos links de pagamento (cartão). Não é segredo: o id salvo volta preenchido.
+export function CardAccountForm({ accountId }: { accountId: string | null }) {
+  const [state, action, pending] = useActionState(saveCardAccount, idle);
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <label className="flex flex-col gap-1 text-caption">
+        Conta Abacate Pay (bankAccountId)
+        <input name="accountId" defaultValue={accountId ?? ""} spellCheck={false} autoComplete="off" className="field font-mono" placeholder="Vazio: conta padrão de links" />
+      </label>
+      <Message state={state} />
+      <button type="submit" disabled={pending} className={`${secondary} self-start`}>
+        {pending ? "Salvando…" : "Salvar conta"}
       </button>
     </form>
   );

@@ -219,5 +219,53 @@ export function registrationRejectedMail(reg: { name: string; amountCents: numbe
   return { subject: `Sobre sua inscrição — ${site.shortName}`, text, html };
 }
 
+/* Pagamento que chegou depois do prazo (link do cartão não expira) e não cabe mais no lote/convite: recebemos, mas
+   a inscrição passa pela organização antes do ingresso. Mesma promessa do cadastro aberto: ingresso ou devolução integral. */
+export function latePaymentReviewMail(reg: { name: string; amountCents: number }): Mail {
+  const first = firstOf(reg.name);
+  const amountLabel = brl(reg.amountCents);
+  const text = `${first}, recebemos o pagamento de ${amountLabel} da sua inscrição no ${site.name}, mas ele chegou depois do prazo de 1 hora da reserva e a vaga não estava mais garantida.\n\nA organização vai analisar a sua inscrição e você recebe outro e-mail: com o ingresso, se houver vaga; se não houver, o valor pago é devolvido integralmente, pelo mesmo meio de pagamento.${textFooter}`;
+  const html = layout({
+    eyebrow: "Inscrição em análise",
+    title: `${escapeHtml(first)}, recebemos seu pagamento.`,
+    preheader: "O pagamento chegou depois do prazo da reserva. O ingresso depende da análise da organização.",
+    body: `${p(`Recebemos o pagamento de <strong>${amountLabel}</strong>, mas ele chegou depois do prazo de 1 hora da reserva e a vaga não estava mais garantida.`)}
+      ${notice(p("A organização vai analisar a sua inscrição e você recebe outro e-mail: <strong>com o ingresso</strong>, se houver vaga; se não houver, o valor pago é devolvido integralmente, pelo mesmo meio de pagamento.", "margin:0"))}
+      ${small("Este e-mail ainda não é o ingresso. Guarde-o como comprovante do pagamento.")}`,
+  });
+  return { subject: `Pagamento recebido, inscrição em análise — ${site.shortName}`, text, html };
+}
+
+/* Aviso para a organização (contato do site): pagamento tardio entrou em aprovação no painel */
+export function latePaymentAlertMail(reg: { id: string; name: string; email: string; amountCents: number }, reason: string, panelUrl: string): Mail {
+  const amountLabel = brl(reg.amountCents);
+  const text = `Pagamento tardio para revisar no painel.\n\n${reg.name} (${reg.email}) pagou ${amountLabel} depois do prazo da reserva.\nMotivo: ${reason}.\nInscrição ${ticketNumber(reg.id)}.\n\nAprove (se houver vaga) ou reprove e faça a devolução no painel do Opa Pingou:\n${panelUrl}`;
+  const html = layout({
+    eyebrow: "Painel",
+    title: "Pagamento tardio para revisar.",
+    preheader: `${reg.name} pagou ${amountLabel} depois do prazo.`,
+    body: `${p(`<strong>${escapeHtml(reg.name)}</strong> (${escapeHtml(reg.email)}) pagou <strong>${amountLabel}</strong> depois do prazo da reserva.`)}
+      ${notice(p(`${escapeHtml(reason)}. A inscrição ${ticketNumber(reg.id)} está em <strong>Aguardando aprovação</strong>.`, "margin:0"))}
+      ${p("Aprove, se houver vaga, ou reprove e faça a devolução no painel do Opa Pingou.")}
+      ${button(panelUrl, "Abrir participantes")}`,
+  });
+  return { subject: `Pagamento tardio para revisar — ${reg.name}`, text, html };
+}
+
+/* Aviso para a organização: a inscrição já estava paga e outra cobrança dela também foi paga (ex.: Pix e depois o link
+   do cartão). A inscrição segue valendo; a segunda cobrança precisa ser estornada à mão no painel do Opa Pingou. */
+export function duplicatePaymentAlertMail(reg: { id: string; name: string; email: string }, chargeId: string, panelUrl: string): Mail {
+  const text = `Pagamento em dobro para estornar.\n\n${reg.name} (${reg.email}) já tinha a inscrição ${ticketNumber(reg.id)} paga, e outra cobrança dela também foi paga.\nCobrança para estornar no Opa Pingou: ${chargeId}\n\nDepois de estornar, marque no painel:\n${panelUrl}`;
+  const html = layout({
+    eyebrow: "Painel",
+    title: "Pagamento em dobro para estornar.",
+    preheader: `${reg.name} pagou duas vezes a mesma inscrição.`,
+    body: `${p(`<strong>${escapeHtml(reg.name)}</strong> (${escapeHtml(reg.email)}) já tinha a inscrição ${ticketNumber(reg.id)} paga, e outra cobrança dela também foi paga.`)}
+      ${notice(p(`Estorne no painel do Opa Pingou a cobrança <strong>${escapeHtml(chargeId)}</strong>. A inscrição continua valendo.`, "margin:0"))}
+      ${button(panelUrl, "Abrir participantes")}`,
+  });
+  return { subject: `Pagamento em dobro para estornar — ${reg.name}`, text, html };
+}
+
 /* Aviso de uso: caixa Marigold claro (reservada pra e-mails futuros de alerta) */
 export const notice = (inner: string) => box(inner, MARIGOLD_WASH);

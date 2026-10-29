@@ -1,7 +1,20 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { site } from "@/content/site";
-import { accessInviteMail, inviteMail, loginLinkMail, registrationConfirmedMail, registrationRejectedMail, registrationUnderReviewMail, type Mail } from "./mail-templates.ts";
+import { appUrl } from "@/lib/stripe";
+import { reviewReasonLabel, type ReviewReason } from "./registration-state.ts";
+import {
+  accessInviteMail,
+  duplicatePaymentAlertMail,
+  inviteMail,
+  latePaymentAlertMail,
+  latePaymentReviewMail,
+  loginLinkMail,
+  registrationConfirmedMail,
+  registrationRejectedMail,
+  registrationUnderReviewMail,
+  type Mail,
+} from "./mail-templates.ts";
 
 export { ticketNumber } from "./mail-templates.ts";
 
@@ -46,3 +59,11 @@ export const sendPaymentReceived = (reg: RegistrationMail & { approval: string |
 // Decisão do painel sobre o cadastro aberto
 export const sendRegistrationApproved = (reg: RegistrationMail) => sendMail({ to: reg.email, ...registrationConfirmedMail(reg, { approved: true }) });
 export const sendRegistrationRejected = (reg: RegistrationMail) => sendMail({ to: reg.email, ...registrationRejectedMail(reg) });
+
+// Pagamento tardio sem vaga (ou de quem já tem outra inscrição paga): a pessoa fica sabendo que está em análise
+// e a organização recebe o aviso no contato do site, com o link do painel
+export const sendLatePaymentReview = (reg: RegistrationMail) => sendMail({ to: reg.email, ...latePaymentReviewMail(reg) });
+export const sendLatePaymentAlert = (reg: RegistrationMail, reason: ReviewReason) =>
+  sendMail({ to: site.contactEmail, ...latePaymentAlertMail(reg, reviewReasonLabel[reason], `${appUrl()}/admin/participantes?situacao=awaiting_approval`) });
+export const sendDuplicatePaymentAlert = (reg: RegistrationMail, chargeId: string) =>
+  sendMail({ to: site.contactEmail, ...duplicatePaymentAlertMail(reg, chargeId, `${appUrl()}/admin/participantes`) });
