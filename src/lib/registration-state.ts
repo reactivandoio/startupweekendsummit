@@ -4,6 +4,7 @@
 // approval "pending": paga (ou gratuita), fica aguardando aprovação e só vira confirmada quando aprovada no painel.
 // approval null: inscrição por convite de antes dessa regra, confirmada ao pagar.
 import { registrationEntry, type RegistrationEntry } from "./coupons-core.ts";
+import { isUf } from "./locations-core.ts";
 
 export type RegistrationSource = "invite" | "open";
 export type RegistrationStatus = "pending" | "paid" | "expired" | "canceled";
@@ -67,14 +68,18 @@ export const parseSituation = (v: unknown): SituationFilter | null =>
   v === "removed" || (situationFilters as readonly unknown[]).includes(v) ? (v as SituationFilter) : null;
 export const parseCouponFilter = (v: unknown): string | null => (typeof v === "string" && /^(-|[A-Za-z0-9_-]{1,40})$/.test(v) ? v.toUpperCase() : null);
 
-export type Filters = { situation: SituationFilter | null; entry: RegistrationEntry | null; coupon: string | null };
+// Estado: sigla da UF, ou "-" para as sem estado informado
+export const parseUfFilter = (v: unknown): string | null => (v === "-" || isUf(v) ? v : null);
 
-export function matchesFilters(r: Removable & { source: RegistrationSource; couponViaLink: boolean; couponCode: string | null }, f: Filters) {
+export type Filters = { situation: SituationFilter | null; entry: RegistrationEntry | null; coupon: string | null; uf?: string | null };
+
+export function matchesFilters(r: Removable & { source: RegistrationSource; couponViaLink: boolean; couponCode: string | null; uf?: string }, f: Filters) {
   if (f.situation === "removed" ? !r.removedAt : r.removedAt) return false;
   return (
     (!f.situation || f.situation === "removed" || situation(r) === f.situation) &&
     (!f.entry || registrationEntry(r) === f.entry) &&
-    (!f.coupon || (f.coupon === "-" ? !r.couponCode : r.couponCode === f.coupon))
+    (!f.coupon || (f.coupon === "-" ? !r.couponCode : r.couponCode === f.coupon)) &&
+    (!f.uf || (f.uf === "-" ? !r.uf : r.uf === f.uf))
   );
 }
 

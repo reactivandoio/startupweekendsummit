@@ -7,6 +7,7 @@ import {
   formPath,
   isConfirmed,
   matchesFilters,
+  parseUfFilter,
   parseCouponFilter,
   parseSituation,
   paymentMethodName,
@@ -60,6 +61,19 @@ describe("filtros", () => {
     assert.ok(!matchesFilters(open, { ...none, coupon: "TRACK" }));
     assert.ok(matchesFilters(open, { ...none, coupon: "-" }));
     assert.ok(!matchesFilters(viaLink, { ...none, coupon: "-" }));
+  });
+  it("filtra por estado, ou pelas sem estado", () => {
+    const go = { ...open, uf: "GO" };
+    const noUf = { ...open, uf: "" };
+    assert.ok(matchesFilters(go, { ...none, uf: "GO" }));
+    assert.ok(!matchesFilters(go, { ...none, uf: "SP" }));
+    assert.ok(!matchesFilters(noUf, { ...none, uf: "GO" }));
+    assert.ok(matchesFilters(noUf, { ...none, uf: "-" }));
+    assert.ok(!matchesFilters(go, { ...none, uf: "-" }));
+    assert.equal(parseUfFilter("GO"), "GO");
+    assert.equal(parseUfFilter("-"), "-");
+    assert.equal(parseUfFilter("go"), null);
+    assert.equal(parseUfFilter("XX"), null);
   });
   it("valores desconhecidos na URL viram 'todos'", () => {
     assert.equal(parseSituation("x"), null);

@@ -24,6 +24,10 @@ export type Registration = {
   phone: string; // só dígitos
   cpf: string; // só dígitos
   birthDate: string; // YYYY-MM-DD
+  company: string; // opcional: "" = não informou
+  uf: string; // sigla do estado; "" = não informou
+  cityCode: number | null; // código IBGE da cidade (do estado uf); null = não informou
+  cityName: string;
   status: RegistrationStatus;
   amountCents: number; // valor pago (ou a pagar)
   listPriceCents: number; // preço do lote no momento da inscrição
@@ -68,6 +72,10 @@ type Row = {
   phone: string;
   cpf: string;
   birth_date: string | Date;
+  company: string;
+  uf: string;
+  city_code: number | null;
+  city_name: string;
   status: RegistrationStatus;
   amount_cents: number;
   list_price_cents: number | null;
@@ -109,6 +117,10 @@ const toRegistration = (r: Row): Registration => ({
   phone: r.phone,
   cpf: r.cpf,
   birthDate: r.birth_date instanceof Date ? r.birth_date.toISOString().slice(0, 10) : String(r.birth_date),
+  company: r.company,
+  uf: r.uf,
+  cityCode: r.city_code,
+  cityName: r.city_name,
   status: r.status,
   amountCents: r.amount_cents,
   listPriceCents: r.list_price_cents ?? r.amount_cents, // inscrições de antes do desconto: sem desconto
@@ -218,13 +230,14 @@ export async function findResumableRegistration(f: { source: RegistrationSource;
 // Retomada: os dados do formulário valem (podem ter mudado); preço e lote só mudam quando a vaga não estava mais segura
 export async function updateRegistrationData(
   id: string,
-  data: { name: string; email: string; phone: string; cpf: string; birthDate: string; sponsorConsent: boolean; price?: Pricing },
+  data: { name: string; email: string; phone: string; cpf: string; birthDate: string; sponsorConsent: boolean; price?: Pricing } & Place,
 ) {
   await ensureSchema();
   const p = data.price;
   await sql`
     update registrations
     set name = ${data.name}, email = ${data.email}, phone = ${data.phone}, cpf = ${data.cpf}, birth_date = ${data.birthDate},
+        company = ${data.company}, uf = ${data.uf}, city_code = ${data.cityCode}, city_name = ${data.cityName},
         sponsor_consent_at = case when ${data.sponsorConsent} then coalesce(sponsor_consent_at, now()) else null end,
         amount_cents = coalesce(${p?.amountCents ?? null}::int, amount_cents),
         list_price_cents = coalesce(${p?.listPriceCents ?? null}::int, list_price_cents),
@@ -237,6 +250,9 @@ export async function updateRegistrationData(
         provider = case when ${p?.provider ?? null}::text is null then provider else ${p?.provider ?? null} end
     where id = ${id} and status <> 'paid'`;
 }
+
+// Empresa, estado e cidade (opcionais; a cidade já conferida contra o estado)
+export type Place = { company: string; uf: string; cityCode: number | null; cityName: string };
 
 // Preço e desconto gravados na inscrição (na criação e quando a retomada recalcula)
 export type Pricing = {
@@ -279,15 +295,16 @@ export async function createRegistration(
     birthDate: string;
     provider: RegistrationProvider;
     sponsorConsent: boolean;
-  } & Omit<Pricing, "provider">,
+  } & Place &
+    Omit<Pricing, "provider">,
 ): Promise<Registration> {
   await ensureSchema();
   const [row] = await sql<Row[]>`
     insert into registrations (invite_id, source, approval, name, email, phone, cpf, birth_date, amount_cents, list_price_cents, discount_cents,
-      discount_source, provider, lot_id, coupon_id, coupon_code, coupon_via_link, sponsor_consent_at)
+      discount_source, provider, lot_id, coupon_id, coupon_code, coupon_via_link, sponsor_consent_at, company, uf, city_code, city_name)
     values (${data.inviteId}, ${data.source}, 'pending', ${data.name}, ${data.email}, ${data.phone}, ${data.cpf}, ${data.birthDate}, ${data.amountCents},
       ${data.listPriceCents}, ${data.discountCents}, ${data.discountSource}, ${data.provider}, ${data.lotId}, ${data.couponId}, ${data.couponCode},
-      ${data.couponViaLink}, ${data.sponsorConsent ? new Date() : null})
+      ${data.couponViaLink}, ${data.sponsorConsent ? new Date() : null}, ${data.company}, ${data.uf}, ${data.cityCode}, ${data.cityName})
     returning *`;
   return toRegistration(row);
 }

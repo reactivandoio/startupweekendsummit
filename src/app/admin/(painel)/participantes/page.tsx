@@ -12,12 +12,14 @@ import { Eyebrow } from "@/components/eyebrow";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { entryFilters, entryLabel, parseEntry, registrationEntry } from "@/lib/coupons-core";
 import { formatBRL, formatCpf, formatPhone } from "@/lib/cpf";
+import { placeLabel, ufName } from "@/lib/locations-core";
 import { ticketNumber } from "@/lib/mail";
 import {
   canRemove,
   matchesFilters,
   parseCouponFilter,
   parseSituation,
+  parseUfFilter,
   paymentMethodName,
   removeConfirmMessage,
   reviewReasonLabel,
@@ -33,25 +35,29 @@ import { buttonClass } from "@/components/button";
 const fmt = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 const fmtDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" });
 
-// Filtros na URL (?situacao=…&origem=…&cupom=…), pra o link da lista filtrada poder ser compartilhado
+// Filtros na URL (?situacao=…&origem=…&cupom=…&estado=…), pra o link da lista filtrada poder ser compartilhado
 const filterHref = (f: Filters) => {
   const q = new URLSearchParams();
   if (f.situation) q.set("situacao", f.situation);
   if (f.entry) q.set("origem", f.entry);
   if (f.coupon) q.set("cupom", f.coupon);
+  if (f.uf) q.set("estado", f.uf);
   const s = q.toString();
   return s ? `/admin/participantes?${s}` : "/admin/participantes";
 };
 
 export default async function ParticipantesPage({ searchParams }: PageProps<"/admin/participantes">) {
-  const { situacao, origem, cupom } = await searchParams;
-  const filters: Filters = { situation: parseSituation(situacao), entry: parseEntry(origem), coupon: parseCouponFilter(cupom) };
+  const { situacao, origem, cupom, estado } = await searchParams;
+  const filters: Filters = { situation: parseSituation(situacao), entry: parseEntry(origem), coupon: parseCouponFilter(cupom), uf: parseUfFilter(estado) };
   const all = await listRegistrations();
   // Removidas (lógicas) ficam fora das contagens e só aparecem no filtro "Removidas"
   const active = all.filter((r) => !r.removedAt);
   const removedCount = all.length - active.length;
   const couponCodes = [...new Set(all.map((r) => r.couponCode).filter((c): c is string => Boolean(c)))].sort();
   if (filters.coupon && filters.coupon !== "-" && !couponCodes.includes(filters.coupon)) couponCodes.push(filters.coupon);
+  // Estado: só os que aparecem nas inscrições (em ordem alfabética da sigla)
+  const ufs = [...new Set(all.map((r) => r.uf).filter(Boolean))].sort();
+  if (filters.uf && filters.uf !== "-" && !ufs.includes(filters.uf)) ufs.push(filters.uf);
   const shown = all.filter((r) => matchesFilters(r, filters));
 
   const count = (s: Situation) => active.filter((r) => situation(r) === s).length;
@@ -130,6 +136,16 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/ad
             ]}
           />
         )}
+        {(ufs.length > 0 || filters.uf) && (
+          <FilterRow
+            label="Estado"
+            options={[
+              { label: "Todos", href: filterHref({ ...filters, uf: null }), active: !filters.uf },
+              { label: "Sem estado", href: filterHref({ ...filters, uf: "-" }), active: filters.uf === "-" },
+              ...ufs.map((u) => ({ label: u, title: ufName(u), href: filterHref({ ...filters, uf: u }), active: filters.uf === u })),
+            ]}
+          />
+        )}
       </nav>
 
       {shown.length === 0 ? (
@@ -147,7 +163,7 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/ad
   );
 }
 
-function FilterRow({ label, options }: { label: string; options: { label: string; href: string; active: boolean }[] }) {
+function FilterRow({ label, options }: { label: string; options: { label: string; title?: string; href: string; active: boolean }[] }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="mr-2 text-caption font-semibold uppercase tracking-[0.03em]">{label}</span>
@@ -155,6 +171,7 @@ function FilterRow({ label, options }: { label: string; options: { label: string
         <Link
           key={o.href}
           href={o.href}
+          title={o.title}
           aria-current={o.active ? "page" : undefined}
           className={`${buttonClass("secondary", "sm")} ${o.active ? "bg-ink! text-paper!" : ""}`}
         >
@@ -181,6 +198,8 @@ function RegistrationRow({ r }: { r: Registration }) {
       <div className="flex flex-col gap-1 text-body">
         <p>CPF {formatCpf(r.cpf)}</p>
         <p>Nascimento {fmtDate.format(new Date(`${r.birthDate}T00:00:00Z`))}</p>
+        {r.company && <p>Empresa: {r.company}</p>}
+        {r.uf && <p>Cidade: {placeLabel(r)}</p>}
         <p className="text-caption">
           Origem: {entryLabel[registrationEntry(r)]}
           {r.source === "invite" && ` · ${r.inviteName || r.inviteCode || "sem nome"}`}

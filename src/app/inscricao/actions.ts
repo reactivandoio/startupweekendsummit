@@ -7,6 +7,8 @@ import { quotePrice } from "@/lib/checkout";
 import { normalizeCouponCode, type PriceQuote } from "@/lib/coupons-core";
 import { NO_DISCOUNT } from "@/lib/discounts";
 import { getInviteByCode, inviteAvailable, type Invite } from "@/lib/invites";
+import { cityOfUf } from "@/lib/locations";
+import { resolvePlace } from "@/lib/locations-core";
 import { sendPaymentReceived } from "@/lib/mail";
 import { holdsSeat, resumePlan } from "@/lib/payment-flow";
 import { formPath, paymentPagePath } from "@/lib/registration-state";
@@ -26,7 +28,7 @@ import { appUrl, stripe } from "@/lib/stripe";
 import { startOpaPayment } from "@/lib/ticket-payments";
 import { currentOffer, minChargeCents } from "@/lib/tickets";
 
-export type RegistrationFieldErrors = Partial<Record<"name" | "email" | "phone" | "cpf" | "birthDate" | "consent" | "coupon", string>>;
+export type RegistrationFieldErrors = Partial<Record<"name" | "email" | "phone" | "cpf" | "birthDate" | "company" | "uf" | "city" | "consent" | "coupon", string>>;
 
 export type RegistrationFormState = {
   status: "idle" | "error";
@@ -62,7 +64,8 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   const couponRaw = text(formData, "coupon", 60);
   const couponCode = normalizeCouponCode(couponRaw) || null;
   const couponViaLink = Boolean(couponCode) && formData.get("couponViaLink") === "1";
-  const values = { name, email, phone: text(formData, "phone", 40), cpf: text(formData, "cpf", 20), birthDate, coupon: couponRaw };
+  const placeInput = { company: text(formData, "company", 120), uf: text(formData, "uf", 2), city: text(formData, "city", 7) };
+  const values = { name, email, phone: text(formData, "phone", 40), cpf: text(formData, "cpf", 20), birthDate, ...placeInput, coupon: couponRaw };
 
   const errors: RegistrationFieldErrors = {};
   if (name.trim().split(/\s+/).length < 2) errors.name = "Informe nome e sobrenome.";
@@ -71,7 +74,10 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   if (!isValidCpf(cpf)) errors.cpf = "CPF inválido.";
   if (!isValidIsoDate(birthDate)) errors.birthDate = "Informe uma data válida.";
   if (!consent) errors.consent = "Precisamos do seu consentimento para concluir a inscrição.";
-  if (Object.keys(errors).length > 0) return { status: "error", message: "Revise os campos destacados.", errors, values };
+  // Empresa, estado e cidade são opcionais; a cidade precisa ser do estado escolhido
+  const placed = await resolvePlace(placeInput, cityOfUf);
+  if (!placed.ok) Object.assign(errors, placed.errors);
+  if (Object.keys(errors).length > 0 || !placed.ok) return { status: "error", message: "Revise os campos destacados.", errors, values };
 
   // Inscrição aberta (/inscricao/aberta): sem convite; o cupom é o único desconto possível
   const open = formData.get("mode") === "open";
@@ -100,7 +106,7 @@ export async function registerParticipant(_prev: RegistrationFormState, formData
   const ticket = await currentOffer();
   const chosen = formData.get("paymentMethod") === "card" && (await cardPaymentEnabled()) ? "card" : "pix";
   const description = (r: { name: string }) => `${ticket.name} — ${r.name}`;
-  const person = { name, email, phone, cpf, birthDate, sponsorConsent };
+  const person = { name, email, phone, cpf, birthDate, sponsorConsent, ...placed.place };
   const couponError = (message: string): RegistrationFormState => ({ status: "error", message, errors: { coupon: message }, values: { ...values, paymentMethod: chosen } });
   const pricing = (q: PriceQuote, lotId: string | null, coupon: { id: string } | null): Pricing => ({
     amountCents: q.finalCents,
