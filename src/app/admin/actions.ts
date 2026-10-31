@@ -2,12 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser } from "@/lib/auth";
-import { deleteCoupon, saveCoupon, setCouponActive } from "@/lib/coupons";
+import { addUser, createLoginUrl, getUser, logout, loginPageUrl, removeUser, requestLoginLink, requireUser, restoreUser } from "@/lib/auth";
+import { removeCoupon, restoreCoupon, saveCoupon, setCouponActive } from "@/lib/coupons";
 import { isValidCouponCode, normalizeCouponCode } from "@/lib/coupons-core";
 import { parseBRLCents, parseDiscount } from "@/lib/discounts";
 import { parseBrasiliaInput } from "@/lib/lots-core";
-import { createInvite, deleteInvite, listInvites, reactivateInvite, revokeInvite, updateInvite } from "@/lib/invites";
+import { createInvite, listInvites, reactivateInvite, removeInvite as removeInviteById, restoreInvite as restoreInviteById, revokeInvite, updateInvite } from "@/lib/invites";
 import { sendAccessInvite, sendInvite, sendRegistrationApproved, sendRegistrationRejected } from "@/lib/mail";
 import {
   checkApiKey,
@@ -29,16 +29,32 @@ import {
   setRefunded,
 } from "@/lib/registrations";
 import { deleteSetting, getSetting, setSetting } from "@/lib/settings";
-import { createOrganizer, deleteOrganizer, getOrganizer, moveOrganizer, setOrganizerActive, updateOrganizer } from "@/lib/organizers";
+import {
+  createOrganizer,
+  getOrganizer,
+  moveOrganizer,
+  removeOrganizer as removeOrganizerById,
+  restoreOrganizer as restoreOrganizerById,
+  setOrganizerActive,
+  updateOrganizer,
+} from "@/lib/organizers";
 import { ALT_MAX, BIO_MAX, NAME_MAX, normalizeUrl, parseSocials, ROLE_MAX, type SocialKind } from "@/lib/organizers-core";
-import { createSponsor, deleteSponsor, getSponsor, isSponsorTier, moveSponsor, updateSponsor } from "@/lib/sponsors";
+import {
+  createSponsor,
+  getSponsor,
+  isSponsorTier,
+  moveSponsor,
+  removeSponsor as removeSponsorById,
+  restoreSponsor as restoreSponsorById,
+  updateSponsor,
+} from "@/lib/sponsors";
 import { appUrl } from "@/lib/stripe";
 import { parseTheme, themeLabel } from "@/lib/theme-core";
 import { syncCharge } from "@/lib/ticket-payments";
-import { createLot, deleteLot, moveLot, updateLot } from "@/lib/tickets";
+import { createLot, moveLot, removeLot, restoreLot, updateLot } from "@/lib/tickets";
 import { deleteImageUpload, saveImageUpload, savePhotoUpload } from "@/lib/uploads";
 import { parseCrop } from "@/lib/photo-crop-core";
-import { deleteVolunteer } from "@/lib/volunteers";
+import { removeVolunteer as removeVolunteerById, restoreVolunteer as restoreVolunteerById } from "@/lib/volunteers";
 
 const inviteUrl = (code: string) => `${appUrl()}/inscricao/${code}`;
 
@@ -97,17 +113,34 @@ export async function resendAccessInvite(_prev: UserFormState, formData: FormDat
   return { status: "ok", message: `Convite reenviado para ${user.email}.` };
 }
 
+// Exclusões do painel são lógicas (STA-26): o cadastro fica no banco com quem removeu e quando, e volta pelo Restaurar
+// da aba Removidos de cada tela. Arquivos enviados (fotos, logos) ficam no volume.
+
 export async function deleteUser(formData: FormData) {
   const me = await requireUser();
   const id = String(formData.get("id") ?? "");
-  if (id && id !== me.id) await removeUser(id);
+  if (id && id !== me.id) await removeUser(id, me.id);
+  revalidatePath("/admin/usuarios");
+}
+
+export async function restoreUserAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await restoreUser(id);
   revalidatePath("/admin/usuarios");
 }
 
 export async function removeVolunteer(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await removeVolunteerById(id, me.id);
+  revalidatePath("/admin");
+}
+
+export async function restoreVolunteer(formData: FormData) {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  if (id) await deleteVolunteer(id);
+  if (id) await restoreVolunteerById(id);
   revalidatePath("/admin");
 }
 
@@ -197,9 +230,16 @@ export async function toggleInvite(formData: FormData) {
 }
 
 export async function removeInvite(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await removeInviteById(id, me.id);
+  revalidatePath("/admin/convites");
+}
+
+export async function restoreInvite(formData: FormData) {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  if (id) await deleteInvite(id);
+  if (id) await restoreInviteById(id);
   revalidatePath("/admin/convites");
 }
 
@@ -484,10 +524,23 @@ export async function moveLotAction(formData: FormData) {
 }
 
 export async function removeLotAction(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await removeLot(id, me.id);
+  revalidateLots();
+}
+
+export async function restoreLotAction(formData: FormData) {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  if (id) await deleteLot(id);
+  if (id) await restoreLot(id);
+  revalidateLots();
+}
+
+// A lista de lotes também aparece nos cupons
+function revalidateLots() {
   revalidatePath("/admin/ingressos");
+  revalidatePath("/admin/cupons");
 }
 
 // Confere na API as cobranças pendentes (caso algum webhook não tenha chegado)
@@ -535,7 +588,8 @@ export async function saveCouponAction(_prev: CouponFormState, formData: FormDat
   if (formData.get("lotScope") === "some" && lotIds.length === 0) return fail("Escolha pelo menos um lote, ou marque Todos os lotes.");
 
   const saved = await saveCoupon(id, { code, description: values.description, discount, lotIds, maxUses, startsAt: period.startsAt, endsAt: period.endsAt, active: values.active }, me.id);
-  if (!saved) return fail(`Já existe um cupom ${code}.`);
+  if (saved === "taken") return fail(`Já existe um cupom ${code}.`);
+  if (saved === "taken_removed") return fail(`O código ${code} é de um cupom removido. Restaure-o em Removidos ou use outro código.`);
   revalidatePath("/admin/cupons");
   if (id) redirect("/admin/cupons");
   return { status: "ok", message: `Cupom ${code} criado.`, at: Date.now() };
@@ -549,9 +603,16 @@ export async function toggleCouponAction(formData: FormData) {
 }
 
 export async function removeCouponAction(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await removeCoupon(id, me.id);
+  revalidatePath("/admin/cupons");
+}
+
+export async function restoreCouponAction(formData: FormData) {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  if (id) await deleteCoupon(id);
+  if (id) await restoreCoupon(id);
   revalidatePath("/admin/cupons");
 }
 
@@ -612,11 +673,18 @@ export async function saveSponsor(_prev: SponsorFormState, formData: FormData): 
   return { status: "ok", message: `${name} adicionado.`, at: Date.now() };
 }
 
+// O logo fica no volume pra restaurar
 export async function removeSponsor(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await removeSponsorById(id, me.id);
+  revalidateSponsors();
+}
+
+export async function restoreSponsor(formData: FormData) {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  const removed = id ? await deleteSponsor(id) : null;
-  if (removed) await deleteImageUpload(removed.logo);
+  if (id) await restoreSponsorById(id);
   revalidateSponsors();
 }
 
@@ -720,12 +788,18 @@ export async function saveOrganizer(_prev: OrganizerFormState, formData: FormDat
   return { status: "ok", message: `${name} adicionado.`, at: Date.now() };
 }
 
+// A foto (recorte e original) fica no volume pra restaurar
 export async function removeOrganizer(formData: FormData) {
+  const me = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (id) await removeOrganizerById(id, me.id);
+  revalidateOrganizers();
+}
+
+export async function restoreOrganizer(formData: FormData) {
   await requireUser();
   const id = String(formData.get("id") ?? "");
-  const removed = id ? await deleteOrganizer(id) : null;
-  if (removed?.photo) await deleteImageUpload(removed.photo);
-  if (removed?.photoSource) await deleteImageUpload(removed.photoSource);
+  if (id) await restoreOrganizerById(id);
   revalidateOrganizers();
 }
 

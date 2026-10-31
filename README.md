@@ -75,6 +75,12 @@ e-mail com link de entrada — o botão "Reenviar convite" manda outro, e diz na
 
 O schema do banco é criado automaticamente na primeira conexão (`src/lib/db.ts`).
 
+Exclusão no painel é sempre lógica: "Remover" (com confirmação) marca `removed_at`/`removed_by` e nada sai do banco
+nem do volume de uploads. O removido some da lista, do site e das regras (cupom e convite param de valer, lote sai
+da venda, usuário perde o acesso e as sessões, voluntário sai do CSV) e aparece no botão "Removidos (n)" de cada tela
+(`?removidos=1`), com quem removeu, quando e "Restaurar". Convite, cupom e lote só se removem sem uso; com uso,
+desative/revogue. O código de um cupom removido continua reservado para ele.
+
 ## Tema claro e escuro
 
 O site e o painel têm os dois temas, com a mesma marca (Grass, Marigold, papel e tinta). O tema padrão é escolhido
@@ -100,7 +106,8 @@ nome, se vazio) e, com URL, vira link em nova aba. Sem nenhum patrocinador, a se
 
 Os logos (SVG, PNG, WebP ou JPG, até 2 MB; o tipo é conferido pelos bytes) vão para o volume docker `uploads`,
 montado em `/uploads` nas duas cores do blue/green (`UPLOADS_DIR`), e são servidos por `/uploads/<arquivo>` com
-cache longo — cada envio gera um nome novo. Trocar ou excluir o logo apaga o arquivo antigo. Backup: o volume
+cache longo — cada envio gera um nome novo. Trocar o logo apaga o arquivo antigo; remover o patrocinador não apaga
+nada (exclusão lógica, ver abaixo). Backup: o volume
 `startupweekendsummit_uploads` junto com o dump do Postgres (as tabelas `sponsors` e `organizers` apontam para esses arquivos).
 
 ## Organizadores

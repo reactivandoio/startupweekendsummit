@@ -1,6 +1,6 @@
 "use client";
 
-// Botão de submit que pede confirmação antes — pra ações que não têm volta (ex.: excluir apaga o arquivo do logo)
+// Botão de submit que pede confirmação antes (ex.: remover ou restaurar um cadastro)
 export function ConfirmSubmit({ message, className, children }: { message: string; className?: string; children: React.ReactNode }) {
   return (
     <button
