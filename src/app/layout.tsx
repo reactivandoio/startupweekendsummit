@@ -1,6 +1,6 @@
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
-import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { MobileNav } from "@/components/site-nav";
 import { ThemeProvider } from "@/components/theme";
 import { site } from "@/content/site";
@@ -8,22 +8,27 @@ import { themeColor } from "@/lib/theme-core";
 import { resolveTheme } from "@/lib/theme";
 import "./globals.css";
 
-const inter = Inter({
+// Fontes no projeto (subset latin, arquivos variáveis do Google Fonts), sem buscar no Google durante o build:
+// next/font/google passou a quebrar o build no runner do GitHub (ver docs/lessons/2026-10-30-next-font-google-ci.md).
+const inter = localFont({
+  src: "./fonts/inter-latin.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "600"],
+  weight: "100 900",
+  display: "swap",
 });
 
-const interTight = Inter_Tight({
+const interTight = localFont({
+  src: "./fonts/inter-tight-latin.woff2",
   variable: "--font-inter-tight",
-  subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: "100 900",
+  display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const jetbrainsMono = localFont({
+  src: "./fonts/jetbrains-mono-latin.woff2",
   variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: "400",
+  weight: "100 800",
+  display: "swap",
 });
 
 const title = `${site.name} | ${site.cityName}, ${site.dateShort}`;

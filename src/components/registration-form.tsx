@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { previewCoupon, registerParticipant, type RegistrationFieldErrors, type RegistrationFormState } from "@/app/inscricao/actions";
 import { Button, buttonClass } from "@/components/button";
+import { Select, type SelectOption } from "@/components/select";
 import { normalizeCouponCode, type PriceQuote } from "@/lib/coupons-core";
+import { citiesPath, isUf, UFS, type City, type Uf } from "@/lib/locations-core";
 import { dateBrToIso, formatBRL, isValidCpf, isValidEmail, isValidIsoDate, isValidPhone, isoToDateBr, maskCpf, maskDateBr, maskPhone, normalizeEmail } from "@/lib/cpf";
 
 const initialState: RegistrationFormState = { status: "idle" };
@@ -16,7 +18,7 @@ function Field({
   hint,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
   htmlFor: string;
   error?: string;
   hint?: string;
@@ -34,6 +36,92 @@ function Field({
           — {error}
         </p>
       )}
+    </div>
+  );
+}
+
+// Rótulo com "(opcional)", como o do cupom
+function Optional({ children }: { children: string }) {
+  return (
+    <>
+      {children} <span className="font-normal text-ink/60">(opcional)</span>
+    </>
+  );
+}
+
+const ufOptions: SelectOption[] = UFS.map((u) => ({ value: u.uf, label: u.name }));
+
+// Municípios do estado: arquivo estático (public/municipios), baixado uma vez por estado e guardado na página
+const citiesCache = new Map<Uf, Promise<SelectOption[]>>();
+function loadCities(uf: Uf): Promise<SelectOption[]> {
+  let p = citiesCache.get(uf);
+  if (!p) {
+    p = fetch(citiesPath(uf))
+      .then((r) => {
+        if (!r.ok) throw new Error(`municipios ${uf}: ${r.status}`);
+        return r.json() as Promise<City[]>;
+      })
+      .then((list) => list.map(([code, name]) => ({ value: String(code), label: name })));
+    p.catch(() => citiesCache.delete(uf));
+    citiesCache.set(uf, p);
+  }
+  return p;
+}
+
+// Estado + cidade: a cidade só abre depois do estado e mostra só as dele; trocar o estado limpa a cidade
+function PlaceFields({ defaultUf, defaultCity, errors }: { defaultUf: string; defaultCity: string; errors: RegistrationFieldErrors }) {
+  const [uf, setUf] = useState<Uf | "">(() => (isUf(defaultUf) ? defaultUf : ""));
+  const [cities, setCities] = useState<{ uf: Uf; options: SelectOption[] } | null>(null);
+  const [failed, setFailed] = useState<Uf | null>(null);
+  useEffect(() => {
+    if (!uf) return;
+    let live = true;
+    loadCities(uf).then(
+      (options) => live && setCities({ uf, options }),
+      () => live && setFailed(uf),
+    );
+    return () => {
+      live = false;
+    };
+  }, [uf]);
+  const ready = uf !== "" && cities?.uf === uf;
+  const cityHint = !uf ? "Escolha o estado primeiro." : failed === uf && !ready ? "Não conseguimos carregar as cidades. Tente escolher o estado de novo." : !ready ? "Carregando as cidades…" : undefined;
+
+  return (
+    <div className="grid gap-6 sm:grid-cols-[2fr_3fr]">
+      <Field label={<Optional>Estado</Optional>} htmlFor="uf" error={errors.uf}>
+        <Select
+          id="uf"
+          name="uf"
+          options={ufOptions}
+          defaultValue={uf}
+          placeholder="Escolha o estado"
+          searchable
+          searchLabel="Buscar estado"
+          emptyText="Nenhum estado encontrado."
+          invalid={!!errors.uf}
+          onChange={(v) => {
+            setFailed(null);
+            setUf(isUf(v) ? v : "");
+          }}
+        />
+      </Field>
+      <Field label={<Optional>Cidade</Optional>} htmlFor="city" error={errors.city} hint={cityHint}>
+        {/* key: trocar o estado monta a cidade de novo, vazia */}
+        <Select
+          key={uf}
+          id="city"
+          name="city"
+          options={ready ? cities.options : []}
+          defaultValue={uf === defaultUf ? defaultCity : ""}
+          placeholder={uf ? "Escolha a cidade" : "Escolha o estado primeiro"}
+          searchable
+          searchLabel="Buscar cidade"
+          emptyText="Nenhuma cidade encontrada."
+          disabled={!ready}
+          invalid={!!errors.city}
+        />
+      </Field>
     </div>
   );
 }
@@ -241,6 +329,12 @@ export function RegistrationForm({
           <input type="hidden" name="birthDate" value={dateBrToIso(birth)} />
         </Field>
       </div>
+
+      <Field label={<Optional>Empresa</Optional>} htmlFor="company" hint="Onde você trabalha ou a sua startup.">
+        <input id="company" name="company" type="text" autoComplete="organization" maxLength={120} defaultValue={v.company} className="field" placeholder="Nome da empresa" />
+      </Field>
+
+      <PlaceFields defaultUf={v.uf ?? ""} defaultCity={v.city ?? ""} errors={e} />
 
       <label className="flex items-start gap-3 text-body">
         <input id="consent" type="checkbox" name="consent" className="mt-1 h-4 w-4 accent-ink" required aria-invalid={!!e.consent} />

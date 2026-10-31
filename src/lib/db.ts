@@ -193,6 +193,12 @@ export function ensureSchema() {
       // cupom e não entra nas contagens; restaurar limpa as duas colunas.
       await sql`alter table registrations add column if not exists removed_at timestamptz`;
       await sql`alter table registrations add column if not exists removed_by uuid references users(id) on delete set null`;
+      // Empresa, estado e cidade (opcionais no formulário): '' / null = não informado. city_code é o código IBGE e
+      // city_name o nome oficial na hora da inscrição (o servidor confere que a cidade é do estado).
+      await sql`alter table registrations add column if not exists company text not null default ''`;
+      await sql`alter table registrations add column if not exists uf text not null default ''`;
+      await sql`alter table registrations add column if not exists city_code int`;
+      await sql`alter table registrations add column if not exists city_name text not null default ''`;
       // Patrocinadores do site: logo é o nome do arquivo no volume de uploads; position ordena dentro da categoria
       await sql`
         create table if not exists sponsors (

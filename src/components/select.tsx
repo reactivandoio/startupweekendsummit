@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { matchesSearch } from "@/lib/locations-core";
 
 export type SelectOption = { value: string; label: string };
 
@@ -14,7 +15,8 @@ function focusIsFree() {
 
 /* Select da marca no lugar do <select> nativo (que abre o menu do sistema).
    Botão com role="combobox" + lista role="listbox"; teclado: setas, Home/End, Enter/Espaço, Esc,
-   digitação pra buscar. Um <select> nativo escondido leva o valor no submit do formulário e dispara
+   digitação pra buscar. searchable: campo de busca no topo da lista (sem acento, sem diferenciar maiúsculas), pra
+   listas longas como a de cidades; digitar com o select fechado já abre a busca. Um <select> nativo escondido leva o valor no submit do formulário e dispara
    `required`; quando inválido, o foco volta pro botão e a mensagem aparece aqui embaixo. */
 export function Select({
   id,
@@ -26,6 +28,10 @@ export function Select({
   invalid,
   className = "",
   onChange,
+  searchable = false,
+  searchLabel = "Buscar",
+  emptyText = "Nada encontrado.",
+  disabled = false,
 }: {
   id: string;
   name: string;
@@ -36,6 +42,10 @@ export function Select({
   invalid?: boolean;
   className?: string;
   onChange?: (value: string) => void;
+  searchable?: boolean;
+  searchLabel?: string;
+  emptyText?: string;
+  disabled?: boolean;
 }) {
   const [value, setValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
@@ -44,13 +54,17 @@ export function Select({
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
+  const search = useRef<HTMLInputElement>(null);
   const typed = useRef({ text: "", at: 0 });
   const listId = useId();
-  const selectedIndex = options.findIndex((o) => o.value === value);
-  const selected = selectedIndex >= 0 ? options[selectedIndex] : null;
+  const [query, setQuery] = useState("");
+  // com busca, a lista (e os índices de active) são só as opções que batem com o texto
+  const visible = searchable && query ? options.filter((o) => matchesSearch(o.label, query)) : options;
+  const selectedIndex = visible.findIndex((o) => o.value === value);
+  const selected = options.find((o) => o.value === value) ?? null;
 
   const commit = (index: number) => {
-    const opt = options[index];
+    const opt = visible[index];
     if (!opt) return;
     setValue(opt.value);
     setError(null);
@@ -63,6 +77,7 @@ export function Select({
   const hide = () => {
     setOpen(false);
     setActive(-1);
+    setQuery("");
   };
 
   // fecha ao clicar fora
@@ -81,6 +96,11 @@ export function Select({
     list.current?.children[active]?.scrollIntoView({ block: "nearest" });
   }, [open, active]);
 
+  // com busca, o foco vai pro campo ao abrir (digitação, setas e Enter continuam valendo lá)
+  useEffect(() => {
+    if (open && searchable) search.current?.focus();
+  }, [open, searchable]);
+
   // busca por digitação: acumula letras por 700 ms (como o select nativo)
   const typeahead = (key: string) => {
     const now = Date.now();
@@ -88,6 +108,7 @@ export function Select({
     typed.current = { text, at: now };
     const from = open ? active : selectedIndex;
     const n = options.length;
+    if (n === 0) return;
     for (let i = 1; i <= n; i++) {
       const idx = (from + i) % n;
       if (options[idx].label.toLowerCase().startsWith(text)) {
@@ -99,7 +120,7 @@ export function Select({
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    const n = options.length;
+    const n = visible.length;
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
@@ -130,12 +151,14 @@ export function Select({
         else {
           commit(active);
           hide();
+          trigger.current?.focus();
         }
         break;
       case "Escape":
         if (open) {
           e.preventDefault();
           hide();
+          trigger.current?.focus();
         }
         break;
       case "Tab":
@@ -144,13 +167,31 @@ export function Select({
       default:
         if (e.key.length === 1 && !e.altKey && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          typeahead(e.key);
+          if (searchable) {
+            setQuery(e.key);
+            show(0);
+          } else typeahead(e.key);
         }
     }
   };
 
   const isInvalid = invalid || !!error;
   const optionId = (i: number) => `${listId}-opt-${i}`;
+  const leave = (e: React.FocusEvent) => {
+    if (!root.current?.contains(e.relatedTarget as Node)) hide();
+  };
+  // na busca, espaço é texto e Home/End andam no campo: só setas, Enter, Esc e Tab mexem na lista
+  const onSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Escape" || e.key === "Tab") onKeyDown(e);
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      if (active >= 0 && active < visible.length) {
+        commit(active);
+        hide();
+        trigger.current?.focus();
+      }
+    }
+  };
 
   return (
     <div ref={root} className={`relative ${className}`}>
@@ -165,12 +206,11 @@ export function Select({
         aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
         aria-invalid={isInvalid || undefined}
         aria-required={required || undefined}
-        className="field flex items-center justify-between gap-3 text-left aria-expanded:border-ink"
+        disabled={disabled}
+        className="field flex items-center justify-between gap-3 text-left aria-expanded:border-ink disabled:cursor-not-allowed disabled:opacity-50"
         onClick={() => (open ? hide() : show())}
         onKeyDown={onKeyDown}
-        onBlur={(e) => {
-          if (!root.current?.contains(e.relatedTarget as Node)) hide();
-        }}
+        onBlur={leave}
       >
         <span className={`truncate ${selected ? "" : "text-ink/40"}`}>{selected ? selected.label : placeholder}</span>
         <svg width="12" height="8" viewBox="0 0 12 8" aria-hidden="true" className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>
@@ -178,45 +218,76 @@ export function Select({
         </svg>
       </button>
 
-      <ul
-        ref={list}
-        id={listId}
-        role="listbox"
-        aria-labelledby={id}
-        tabIndex={-1}
-        hidden={!open}
-        className="absolute left-0 right-0 top-full z-20 mt-2 max-h-72 overflow-y-auto border-2 border-ink bg-paper py-2 text-ink shadow-hard-sm"
-      >
-        {options.map((o, i) => {
-          const isSelected = o.value === value;
-          const isActive = i === active;
-          return (
-            <li
-              key={o.value}
-              id={optionId(i)}
-              role="option"
-              aria-selected={isSelected}
-              className={`flex cursor-pointer items-center gap-3 px-4 py-3 text-body ${isActive ? "bg-marigold-wash" : ""} ${isSelected ? "font-semibold" : ""}`}
-              onPointerMove={() => setActive(i)}
-              onPointerDown={(e) => e.preventDefault()}
-              onClick={() => {
-                commit(i);
-                hide();
-                trigger.current?.focus();
+      <div hidden={!open} className="absolute left-0 right-0 top-full z-20 mt-2 border-2 border-ink bg-paper text-ink shadow-hard-sm">
+        {searchable && (
+          <div className="border-b border-ash p-2">
+            <input
+              ref={search}
+              type="text"
+              enterKeyHint="done"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label={searchLabel}
+              aria-controls={listId}
+              aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
+              placeholder={searchLabel}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActive(0);
               }}
-            >
-              <span aria-hidden="true" className={`h-2 w-2 shrink-0 ${isSelected ? "bg-grass" : "bg-transparent"}`} />
-              {o.label}
-            </li>
-          );
-        })}
-      </ul>
+              onKeyDown={onSearchKeyDown}
+              onBlur={leave}
+              className="field py-3!"
+            />
+          </div>
+        )}
+        {searchable && visible.length === 0 && (
+          <p role="status" className="px-4 py-3 text-body text-ink/60">
+            {emptyText}
+          </p>
+        )}
+        <ul
+          ref={list}
+          id={listId}
+          role="listbox"
+          aria-labelledby={id}
+          tabIndex={-1}
+          className="max-h-72 overflow-y-auto py-2 empty:hidden"
+        >
+          {visible.map((o, i) => {
+            const isSelected = o.value === value;
+            const isActive = i === active;
+            return (
+              <li
+                key={o.value}
+                id={optionId(i)}
+                role="option"
+                aria-selected={isSelected}
+                className={`flex cursor-pointer items-center gap-3 px-4 py-3 text-body ${isActive ? "bg-marigold-wash" : ""} ${isSelected ? "font-semibold" : ""}`}
+                onPointerMove={() => setActive(i)}
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  commit(i);
+                  hide();
+                  trigger.current?.focus();
+                }}
+              >
+                <span aria-hidden="true" className={`h-2 w-2 shrink-0 ${isSelected ? "bg-grass" : "bg-transparent"}`} />
+                {o.label}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       {/* Valor pro formulário + validação nativa de `required` */}
       <select
         name={name}
         value={value}
         required={required}
+        disabled={disabled}
         aria-hidden="true"
         tabIndex={-1}
         className="pointer-events-none absolute bottom-0 left-0 -m-px h-px w-px overflow-hidden opacity-0"
