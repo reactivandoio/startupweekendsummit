@@ -196,21 +196,27 @@ export const sponsorCategories = [
   { id: "realizacao", label: "Realização" },
 ] as const satisfies readonly { id: string; label: string }[];
 
-// Programação resumida do deck institucional
+// Programação resumida do deck institucional, com o horário e o local de cada período (STA-28)
 export const schedule = [
   {
     day: "Dia 1",
     date: "Sexta, 4/12",
+    periods: [
+      { label: "Manhã", time: "9h–12h", venue: "INF UFG", area: "Campus Samambaia" },
+      { label: "Noite", time: "18h30–21h", venue: "Casa da Indústria", area: "Setor Leste Vila Nova" },
+    ],
     items: ["Summit Kickoff", "Showcase da cidade", "Ask Me Anything com convidado", "Learning experiences", "Welcome dinner"],
   },
   {
     day: "Dia 2",
     date: "Sábado, 5/12",
+    periods: [{ label: "Dia todo", time: "8h–22h", venue: "Hub Cerrado", area: "Jardim Atlântico" }],
     items: ["Fun experiences", "Keynote", "Workshop especial com a cidade", "Painel de facilitadores", "Community celebration"],
   },
   {
     day: "Dia 3",
     date: "Domingo, 6/12",
+    periods: [{ label: "Manhã", time: "8h–12h", venue: "Senai Fatesg", area: "Setor Leste Universitário" }],
     items: ["Fun experiences", "Keynote", "Almoço & encontro", "Aprendizados", "Encerramento"],
   },
 ];
