@@ -171,7 +171,7 @@ export function registrationConfirmedMail(reg: { id: string; name: string; cpf: 
       ${box(`
         <p style="margin:0 0 6px;font-family:${FONT};font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:${GRASS_DEEP}">${escapeHtml(kind)}</p>
         <p style="margin:0 0 12px;font-family:${FONT};font-size:32px;font-weight:700;letter-spacing:.04em;line-height:36px;color:${INK}">${number}</p>
-        <p style="margin:0;font-family:${FONT};font-size:14px;line-height:20px;color:${INK}">${escapeHtml(reg.name)}<br>CPF ${cpf}<br>${escapeHtml(site.date)} · ${escapeHtml(site.venue)} · ${escapeHtml(site.city)}</p>`)}
+        <p style="margin:0;font-family:${FONT};font-size:14px;line-height:20px;color:${INK}">${escapeHtml(reg.name)}<br>CPF ${cpf}<br>${escapeHtml(site.date)} · ${escapeHtml(site.city)}</p>`)}
       ${p("Guarde este e-mail: ele é o seu comprovante e o seu ingresso. No credenciamento, apresente um documento com foto. Em breve mandamos a programação e as orientações pelo WhatsApp cadastrado.")}
       ${p(`Nos vemos em ${escapeHtml(site.city)}, ${escapeHtml(site.date)}.`, "margin:0 0 8px")}`,
   });

@@ -54,7 +54,7 @@ export function EventMeta() {
     <div className="flex flex-col gap-2 border-l-4 border-marigold pl-4 text-body-md">
       <p className="font-semibold">{site.date}</p>
       <p>
-        {site.cityName} - {site.state} · 3 dias
+        {site.city} · 3 dias
       </p>
     </div>
   );

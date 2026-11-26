@@ -26,7 +26,7 @@ const jsonLd = {
       inLanguage: "pt-BR",
       location: {
         "@type": "Place",
-        name: site.venue,
+        name: site.city,
         address: { "@type": "PostalAddress", addressLocality: site.cityName, addressRegion: site.state, addressCountry: "BR" },
       },
       organizer: { "@type": "Organization", name: site.organizer, url: site.organizerUrl },
@@ -204,22 +204,24 @@ export default function Home() {
                   <h3 className="font-display text-subheading">{d.day}</h3>
                   <span className="text-body font-semibold text-grass-deep">{d.date}</span>
                 </div>
-                {/* Onde e quando: um bloco por período, com a barra Marigold do EventMeta */}
-                <ul className="flex flex-col gap-4">
+                {/* Um bloco por período: quando e onde (barra Marigold do EventMeta), seguido das atividades */}
+                <ul className="flex flex-col gap-8">
                   {d.periods.map((p) => (
-                    <li key={p.time} className="flex flex-col gap-1 border-l-4 border-marigold pl-4">
-                      <span className="text-body font-semibold">
-                        {p.label} · {p.time}
-                      </span>
-                      <span className="text-body">{p.venue}</span>
-                      <span className="text-caption text-graphite">{p.area}</span>
-                    </li>
-                  ))}
-                </ul>
-                <ul className="flex flex-col">
-                  {d.items.map((it) => (
-                    <li key={it} className="border-b border-ash py-3 text-body">
-                      {it}
+                    <li key={p.time} className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-1 border-l-4 border-marigold pl-4">
+                        <span className="text-body font-semibold">
+                          {p.label} · {p.time}
+                        </span>
+                        <span className="text-body">{p.venue}</span>
+                        <span className="text-caption text-graphite">{p.area}</span>
+                      </div>
+                      <ul className="flex flex-col">
+                        {p.items.map((it) => (
+                          <li key={it} className="border-b border-ash py-3 text-body">
+                            {it}
+                          </li>
+                        ))}
+                      </ul>
                     </li>
                   ))}
                 </ul>
