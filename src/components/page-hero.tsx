@@ -48,13 +48,13 @@ export function PageHero({
   );
 }
 
-/* Data e local do evento, com a barra Marigold: o mesmo bloco em todos os heros */
+/* Data e cidade do evento (os locais variam por período: ver a programação), com a barra Marigold: o mesmo bloco em todos os heros */
 export function EventMeta() {
   return (
     <div className="flex flex-col gap-2 border-l-4 border-marigold pl-4 text-body-md">
       <p className="font-semibold">{site.date}</p>
       <p>
-        {site.venue} · {site.city} · 3 dias
+        {site.cityName} - {site.state} · 3 dias
       </p>
     </div>
   );

@@ -194,7 +194,7 @@ export default function Home() {
             <Eyebrow>Programação</Eyebrow>
             <h2 className="font-display text-heading">Três dias em Goiânia</h2>
             <p className="max-w-[52ch] text-body-md">
-              Resumo da programação prevista. Horários e locais serão divulgados aos participantes convidados.
+              Resumo da programação prevista, com o horário e o local de cada período. A agenda detalhada será enviada aos participantes.
             </p>
           </div>
           <ol className="grid gap-x-6 gap-y-12 md:grid-cols-3">
@@ -204,6 +204,18 @@ export default function Home() {
                   <h3 className="font-display text-subheading">{d.day}</h3>
                   <span className="text-body font-semibold text-grass-deep">{d.date}</span>
                 </div>
+                {/* Onde e quando: um bloco por período, com a barra Marigold do EventMeta */}
+                <ul className="flex flex-col gap-4">
+                  {d.periods.map((p) => (
+                    <li key={p.time} className="flex flex-col gap-1 border-l-4 border-marigold pl-4">
+                      <span className="text-body font-semibold">
+                        {p.label} · {p.time}
+                      </span>
+                      <span className="text-body">{p.venue}</span>
+                      <span className="text-caption text-graphite">{p.area}</span>
+                    </li>
+                  ))}
+                </ul>
                 <ul className="flex flex-col">
                   {d.items.map((it) => (
                     <li key={it} className="border-b border-ash py-3 text-body">
